@@ -32,8 +32,10 @@ npm run build        # static site in dist/ - open it with any web server
 it cannot find one. It covers what unit tests cannot: PDF rendering, canvas hit-testing,
 pointer drags, calibration, IndexedDB autosave, PNG export and the print view.
 
-Chrome or Edge give you real in-place saving (File System Access API). Firefox works too, but
-"Save" downloads a new copy each time.
+Chrome or Edge give you real in-place saving (File System Access API), but only on a secure
+origin — `http://localhost` counts, a LAN address like `http://192.168.1.20:5173` does not.
+Firefox has no such API at all. Where it is missing, Save downloads a fresh copy each time and
+the File menu tells you which of the two cases you are in.
 
 ## The two ideas that shape everything
 
@@ -60,7 +62,8 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 | **Calibrate** | `K`, then click the two ends of a dimension printed on the plan and type its real length in mm |
 | **Pan / zoom** | Space-drag or middle-drag to pan, wheel to zoom, `F` to fit |
 | **Undo** | `Ctrl+Z` / `Ctrl+Shift+Z`, 100 deep |
-| **Save** | `Ctrl+S` |
+| **Save** | `Ctrl+S`, or `Ctrl+Shift+S` for Save as… |
+| **Rename** | Click the project title in the toolbar |
 
 ## Calibrate first
 
@@ -116,6 +119,10 @@ per-run **extra length** field covers a specific run that needs more. Order from
 column.
 
 ## Saving
+
+**Name the project first.** Click the title next to "Ductwork" in the toolbar (or File → Rename
+project…). That name is the print heading and the suggested file name, and Save as… on a still
+-untitled project adopts whatever file name you type.
 
 Your project is a single `*.ductwork.json` file with the source PDF embedded, so it is
 self-contained: back it up, mail it, put it in git. The JSON is formatted and diffs cleanly,

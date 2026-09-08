@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { emptyProject } from '../src/model/doc.ts'
-import { parseProject, serialize } from '../src/io/projectFile.ts'
+import { parseProject, projectNameFromFileName, serialize, suggestedFileName } from '../src/io/projectFile.ts'
 import type { BoxItem, MarkerItem, NoteItem, RunItem } from '../src/model/types.ts'
 
 function sampleProject() {
@@ -102,6 +102,18 @@ test('notes round trip, and a broken one is repaired rather than dropped', () =>
   })).sheets[0].items[0]
   assert.equal(odd.kind === 'note' && odd.w >= 30, true, 'a silly width is clamped, not honoured')
   assert.equal(odd.kind === 'note' && odd.text, '', 'missing text becomes empty, not undefined')
+})
+
+test('project name and file name convert both ways', () => {
+  assert.equal(suggestedFileName('kelder 2026'), 'kelder-2026.ductwork.json')
+  // Characters that are awkward in a file name are replaced rather than passed through.
+  assert.equal(suggestedFileName('Aarts — services'), 'Aarts-_-services.ductwork.json')
+  assert.equal(projectNameFromFileName('house.ductwork.json'), 'house')
+  assert.equal(projectNameFromFileName('house.json'), 'house')
+  assert.equal(projectNameFromFileName('ground floor v2.ductwork.json'), 'ground floor v2')
+  assert.equal(projectNameFromFileName('.ductwork.json'), 'Untitled', 'never yields an empty title')
+  // A name survives the trip out to a file name and back.
+  assert.equal(projectNameFromFileName(suggestedFileName('kelder-2026')), 'kelder-2026')
 })
 
 test('a file with no systems falls back to the default catalogue', () => {

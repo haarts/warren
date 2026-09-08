@@ -210,6 +210,25 @@ try {
     (await page.evaluate(() => window.ductwork.store.selection.size)) === 3)
   await page.keyboard.press('Escape')
 
+  // --- naming the project -------------------------------------------------------------------
+  const projectName = () => page.evaluate(() => window.ductwork.store.project.name)
+  check('a new project starts as Untitled', (await projectName()) === 'Untitled')
+  await page.evaluate(() => document.querySelector('.brand small').click())
+  await page.waitForSelector('.brand input', { timeout: 3000 })
+  await page.evaluate(() => {
+    const input = document.querySelector('.brand input')
+    input.value = 'Aarts services'
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+  })
+  check('clicking the title renames the project', (await projectName()) === 'Aarts services', await projectName())
+  check('the rename lands in the window title',
+    /Aarts services/.test(await page.title()), await page.title())
+  check('renaming is undoable', await page.evaluate(() => {
+    window.ductwork.store.undo()
+    return window.ductwork.store.project.name === 'Untitled'
+  }))
+  await page.evaluate(() => window.ductwork.store.redo())
+
   // --- sticky notes ------------------------------------------------------------------------------
   await page.keyboard.press('n')
   const noteAt = at(0.20, 0.70)
@@ -422,6 +441,24 @@ try {
   }, { timeout: 40_000, polling: 300 }).then((h) => h.jsonValue()).catch(() => '')
   check('print view carries the plan, legend and takeoff',
     /Legend/.test(printText) && /takeoff/i.test(printText), printText.slice(0, 70))
+
+  // --- the fallback path explains itself ------------------------------------------------------
+  // Reproduce a browser without the File System Access API (Firefox, or any non-secure origin).
+  const fallbackHint = await page.evaluate(async () => {
+    const saved = window.showSaveFilePicker
+    delete window.showSaveFilePicker
+    window.ductwork.refresh()
+    await new Promise((r) => setTimeout(r, 60))
+    ;[...document.querySelectorAll('#toolbar button')].find((b) => b.textContent.startsWith('File')).click()
+    const text = document.querySelector('.menu .hint')?.textContent ?? ''
+    document.body.click()
+    if (saved) window.showSaveFilePicker = saved
+    window.ductwork.refresh()
+    return text
+  })
+  check('without save-in-place, the File menu says so and why',
+    /cannot write over an existing file|not a secure context/.test(fallbackHint),
+    fallbackHint.slice(0, 70))
 
   const realErrors = errors.filter((e) => !/favicon/i.test(e))
   check('no console errors', realErrors.length === 0, realErrors.slice(0, 2).join(' | '))

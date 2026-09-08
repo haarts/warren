@@ -4,6 +4,7 @@ import {
   CATEGORY_LABELS, CATEGORIES, LEVELS, LEVEL_LABELS, MARKER_LABELS, MARKER_SYMBOLS,
   type Level, type MarkerSymbol,
 } from '../model/types.ts'
+import { saveCapabilityNote } from '../io/projectFile.ts'
 import { clear, el } from './dom.ts'
 import { openExportDialog, openPrintDialog } from './outputDialogs.ts'
 import { openSystemsEditor } from './systemsEditor.ts'
@@ -22,7 +23,7 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   const { store, editor } = app
   clear(host)
 
-  host.appendChild(el('div', { class: 'brand' }, 'Ductwork', el('small', {}, store.project.name + (store.dirty ? ' •' : ''))))
+  host.appendChild(brand(app))
   host.appendChild(fileMenu(app))
   host.appendChild(el('div', { class: 'sep' }))
 
@@ -141,6 +142,45 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   host.appendChild(el('button', { title: 'Edit the systems catalogue', onclick: () => openSystemsEditor(app) }, 'Systems…'))
 }
 
+// Survives the toolbar being rebuilt mid-edit, which happens on any store change.
+let renamingProject = false
+
+function brand(app: App): HTMLElement {
+  const { store } = app
+  if (renamingProject) {
+    const input = el('input', {
+      type: 'text',
+      value: store.project.name,
+      style: { width: '170px' },
+    }) as HTMLInputElement
+    const commit = (): void => {
+      if (!renamingProject) return
+      renamingProject = false
+      app.renameProject(input.value)
+    }
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); commit() }
+      if (e.key === 'Escape') { renamingProject = false; app.refresh() }
+    })
+    input.addEventListener('blur', commit)
+    setTimeout(() => { input.focus(); input.select() }, 0)
+    return el('div', { class: 'brand' }, 'Ductwork', input)
+  }
+  return el('div', { class: 'brand' },
+    'Ductwork',
+    el('small', {
+      title: 'Click to rename the project — this also becomes the file name',
+      style: { cursor: 'text', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px' },
+      onclick: () => { renamingProject = true; app.refresh() },
+    }, store.project.name + (store.dirty ? ' •' : '')),
+  )
+}
+
+export function startProjectRename(app: App): void {
+  renamingProject = true
+  app.refresh()
+}
+
 function toggle(label: string, value: boolean, onChange: (v: boolean) => void): HTMLElement {
   return el('button', {
     class: value ? 'active' : '',
@@ -170,6 +210,7 @@ function fileMenu(app: App): HTMLElement {
   button.addEventListener('click', () => {
     if (menu) { close(); return }
     const sheet = app.store.sheet
+    const note = saveCapabilityNote()
     menu = el('div', { class: 'menu' },
       entry('New project', '', () => void app.newProject()),
       entry('Open…', 'Ctrl+O', () => void app.openProject()),
@@ -184,8 +225,11 @@ function fileMenu(app: App): HTMLElement {
       entry('Export PNG…', '', () => openExportDialog(app)),
       entry('Print / PDF…', '', () => openPrintDialog(app)),
       el('hr'),
+      entry('Rename project…', '', () => startProjectRename(app)),
       entry('Rename sheet…', '', () => void app.renameSheet(app.store.sheet)),
       entry('Delete sheet…', '', () => void app.deleteSheet(app.store.sheet)),
+      note ? el('hr') : null,
+      note ? el('div', { class: 'hint', style: { padding: '2px 8px 4px', maxWidth: '250px' } }, note) : null,
     )
     wrap.appendChild(menu)
     document.addEventListener('pointerdown', onOutside, true)

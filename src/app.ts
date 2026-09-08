@@ -3,8 +3,8 @@ import { clearAutosave, readAutosave, writeAutosave } from './io/autosave.ts'
 import { bytesToBase64, sha256Hex } from './io/base64.ts'
 import { forgetDocument, pageSizePt } from './io/pdf.ts'
 import {
-  parseProject, pickOpenFile, pickSaveTarget, promptForFile, serialize, suggestedFileName,
-  writeTo, type SaveTarget,
+  parseProject, pickOpenFile, pickSaveTarget, projectNameFromFileName, promptForFile,
+  serialize, suggestedFileName, writeTo, type SaveTarget,
 } from './io/projectFile.ts'
 import { emptyProject, emptySheet, Store } from './model/doc.ts'
 import { newId } from './model/ids.ts'
@@ -121,7 +121,22 @@ export class App {
     const target = await pickSaveTarget(suggestedFileName(this.store.project.name))
     if (!target) return
     this.saveTarget = target
+    // "Save as" is how most people expect to name an untitled document, so adopt the file
+    // name - but never overwrite a title the user has deliberately set.
+    if (this.store.project.name === 'Untitled') {
+      const derived = projectNameFromFileName(target.name)
+      if (derived !== 'Untitled') this.store.mutate(() => { this.store.project.name = derived })
+    }
     await this.writeProject(target)
+  }
+
+  renameProject(name: string): void {
+    const clean = name.trim()
+    if (!clean || clean === this.store.project.name) {
+      this.refresh()
+      return
+    }
+    this.store.mutate(() => { this.store.project.name = clean })
   }
 
   private async writeProject(target: SaveTarget): Promise<void> {
@@ -130,7 +145,9 @@ export class App {
       this.store.dirty = false
       this.store.fileName = target.name
       await clearAutosave()
-      this.editor.onStatus?.(`Saved ${target.name}`)
+      this.editor.onStatus?.(target.handle
+        ? `Saved ${target.name}`
+        : `Downloaded ${target.name} — this browser cannot write over an existing file`)
       this.refresh()
     } catch (err) {
       alertDialog('Save failed', String(err instanceof Error ? err.message : err))

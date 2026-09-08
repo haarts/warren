@@ -250,6 +250,26 @@ export function promptForFile(accept: string): Promise<File | null> {
   })
 }
 
+/** The inverse of suggestedFileName: what a chosen file name says the project is called. */
+export function projectNameFromFileName(fileName: string): string {
+  const base = fileName.replace(/\.ductwork\.json$/i, '').replace(/\.json$/i, '').trim()
+  return base || 'Untitled'
+}
+
+/**
+ * Why "Save" may be downloading a copy instead of writing over your file. Silently degrading
+ * is worse than being unavailable: you cannot fix what you have not been told about.
+ */
+export function saveCapabilityNote(): string | null {
+  if (supportsFileSystemAccess()) return null
+  if (!window.isSecureContext) {
+    return 'This page is not a secure context, so the browser hides its save-in-place API. '
+      + 'Open the app on http://localhost rather than a LAN address and Save will write over your file.'
+  }
+  return 'This browser cannot write over an existing file, so Save downloads a fresh copy each time. '
+    + 'Chrome or Edge can save in place. Either way, name the project first — that becomes the file name.'
+}
+
 export function suggestedFileName(projectName: string): string {
   const safe = projectName.trim().replace(/[^\w\-. ]+/g, '_').replace(/\s+/g, '-') || 'ductwork'
   return `${safe}${FILE_EXTENSION}`
