@@ -1,0 +1,52 @@
+%PDF-1.4
+1 0 obj
+<</Type/Catalog/Pages 2 0 R>>
+endobj
+2 0 obj
+<</Type/Pages/Kids[3 0 R]/Count 1>>
+endobj
+3 0 obj
+<</Type/Page/Parent 2 0 R/MediaBox[0 0 842 595]/Resources<</Font<</F1 5 0 R>>>>/Contents 4 0 R>>
+endobj
+4 0 obj
+<</Length 678>>
+stream
+1 w 0.15 0.15 0.15 RG
+% outer walls: 500 x 340 pt
+120 120 500 340 re S
+118 118 504 344 re S
+% interior walls
+370 120 m 370 300 l S
+370 300 m 620 300 l S
+250 300 m 250 460 l S
+120 300 m 250 300 l S
+% door gaps drawn as short white breaks are overkill for a sample; keep it simple
+0.45 0.45 0.45 RG 0.6 w
+% dimension line under the building
+120 96 m 620 96 l S
+120 104 m 120 88 l S
+620 104 m 620 88 l S
+BT /F1 9 Tf 0.2 0.2 0.2 rg 355 82 Td (10000) Tj ET
+BT /F1 10 Tf 160 400 Td (Living) Tj ET
+BT /F1 10 Tf 420 380 Td (Kitchen) Tj ET
+BT /F1 10 Tf 420 200 Td (Bedroom) Tj ET
+BT /F1 10 Tf 160 200 Td (Hall) Tj ET
+BT /F1 12 Tf 120 500 Td (Sample floor plan - ground floor 1:100) Tj ET
+endstream
+endobj
+5 0 obj
+<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000054 00000 n 
+0000000105 00000 n 
+0000000217 00000 n 
+0000000944 00000 n 
+trailer
+<</Size 6/Root 1 0 R>>
+startxref
+1007
+%%EOF

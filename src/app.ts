@@ -1,0 +1,405 @@
+import { Editor } from './interact/controller.ts'
+import { clearAutosave, readAutosave, writeAutosave } from './io/autosave.ts'
+import { bytesToBase64, sha256Hex } from './io/base64.ts'
+import { forgetDocument, pageSizePt } from './io/pdf.ts'
+import {
+  parseProject, pickOpenFile, pickSaveTarget, promptForFile, serialize, suggestedFileName,
+  writeTo, type SaveTarget,
+} from './io/projectFile.ts'
+import { emptyProject, emptySheet, Store } from './model/doc.ts'
+import { newId } from './model/ids.ts'
+import type { Sheet } from './model/types.ts'
+import { alertDialog, askNumber, confirmDialog } from './ui/modal.ts'
+import { openPdfImportDialog } from './ui/pdfImport.ts'
+import { buildPanel } from './ui/panel.ts'
+import { buildToolbar } from './ui/toolbar.ts'
+
+const AUTOSAVE_MS = 30_000
+
+export class App {
+  store = new Store()
+  editor: Editor
+  saveTarget: SaveTarget | null = null
+
+  private toolbarHost = document.getElementById('toolbar') as HTMLElement
+  private panelHost = document.getElementById('panel') as HTMLElement
+  private statusText = document.getElementById('status-text') as HTMLElement
+  private selectionText = document.getElementById('selection-text') as HTMLElement
+  private sheetTabs = document.getElementById('sheet-tabs') as HTMLElement
+  private refreshQueued = false
+
+  constructor(canvas: HTMLCanvasElement) {
+    this.editor = new Editor(canvas, this.store)
+    this.editor.onChange = () => this.refresh()
+    this.editor.onStatus = (text) => {
+      this.statusText.textContent = text
+      this.selectionText.textContent = this.editor.selectionSummary()
+    }
+    this.editor.onCalibrateRequest = () => void this.promptCalibration()
+    this.store.subscribe(() => this.refresh())
+  }
+
+  async init(): Promise<void> {
+    this.attachKeys()
+    this.attachUnloadGuard()
+    window.setInterval(() => void this.autosave(), AUTOSAVE_MS)
+    await this.offerRestore()
+    this.refresh()
+    this.editor.zoomToFit()
+  }
+
+  // --- UI ------------------------------------------------------------------------------
+
+  refresh(): void {
+    if (this.refreshQueued) return
+    this.refreshQueued = true
+    queueMicrotask(() => {
+      this.refreshQueued = false
+      buildToolbar(this, this.toolbarHost)
+      buildPanel(this, this.panelHost)
+      this.renderSheetTabs()
+      this.selectionText.textContent = this.editor.selectionSummary()
+      document.title = `${this.store.dirty ? '• ' : ''}${this.store.project.name} — Ductwork`
+    })
+  }
+
+  private renderSheetTabs(): void {
+    this.sheetTabs.replaceChildren()
+    for (const sheet of this.store.project.sheets) {
+      const btn = document.createElement('button')
+      btn.textContent = sheet.name
+      if (sheet.id === this.store.project.activeSheetId) btn.className = 'active'
+      btn.addEventListener('click', () => {
+        this.store.setActiveSheet(sheet.id)
+        this.editor.invalidateBackground()
+        this.editor.zoomToFit()
+      })
+      btn.addEventListener('dblclick', () => void this.renameSheet(sheet))
+      this.sheetTabs.appendChild(btn)
+    }
+    const add = document.createElement('button')
+    add.textContent = '+'
+    add.title = 'Add a sheet (another floor)'
+    add.addEventListener('click', () => this.addSheet())
+    this.sheetTabs.appendChild(add)
+  }
+
+  // --- project lifecycle ---------------------------------------------------------------
+
+  async newProject(): Promise<void> {
+    if (this.store.dirty && !(await confirmDialog('Discard changes?', 'The current project has unsaved changes.', 'Discard'))) return
+    this.store.loadProject(emptyProject(), null)
+    this.saveTarget = null
+    await clearAutosave()
+    this.editor.invalidateBackground()
+    this.editor.zoomToFit()
+  }
+
+  async openProject(): Promise<void> {
+    if (this.store.dirty && !(await confirmDialog('Discard changes?', 'The current project has unsaved changes.', 'Discard'))) return
+    try {
+      const picked = await pickOpenFile()
+      if (!picked) return
+      const text = await picked.file.text()
+      const project = parseProject(text)
+      this.store.loadProject(project, picked.file.name)
+      this.saveTarget = picked.handle ? { handle: picked.handle, name: picked.file.name } : null
+      await clearAutosave()
+      this.editor.invalidateBackground()
+      this.editor.zoomToFit()
+    } catch (err) {
+      alertDialog('Could not open that file', String(err instanceof Error ? err.message : err))
+    }
+  }
+
+  async save(): Promise<void> {
+    if (!this.saveTarget) return this.saveAs()
+    await this.writeProject(this.saveTarget)
+  }
+
+  async saveAs(): Promise<void> {
+    const target = await pickSaveTarget(suggestedFileName(this.store.project.name))
+    if (!target) return
+    this.saveTarget = target
+    await this.writeProject(target)
+  }
+
+  private async writeProject(target: SaveTarget): Promise<void> {
+    try {
+      await writeTo(target, serialize(this.store.project))
+      this.store.dirty = false
+      this.store.fileName = target.name
+      await clearAutosave()
+      this.editor.onStatus?.(`Saved ${target.name}`)
+      this.refresh()
+    } catch (err) {
+      alertDialog('Save failed', String(err instanceof Error ? err.message : err))
+    }
+  }
+
+  private async autosave(): Promise<void> {
+    if (!this.store.dirty) return
+    try {
+      await writeAutosave(this.store.project, this.store.fileName)
+    } catch (err) {
+      console.warn('autosave failed', err)
+    }
+  }
+
+  private async offerRestore(): Promise<void> {
+    let found: Awaited<ReturnType<typeof readAutosave>> = null
+    try {
+      found = await readAutosave()
+    } catch {
+      return
+    }
+    if (!found) return
+    const when = new Date(found.savedAt).toLocaleString()
+    const restore = await confirmDialog(
+      'Restore unsaved work?',
+      `A recovery copy from ${when} was found${found.fileName ? ` (${found.fileName})` : ''}. ` +
+      'This is the crash net, not your saved file — restore it, then save to disk straight away.',
+      'Restore',
+    )
+    if (restore) {
+      this.store.loadProject(found.project, found.fileName)
+      this.store.dirty = true
+      this.editor.invalidateBackground()
+    } else {
+      await clearAutosave()
+    }
+  }
+
+  private attachUnloadGuard(): void {
+    window.addEventListener('beforeunload', (e) => {
+      if (!this.store.dirty) return
+      e.preventDefault()
+      e.returnValue = ''
+    })
+  }
+
+  // --- PDF -------------------------------------------------------------------------------
+
+  async importPdf(target: 'current' | 'new'): Promise<void> {
+    const file = await promptForFile('application/pdf,.pdf')
+    if (!file) return
+    try {
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      const assetId = await sha256Hex(bytes)
+      if (!this.store.project.assets[assetId]) {
+        this.store.project.assets[assetId] = bytesToBase64(bytes)
+      }
+      await openPdfImportDialog(this, assetId, file.name, target)
+    } catch (err) {
+      alertDialog('Could not read that PDF', String(err instanceof Error ? err.message : err))
+    }
+  }
+
+  async attachPage(assetId: string, page: number, target: 'current' | 'new', sourceName: string): Promise<void> {
+    const base64 = this.store.project.assets[assetId]
+    if (!base64) return
+    const size = await pageSizePt(assetId, base64, page, 0)
+    this.store.mutate(() => {
+      let sheet: Sheet
+      if (target === 'new') {
+        sheet = emptySheet(`${sourceName.replace(/\.pdf$/i, '')} p${page}`)
+        this.store.project.sheets.push(sheet)
+        this.store.project.activeSheetId = sheet.id
+      } else {
+        sheet = this.store.sheet
+        if (sheet.name === 'Ground floor' && sheet.items.length === 0) sheet.name = `${sourceName.replace(/\.pdf$/i, '')} p${page}`
+      }
+      sheet.pdf = { assetId, page, rotation: 0, widthPt: size.widthPt, heightPt: size.heightPt }
+    })
+    this.store.selection.clear()
+    this.editor.invalidateBackground()
+    this.editor.zoomToFit()
+  }
+
+  rotateSheet(delta: 90 | -90): void {
+    const sheet = this.store.sheet
+    if (!sheet.pdf) return
+    const base64 = this.store.project.assets[sheet.pdf.assetId]
+    if (!base64) return
+    const next = ((sheet.pdf.rotation + delta + 360) % 360) as 0 | 90 | 180 | 270
+    void pageSizePt(sheet.pdf.assetId, base64, sheet.pdf.page, next).then((size) => {
+      this.store.mutate(() => {
+        const s = this.store.sheet
+        if (!s.pdf) return
+        s.pdf.rotation = next
+        s.pdf.widthPt = size.widthPt
+        s.pdf.heightPt = size.heightPt
+      })
+      this.editor.invalidateBackground()
+      this.editor.zoomToFit()
+    })
+  }
+
+  detachPdf(): void {
+    const sheet = this.store.sheet
+    if (!sheet.pdf) return
+    const assetId = sheet.pdf.assetId
+    this.store.mutate(() => { this.store.sheet.pdf = null })
+    forgetDocument(assetId)
+    this.editor.invalidateBackground()
+  }
+
+  // --- sheets -----------------------------------------------------------------------------
+
+  addSheet(): void {
+    this.store.mutate(() => {
+      const sheet = emptySheet(`Sheet ${this.store.project.sheets.length + 1}`)
+      this.store.project.sheets.push(sheet)
+      this.store.project.activeSheetId = sheet.id
+    })
+    this.editor.invalidateBackground()
+  }
+
+  async renameSheet(sheet: Sheet): Promise<void> {
+    const name = window.prompt('Sheet name', sheet.name)
+    if (name === null) return
+    this.store.mutate(() => {
+      const live = this.store.project.sheets.find((s) => s.id === sheet.id)
+      if (live) live.name = name.trim() || live.name
+    })
+  }
+
+  async deleteSheet(sheet: Sheet): Promise<void> {
+    if (this.store.project.sheets.length <= 1) {
+      alertDialog('Cannot delete', 'A project needs at least one sheet.')
+      return
+    }
+    const ok = await confirmDialog('Delete sheet?', `"${sheet.name}" and its ${sheet.items.length} items will be removed.`, 'Delete')
+    if (!ok) return
+    this.store.mutate(() => {
+      this.store.project.sheets = this.store.project.sheets.filter((s) => s.id !== sheet.id)
+      if (this.store.project.activeSheetId === sheet.id) {
+        this.store.project.activeSheetId = this.store.project.sheets[0].id
+      }
+    })
+    this.editor.invalidateBackground()
+    this.editor.zoomToFit()
+  }
+
+  duplicateSelectionToSheet(sheetId: string): void {
+    const items = this.store.selectedItems()
+    if (items.length === 0) return
+    const target = this.store.project.sheets.find((s) => s.id === sheetId)
+    if (!target) return
+    this.store.mutate(() => {
+      for (const item of items) {
+        const copy = structuredClone(item)
+        copy.id = newId(item.kind)
+        target.items.push(copy)
+      }
+    })
+    this.editor.onStatus?.(`Copied ${items.length} item(s) to ${target.name} at the same position`)
+  }
+
+  // --- calibration -------------------------------------------------------------------------
+
+  private async promptCalibration(): Promise<void> {
+    const mm = await askNumber({
+      title: 'Calibrate this sheet',
+      label: 'Real distance',
+      unit: 'mm',
+      min: 0.001,
+      hint: 'Type the true distance between the two points you clicked. Use a dimension printed on the ' +
+        'plan rather than the stated scale — PDFs are often scaled to fit paper.',
+    })
+    if (mm === null) {
+      this.editor.cancelCalibration()
+      return
+    }
+    this.editor.applyCalibration(mm)
+  }
+
+  // --- keyboard ------------------------------------------------------------------------------
+
+  private attachKeys(): void {
+    window.addEventListener('keydown', (e) => {
+      const target = e.target as HTMLElement | null
+      const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      if (typing) return
+
+      const mod = e.ctrlKey || e.metaKey
+      if (mod && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) this.store.redo()
+        else this.store.undo()
+        return
+      }
+      if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); this.store.redo(); return }
+      if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); void (e.shiftKey ? this.saveAs() : this.save()); return }
+      if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); void this.openProject(); return }
+      if (mod && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        this.store.selection.clear()
+        for (const item of this.store.items()) if (this.store.isEditable(item)) this.store.selection.add(item.id)
+        this.store.touch(false)
+        return
+      }
+      if (mod) return
+
+      switch (e.key) {
+        case ' ':
+          if (!e.repeat) this.editor.setSpaceHeld(true)
+          e.preventDefault()
+          return
+        case 'Shift':
+          this.editor.setShiftHeld(true)
+          return
+        case 'v': case 'V': this.editor.setTool('select'); return
+        case 'l': case 'L': this.editor.setTool('run'); return
+        case 'r': case 'R': this.editor.setTool('box'); return
+        case 'm': case 'M': this.editor.setTool('marker'); return
+        case 'd': case 'D': this.editor.setTool('measure'); return
+        case 'k': case 'K': this.editor.setTool('calibrate'); return
+        case 'Escape':
+          if (this.editor.isDrafting) this.editor.cancelDraft()
+          else {
+            this.editor.cancelCalibration()
+            this.store.selection.clear()
+            this.store.activeVertex = null
+            this.store.touch(false)
+          }
+          return
+        case 'Enter':
+          if (this.editor.isDrafting) { e.preventDefault(); this.editor.finishDraft() }
+          return
+        case 'Backspace':
+          if (this.editor.isDrafting) { e.preventDefault(); this.editor.removeLastDraftPoint(); return }
+          e.preventDefault()
+          this.editor.deleteSelectionOrVertex()
+          return
+        case 'Delete':
+          e.preventDefault()
+          this.editor.deleteSelectionOrVertex()
+          return
+        case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight': {
+          e.preventDefault()
+          const step = e.shiftKey ? 10 : 1
+          const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0
+          const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0
+          this.editor.nudgeByPixels(dx, dy)
+          return
+        }
+        case 'f': case 'F': this.editor.zoomToFit(); return
+        case '+': case '=': this.editor.zoomBy(1.25); return
+        case '-': case '_': this.editor.zoomBy(0.8); return
+        default:
+          return
+      }
+    })
+
+    window.addEventListener('keyup', (e) => {
+      if (e.key === ' ') this.editor.setSpaceHeld(false)
+      if (e.key === 'Shift') this.editor.setShiftHeld(false)
+    })
+
+    window.addEventListener('blur', () => {
+      this.editor.setSpaceHeld(false)
+      this.editor.setShiftHeld(false)
+    })
+  }
+}
