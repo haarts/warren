@@ -6,7 +6,7 @@ import { Background } from '../render/background.ts'
 import { Camera } from '../render/camera.ts'
 import { drawScene, type Overlay } from '../render/scene.ts'
 import { formatMetres } from '../units.ts'
-import { hitBoxCorner, hitSegment, hitTest, hitVertex, itemsInRect } from './hittest.ts'
+import { hitBoxCorner, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { resolvePoint } from './snap.ts'
 
 export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'measure' | 'calibrate'
@@ -43,6 +43,7 @@ export class Editor {
   private measurePts: Pt[] = []
   private snap: { point: Pt; label: string | null } | null = null
   private hoverId: string | null = null
+  private hoverLockedId: string | null = null
   private spaceHeld = false
   private shiftHeld = false
   private cursorWorld: Pt | null = null
@@ -132,6 +133,7 @@ export class Editor {
           ? { a: this.measurePts[0], b: this.cursorWorld }
           : null,
       hoverId: this.hoverId,
+      hoverLockedId: this.hoverLockedId,
     }
   }
 
@@ -154,6 +156,11 @@ export class Editor {
     }
     parts.push(`zoom ${(this.cam.zoom * 100).toFixed(0)}%`)
     if (this.snap?.label) parts.push(`snap: ${this.snap.label}`)
+    if (this.hoverLockedId) {
+      const item = this.store.item(this.hoverLockedId)
+      if (item?.locked) parts.push('locked item — use "Unlock all" in the Properties tab')
+      else if (item) parts.push(`"${this.store.system(item.systemId).name}" is locked — unlock it in the Layers tab`)
+    }
     if (this.tool === 'run' && this.draft.length) parts.push('Enter/double-click finishes · Backspace removes last point · Esc cancels')
     if (this.tool === 'calibrate') parts.push(this.measurePts.length === 0 ? 'Click the first end of a known dimension' : 'Click the second end')
     this.onStatus(parts.join('   ·   '))
@@ -367,6 +374,7 @@ export class Editor {
         } else if (this.tool === 'select') {
           const hit = hitTest(this.store, world, this.tol(HIT_TOL_PX))
           this.hoverId = hit?.id ?? null
+          this.hoverLockedId = hit ? null : hitTestLocked(this.store, world, this.tol(HIT_TOL_PX))?.id ?? null
           this.snap = null
         } else {
           this.resolve(world)
@@ -417,6 +425,7 @@ export class Editor {
       this.cursorWorld = null
       this.snap = null
       this.hoverId = null
+      this.hoverLockedId = null
       this.requestRender()
     }
   }
@@ -527,6 +536,8 @@ export class Editor {
 
   setTool(tool: ToolId): void {
     if (this.tool === 'run' && tool !== 'run') this.cancelDraft()
+    this.hoverId = null
+    this.hoverLockedId = null
     if (tool !== 'measure' && tool !== 'calibrate') this.measurePts = []
     this.tool = tool
     this.requestRender()

@@ -3,19 +3,28 @@ import type { Store, VertexRef } from '../model/doc.ts'
 import type { BoxItem, Item } from '../model/types.ts'
 import { boxCorners, itemBounds } from '../render/scene.ts'
 
-/** Topmost editable item under `p`. Draw order is boxes → runs → markers, so we test in reverse. */
-export function hitTest(store: Store, p: Pt, tol: number): Item | null {
-  const items = store.items().filter((i) => store.isEditable(i))
-  for (let i = items.length - 1; i >= 0; i--) {
-    if (items[i].kind === 'marker' && hitsItem(items[i], p, tol)) return items[i]
-  }
-  for (let i = items.length - 1; i >= 0; i--) {
-    if (items[i].kind === 'run' && hitsItem(items[i], p, tol)) return items[i]
-  }
-  for (let i = items.length - 1; i >= 0; i--) {
-    if (items[i].kind === 'box' && hitsItem(items[i], p, tol)) return items[i]
+/** Draw order is boxes → runs → markers, so we test back to front. */
+function topmost(items: Item[], p: Pt, tol: number): Item | null {
+  for (const kind of ['marker', 'run', 'box'] as const) {
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].kind === kind && hitsItem(items[i], p, tol)) return items[i]
+    }
   }
   return null
+}
+
+/** Topmost item under `p` that can actually be selected and edited. */
+export function hitTest(store: Store, p: Pt, tol: number): Item | null {
+  return topmost(store.items().filter((i) => store.isEditable(i)), p, tol)
+}
+
+/**
+ * Topmost item under `p` that is visible but locked - either itself or through its system.
+ * Only used to explain why a click did nothing; a click that silently does nothing reads as
+ * a broken app.
+ */
+export function hitTestLocked(store: Store, p: Pt, tol: number): Item | null {
+  return topmost(store.items().filter((i) => store.isVisible(i) && !store.isEditable(i)), p, tol)
 }
 
 export function hitsItem(item: Item, p: Pt, tol: number): boolean {

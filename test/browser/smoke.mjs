@@ -209,6 +209,42 @@ try {
     (await page.evaluate(() => window.ductwork.store.selection.size)) === 3)
   await page.keyboard.press('Escape')
 
+  // --- lock is reversible, and a locked item explains itself -----------------------------------
+  const panelButton = (label) => page.evaluate((l) => {
+    const btn = [...document.querySelectorAll('.tab-body button')].find((b) => b.textContent.startsWith(l))
+    if (!btn) return false
+    btn.click()
+    return true
+  }, label)
+  const markerId = (await items()).find((i) => i.kind === 'marker').id
+  const isLocked = () => page.evaluate((id) => window.ductwork.store.item(id)?.locked === true, markerId)
+  const selectionSize = () => page.evaluate(() => window.ductwork.store.selection.size)
+
+  await page.mouse.click(markerAt.x, markerAt.y)
+  check('the marker is selectable before locking', (await selectionSize()) === 1)
+  check('Lock button found', await panelButton('Lock'))
+  check('locking marks the item locked', await isLocked())
+
+  // The reported bug: Unlock did nothing because it ran through the same gate lock disables.
+  check('Unlock works while the item is still selected', (await panelButton('Unlock')) && !(await isLocked()))
+
+  await panelButton('Lock')
+  await page.keyboard.press('Escape')
+  await page.mouse.click(markerAt.x, markerAt.y)
+  check('a locked item cannot be clicked', (await selectionSize()) === 0)
+
+  await page.mouse.move(markerAt.x + 3, markerAt.y + 3)
+  await new Promise((r) => setTimeout(r, 200))
+  const lockedHint = await page.evaluate(() => document.getElementById('status-text').textContent)
+  check('hovering a locked item says why it will not select', /locked item/.test(lockedHint || ''),
+    (lockedHint || '').slice(-60))
+
+  check('Unlock all is offered once something is locked', await panelButton('Unlock all'))
+  check('unlock all makes it selectable again', !(await isLocked()))
+  await page.mouse.click(markerAt.x, markerAt.y)
+  check('the marker selects again after unlocking', (await selectionSize()) === 1)
+  await page.keyboard.press('Escape')
+
   // --- calibrate against the printed 10000 mm dimension --------------------------------------------
   await page.keyboard.press('k')
   const dim = await page.evaluate(() => {

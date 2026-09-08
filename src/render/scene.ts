@@ -18,6 +18,7 @@ export interface Overlay {
   snapLabel?: string | null
   measure?: { a: Pt; b: Pt } | null
   hoverId?: string | null
+  hoverLockedId?: string | null
 }
 
 export interface SceneOptions {
@@ -95,6 +96,11 @@ export function drawScene(opts: SceneOptions): void {
     if (overlay.hoverId && !store.selection.has(overlay.hoverId)) {
       const it = store.item(overlay.hoverId)
       if (it) drawItemOutline(ctx, cam, it, 'rgba(11,99,214,0.35)', 4 * ui)
+    }
+    if (overlay.hoverLockedId) {
+      // Grey rather than blue: "I can see it, it just will not move."
+      const it = store.item(overlay.hoverLockedId)
+      if (it) drawItemOutline(ctx, cam, it, 'rgba(100,116,139,0.45)', 4 * ui)
     }
     for (const it of store.selectedItems()) {
       if (!store.isVisible(it)) continue

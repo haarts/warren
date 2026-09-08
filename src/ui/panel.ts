@@ -55,6 +55,18 @@ function buildProperties(app: App, body: HTMLElement): void {
       'Uncalibrated: lengths and the takeoff stay empty. Click Calibrate, then click the two ends of a dimension printed on the plan.'))
   }
 
+  const lockedOnSheet = store.items().filter((i) => i.locked)
+  if (lockedOnSheet.length) {
+    body.appendChild(field('Locked', el('button', {
+      title: 'Locked items cannot be clicked on the canvas — this is the way back',
+      onclick: () => {
+        store.mutate(() => {
+          for (const item of store.items()) delete item.locked
+        })
+      },
+    }, `Unlock all (${lockedOnSheet.length})`)))
+  }
+
   if (items.length === 0) {
     body.appendChild(el('div', { class: 'section-title' }, 'Nothing selected'))
     body.appendChild(el('div', { class: 'hint' },
@@ -199,7 +211,18 @@ function buildProperties(app: App, body: HTMLElement): void {
   const actions = el('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' } },
     el('button', { onclick: () => editor.zoomToSelection() }, 'Zoom to'),
     el('button', {
-      onclick: () => applyToAll((item) => { item.locked = !item.locked }),
+      title: 'Locked items stay visible but cannot be clicked, dragged or deleted',
+      onclick: () => {
+        const lock = !items.every((i) => i.locked)
+        store.mutate(() => {
+          for (const id of store.selection) {
+            const live = store.item(id)
+            if (!live) continue
+            if (lock) live.locked = true
+            else delete live.locked
+          }
+        })
+      },
     }, items.every((i) => i.locked) ? 'Unlock' : 'Lock'),
     el('button', { class: 'danger', onclick: () => editor.deleteSelectionOrVertex() }, 'Delete'),
   )

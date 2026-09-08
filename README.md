@@ -74,7 +74,13 @@ tab.
 ## Layers and levels — two different things
 
 **Layers** are the systems, grouped into disciplines. Toggle a whole discipline or a single
-system; hidden systems are also unclickable and excluded from exports and prints.
+system; hidden systems are also unclickable and excluded from exports and prints. The padlock in
+the Layers tab freezes a whole system: still visible and still printed, but no longer in the way
+of your cursor. The Lock button in Properties does the same for one item.
+
+Locked things cannot be clicked — that is the point — so there are two ways back: hovering one
+says so in the status bar, and Properties grows an **Unlock all (n)** button whenever the sheet
+has any.
 
 **Level** is where something sits in the building fabric: crawl space, in floor, on floor, in
 wall, on wall, in ceiling, above ceiling, roof. It is a property of each item, not a layer, and
