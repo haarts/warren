@@ -59,7 +59,7 @@ export class App {
       buildPanel(this, this.panelHost)
       this.renderSheetTabs()
       this.selectionText.textContent = this.editor.selectionSummary()
-      document.title = `${this.store.dirty ? '• ' : ''}${this.store.project.name} — Ductwork`
+      document.title = `${this.store.dirty ? '• ' : ''}${this.store.project.name} — Warren`
     })
   }
 

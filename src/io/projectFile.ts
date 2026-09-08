@@ -6,7 +6,7 @@ import {
   type Item, type Level, type MarkerSymbol, type Project, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
-export const FILE_EXTENSION = '.ductwork.json'
+export const FILE_EXTENSION = '.warren.json'
 
 /** Drop assets no sheet references, so the file does not grow forever. */
 function gcAssets(project: Project): Record<string, string> {
@@ -137,7 +137,7 @@ function asSheet(raw: unknown, index: number): Sheet {
 
 export function parseProject(text: string): Project {
   const raw: unknown = JSON.parse(text)
-  if (!isObj(raw)) throw new Error('Not a Ductwork project file')
+  if (!isObj(raw)) throw new Error('Not a Warren project file')
   const base = emptyProject()
 
   const systems = Array.isArray(raw.systems)
@@ -177,7 +177,7 @@ export function parseProject(text: string): Project {
 // --- disk ---------------------------------------------------------------------------
 
 const FILE_TYPES: FilePickerAcceptType[] = [
-  { description: 'Ductwork project', accept: { 'application/json': ['.json'] } },
+  { description: 'Warren project', accept: { 'application/json': ['.json'] } },
 ]
 
 export interface SaveTarget {
@@ -252,7 +252,11 @@ export function promptForFile(accept: string): Promise<File | null> {
 
 /** The inverse of suggestedFileName: what a chosen file name says the project is called. */
 export function projectNameFromFileName(fileName: string): string {
-  const base = fileName.replace(/\.ductwork\.json$/i, '').replace(/\.json$/i, '').trim()
+  // `.ductwork.json` is this app's former extension; old files still name themselves.
+  const base = fileName
+    .replace(/\.(warren|ductwork)\.json$/i, '')
+    .replace(/\.json$/i, '')
+    .trim()
   return base || 'Untitled'
 }
 
@@ -271,6 +275,6 @@ export function saveCapabilityNote(): string | null {
 }
 
 export function suggestedFileName(projectName: string): string {
-  const safe = projectName.trim().replace(/[^\w\-. ]+/g, '_').replace(/\s+/g, '-') || 'ductwork'
+  const safe = projectName.trim().replace(/[^\w\-. ]+/g, '_').replace(/\s+/g, '-') || 'warren'
   return `${safe}${FILE_EXTENSION}`
 }

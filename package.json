@@ -1,9 +1,9 @@
 {
-  "name": "ductwork",
+  "name": "warren",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "MEP overlay drawing app - draw pipes, ducts and circuits on top of architect floor plan PDFs",
+  "description": "Draw the burrows in your house - pipes, ducts and circuits over architect floor plan PDFs",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

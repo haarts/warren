@@ -8,4 +8,4 @@ const app = new App(canvas)
 void app.init()
 
 // Handy from the devtools console while working on the app.
-;(window as unknown as Record<string, unknown>).ductwork = app
+;(window as unknown as Record<string, unknown>).warren = app

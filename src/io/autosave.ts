@@ -7,7 +7,9 @@ import { parseProject } from './projectFile.ts'
  * 30-second write stays small even with a 6 MB PDF in the project.
  */
 
-const DB_NAME = 'ductwork'
+const DB_NAME = 'warren'
+/** Databases from earlier names of this app. Read for recovery, never written to. */
+const LEGACY_DB_NAMES = ['ductwork']
 const DB_VERSION = 1
 const META = 'meta'
 const ASSETS = 'assets'
@@ -39,16 +41,41 @@ function open(): Promise<IDBDatabase> {
   return dbPromise
 }
 
+/**
+ * Opens a database only if it already exists, so probing an old name cannot conjure an empty
+ * one into being. If the open triggers an upgrade, the database was not there.
+ */
+function openExisting(name: string): Promise<IDBDatabase | null> {
+  return new Promise((resolve) => {
+    let existed = true
+    const req = indexedDB.open(name)
+    req.onupgradeneeded = () => { existed = false }
+    req.onsuccess = () => {
+      const db = req.result
+      if (!existed || !db.objectStoreNames.contains(META)) {
+        db.close()
+        indexedDB.deleteDatabase(name)
+        resolve(null)
+        return
+      }
+      resolve(db)
+    }
+    req.onerror = () => resolve(null)
+    req.onblocked = () => resolve(null)
+  })
+}
+
+function run<T>(db: IDBDatabase, store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = db.transaction(store, mode)
+    const req = fn(t.objectStore(store))
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
 function tx<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
-  return open().then(
-    (db) =>
-      new Promise<T>((resolve, reject) => {
-        const t = db.transaction(store, mode)
-        const req = fn(t.objectStore(store))
-        req.onsuccess = () => resolve(req.result)
-        req.onerror = () => reject(req.error)
-      }),
-  )
+  return open().then((db) => run(db, store, mode, fn))
 }
 
 export async function writeAutosave(project: Project, fileName: string | null): Promise<void> {
@@ -67,20 +94,40 @@ async function listAssetIds(): Promise<string[]> {
   return keys.map(String)
 }
 
-export async function readAutosave(): Promise<{ project: Project; fileName: string | null; savedAt: number } | null> {
-  let record: MetaRecord | undefined
-  try {
-    record = await tx<MetaRecord | undefined>(META, 'readonly', (s) => s.get(KEY))
-  } catch {
-    return null
-  }
+async function readFrom(db: IDBDatabase): Promise<{ project: Project; fileName: string | null; savedAt: number } | null> {
+  const record = await run<MetaRecord | undefined>(db, META, 'readonly', (s) => s.get(KEY))
   if (!record) return null
   const project = parseProject(record.body)
+  const hasAssets = db.objectStoreNames.contains(ASSETS)
   for (const id of record.assetIds) {
-    const data = await tx<string | undefined>(ASSETS, 'readonly', (s) => s.get(id))
+    if (!hasAssets) break
+    const data = await run<string | undefined>(db, ASSETS, 'readonly', (s) => s.get(id))
     if (typeof data === 'string') project.assets[id] = data
   }
   return { project, fileName: record.fileName, savedAt: record.savedAt }
+}
+
+export async function readAutosave(): Promise<{ project: Project; fileName: string | null; savedAt: number } | null> {
+  try {
+    const current = await readFrom(await open())
+    if (current) return current
+  } catch {
+    /* fall through to the legacy databases */
+  }
+  // A recovery copy written before the app was renamed is still your work.
+  for (const name of LEGACY_DB_NAMES) {
+    const db = await openExisting(name)
+    if (!db) continue
+    try {
+      const legacy = await readFrom(db)
+      if (legacy) return legacy
+    } catch {
+      /* unreadable old copy; nothing to recover */
+    } finally {
+      db.close()
+    }
+  }
+  return null
 }
 
 export async function clearAutosave(): Promise<void> {
@@ -88,5 +135,12 @@ export async function clearAutosave(): Promise<void> {
     await tx(META, 'readwrite', (s) => s.delete(KEY))
   } catch {
     /* nothing to clear */
+  }
+  for (const name of LEGACY_DB_NAMES) {
+    try {
+      indexedDB.deleteDatabase(name)
+    } catch {
+      /* best effort */
+    }
   }
 }

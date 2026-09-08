@@ -105,13 +105,14 @@ test('notes round trip, and a broken one is repaired rather than dropped', () =>
 })
 
 test('project name and file name convert both ways', () => {
-  assert.equal(suggestedFileName('kelder 2026'), 'kelder-2026.ductwork.json')
+  assert.equal(suggestedFileName('kelder 2026'), 'kelder-2026.warren.json')
   // Characters that are awkward in a file name are replaced rather than passed through.
-  assert.equal(suggestedFileName('Aarts — services'), 'Aarts-_-services.ductwork.json')
-  assert.equal(projectNameFromFileName('house.ductwork.json'), 'house')
+  assert.equal(suggestedFileName('Aarts — services'), 'Aarts-_-services.warren.json')
+  assert.equal(projectNameFromFileName('house.warren.json'), 'house')
   assert.equal(projectNameFromFileName('house.json'), 'house')
-  assert.equal(projectNameFromFileName('ground floor v2.ductwork.json'), 'ground floor v2')
-  assert.equal(projectNameFromFileName('.ductwork.json'), 'Untitled', 'never yields an empty title')
+  assert.equal(projectNameFromFileName('ground floor v2.warren.json'), 'ground floor v2')
+  assert.equal(projectNameFromFileName('.warren.json'), 'Untitled', 'never yields an empty title')
+  assert.equal(projectNameFromFileName('house.ductwork.json'), 'house', 'the former extension still resolves')
   // A name survives the trip out to a file name and back.
   assert.equal(projectNameFromFileName(suggestedFileName('kelder-2026')), 'kelder-2026')
 })

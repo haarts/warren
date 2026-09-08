@@ -164,10 +164,10 @@ function brand(app: App): HTMLElement {
     })
     input.addEventListener('blur', commit)
     setTimeout(() => { input.focus(); input.select() }, 0)
-    return el('div', { class: 'brand' }, 'Ductwork', input)
+    return el('div', { class: 'brand' }, 'Warren', input)
   }
   return el('div', { class: 'brand' },
-    'Ductwork',
+    'Warren',
     el('small', {
       title: 'Click to rename the project — this also becomes the file name',
       style: { cursor: 'text', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px' },

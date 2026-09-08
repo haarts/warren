@@ -69,21 +69,21 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message))
 
 try {
   await page.goto(BASE, { waitUntil: 'networkidle0' })
-  await page.waitForFunction(() => !!window.ductwork, { timeout: 15_000 })
+  await page.waitForFunction(() => !!window.warren, { timeout: 15_000 })
   check('app boots', true)
 
   // --- import a PDF page --------------------------------------------------------------
   await page.evaluate(async (b64) => {
-    const app = window.ductwork
+    const app = window.warren
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
     const digest = await crypto.subtle.digest('SHA-256', bytes.buffer)
     const id = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
     app.store.project.assets[id] = b64
     await app.attachPage(id, 1, 'current', 'sample-floorplan.pdf')
   }, PDF)
-  await page.waitForFunction(() => window.ductwork.store.sheet.pdf?.widthPt > 100, { timeout: 15_000 })
+  await page.waitForFunction(() => window.warren.store.sheet.pdf?.widthPt > 100, { timeout: 15_000 })
   const size = await page.evaluate(() => {
-    const p = window.ductwork.store.sheet.pdf
+    const p = window.warren.store.sheet.pdf
     return `${p.widthPt}×${p.heightPt}`
   })
   check('PDF page attached at its true point size', size === '842×595', size)
@@ -103,8 +103,8 @@ try {
     return { x: r.x, y: r.y, w: r.width, h: r.height }
   })
   const at = (fx, fy) => ({ x: rect.x + rect.w * fx, y: rect.y + rect.h * fy })
-  const items = () => page.evaluate(() => window.ductwork.store.items().map((i) => ({ ...i })))
-  const selectionSizeOf = () => page.evaluate(() => window.ductwork.store.selection.size)
+  const items = () => page.evaluate(() => window.warren.store.items().map((i) => ({ ...i })))
+  const selectionSizeOf = () => page.evaluate(() => window.warren.store.selection.size)
 
   // --- draw a three-corner run ----------------------------------------------------------
   await page.keyboard.press('l')
@@ -123,7 +123,7 @@ try {
   const onSegment = at(0.40, 0.30)
   await page.mouse.click(onSegment.x, onSegment.y)
   check('clicking one segment selects the whole run',
-    (await page.evaluate(() => window.ductwork.store.selection.size)) === 1)
+    (await page.evaluate(() => window.warren.store.selection.size)) === 1)
 
   const before = (await items())[0].points
   await page.mouse.move(onSegment.x, onSegment.y)
@@ -138,7 +138,7 @@ try {
 
   // --- dragging one corner handle moves only that corner ---------------------------------
   const handle = await page.evaluate(() => {
-    const app = window.ductwork
+    const app = window.warren
     const p = app.store.items()[0].points[1]
     const r = document.getElementById('canvas').getBoundingClientRect()
     return { x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) }
@@ -163,7 +163,7 @@ try {
 
   // --- alt+click inserts and removes corners ------------------------------------------------
   const mid = await page.evaluate(() => {
-    const app = window.ductwork
+    const app = window.warren
     const pts = app.store.items()[0].points
     const r = document.getElementById('canvas').getBoundingClientRect()
     return {
@@ -207,11 +207,11 @@ try {
   await page.mouse.move(bandB.x, bandB.y, { steps: 10 })
   await page.mouse.up()
   check('rubber band selects everything it covers',
-    (await page.evaluate(() => window.ductwork.store.selection.size)) === 3)
+    (await page.evaluate(() => window.warren.store.selection.size)) === 3)
   await page.keyboard.press('Escape')
 
   // --- naming the project -------------------------------------------------------------------
-  const projectName = () => page.evaluate(() => window.ductwork.store.project.name)
+  const projectName = () => page.evaluate(() => window.warren.store.project.name)
   check('a new project starts as Untitled', (await projectName()) === 'Untitled')
   await page.evaluate(() => document.querySelector('.brand small').click())
   await page.waitForSelector('.brand input', { timeout: 3000 })
@@ -224,17 +224,17 @@ try {
   check('the rename lands in the window title',
     /Aarts services/.test(await page.title()), await page.title())
   check('renaming is undoable', await page.evaluate(() => {
-    window.ductwork.store.undo()
-    return window.ductwork.store.project.name === 'Untitled'
+    window.warren.store.undo()
+    return window.warren.store.project.name === 'Untitled'
   }))
-  await page.evaluate(() => window.ductwork.store.redo())
+  await page.evaluate(() => window.warren.store.redo())
 
   // --- sticky notes ------------------------------------------------------------------------------
   await page.keyboard.press('n')
   const noteAt = at(0.20, 0.70)
   await page.mouse.click(noteAt.x, noteAt.y)
-  const noteId = await page.evaluate(() => window.ductwork.store.items().find((i) => i.kind === 'note')?.id)
-  const note = () => page.evaluate((id) => ({ ...window.ductwork.store.item(id) }), noteId)
+  const noteId = await page.evaluate(() => window.warren.store.items().find((i) => i.kind === 'note')?.id)
+  const note = () => page.evaluate((id) => ({ ...window.warren.store.item(id) }), noteId)
   let n = await note()
   check('note tool places a sticky sized from the sheet', !!noteId && n.w >= 60 && n.w <= 240 && n.text === '',
     `w ${Math.round(n.w)} pt`)
@@ -253,7 +253,7 @@ try {
   // The one handle a note has: bottom-right, width only.
   const noteHandle = await page.evaluate(async (id) => {
     const { noteHeight } = await import('/src/render/notes.ts')
-    const app = window.ductwork
+    const app = window.warren
     const item = app.store.item(id)
     const r = document.getElementById('canvas').getBoundingClientRect()
     return {
@@ -289,7 +289,7 @@ try {
     return true
   }, label)
   const markerId = (await items()).find((i) => i.kind === 'marker').id
-  const isLocked = () => page.evaluate((id) => window.ductwork.store.item(id)?.locked === true, markerId)
+  const isLocked = () => page.evaluate((id) => window.warren.store.item(id)?.locked === true, markerId)
 
   await page.mouse.click(markerAt.x, markerAt.y)
   check('the marker is selectable before locking', (await selectionSizeOf()) === 1)
@@ -319,7 +319,7 @@ try {
   // --- calibrate against the printed 10000 mm dimension --------------------------------------------
   await page.keyboard.press('k')
   const dim = await page.evaluate(() => {
-    const app = window.ductwork
+    const app = window.warren
     const r = document.getElementById('canvas').getBoundingClientRect()
     const y = 595 - 96
     return {
@@ -332,13 +332,13 @@ try {
   await page.waitForSelector('.dialog input[type=number]', { timeout: 5000 })
   await page.type('.dialog input[type=number]', '10000')
   await page.keyboard.press('Enter')
-  await page.waitForFunction(() => window.ductwork.store.sheet.mmPerPoint !== null, { timeout: 5000 })
-  const mmPerPoint = await page.evaluate(() => window.ductwork.store.sheet.mmPerPoint)
+  await page.waitForFunction(() => window.warren.store.sheet.mmPerPoint !== null, { timeout: 5000 })
+  const mmPerPoint = await page.evaluate(() => window.warren.store.sheet.mmPerPoint)
   check('calibration resolves to 20 mm per point', Math.abs(mmPerPoint - 20) < 0.5, mmPerPoint.toFixed(3))
 
   const takeoff = await page.evaluate(async () => {
     const { computeTakeoff } = await import('/src/takeoff.ts')
-    const rows = computeTakeoff(window.ductwork.store, 'sheet').rows.filter((r) => r.runs > 0)
+    const rows = computeTakeoff(window.warren.store, 'sheet').rows.filter((r) => r.runs > 0)
     return rows.map((r) => ({ id: r.system.id, m: r.lengthMm / 1000, order: r.orderMm / 1000 }))
   })
   check('takeoff reports real metres', takeoff.length === 1 && takeoff[0].m > 1 && takeoff[0].order > takeoff[0].m,
@@ -346,7 +346,7 @@ try {
 
   // --- hiding a layer also removes it from editing --------------------------------------------------
   check('hiding a layer makes its items unclickable', await page.evaluate(() => {
-    const app = window.ductwork
+    const app = window.warren
     const run = app.store.items().find((i) => i.kind === 'run')
     const sys = app.store.project.systems.find((s) => s.id === run.systemId)
     sys.visible = false
@@ -359,7 +359,7 @@ try {
 
   // --- copy the selection to another sheet ------------------------------------------------------------
   const copied = await page.evaluate(() => {
-    const app = window.ductwork
+    const app = window.warren
     app.addSheet()
     const second = app.store.project.sheets[1].id
     app.store.setActiveSheet(app.store.project.sheets[0].id)
@@ -373,8 +373,8 @@ try {
   // --- autosave round trip through IndexedDB -------------------------------------------------------------
   const autosave = await page.evaluate(async () => {
     const { writeAutosave, readAutosave, clearAutosave } = await import('/src/io/autosave.ts')
-    const app = window.ductwork
-    await writeAutosave(app.store.project, 'demo.ductwork.json')
+    const app = window.warren
+    await writeAutosave(app.store.project, 'demo.warren.json')
     const back = await readAutosave()
     await clearAutosave()
     const gone = await readAutosave()
@@ -390,10 +390,46 @@ try {
     autosave.items === 4 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
     JSON.stringify(autosave))
 
+  // --- a recovery copy written before the rename is still found --------------------------------
+  const legacy = await page.evaluate(async () => {
+    const { readAutosave, clearAutosave } = await import('/src/io/autosave.ts')
+    await clearAutosave()
+    await new Promise((resolve, reject) => {
+      const req = indexedDB.open('ductwork', 1)
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore('meta')
+        req.result.createObjectStore('assets')
+      }
+      req.onsuccess = () => {
+        const db = req.result
+        const t = db.transaction('meta', 'readwrite')
+        t.objectStore('meta').put({
+          savedAt: 1700000000000,
+          fileName: 'old.ductwork.json',
+          body: JSON.stringify({
+            version: 1, name: 'Recovered from the old name',
+            sheets: [{ id: 's', name: 'Sheet', items: [] }], systems: [], settings: {},
+          }),
+          assetIds: [],
+        }, 'current')
+        t.oncomplete = () => { db.close(); resolve() }
+        t.onerror = () => reject(t.error)
+      }
+      req.onerror = () => reject(req.error)
+    })
+    const found = await readAutosave()
+    await clearAutosave()
+    const afterClear = await readAutosave()
+    return { name: found?.project.name, fileName: found?.fileName, cleared: afterClear === null }
+  })
+  check('an autosave from the old app name is still recovered',
+    legacy.name === 'Recovered from the old name' && legacy.fileName === 'old.ductwork.json' && legacy.cleared,
+    JSON.stringify(legacy))
+
   // --- project file round trip ---------------------------------------------------------------------------
   const roundTrip = await page.evaluate(async () => {
     const { serialize, parseProject } = await import('/src/io/projectFile.ts')
-    const app = window.ductwork
+    const app = window.warren
     const text = serialize(app.store.project)
     const back = parseProject(text)
     return {
@@ -447,13 +483,13 @@ try {
   const fallbackHint = await page.evaluate(async () => {
     const saved = window.showSaveFilePicker
     delete window.showSaveFilePicker
-    window.ductwork.refresh()
+    window.warren.refresh()
     await new Promise((r) => setTimeout(r, 60))
     ;[...document.querySelectorAll('#toolbar button')].find((b) => b.textContent.startsWith('File')).click()
     const text = document.querySelector('.menu .hint')?.textContent ?? ''
     document.body.click()
     if (saved) window.showSaveFilePicker = saved
-    window.ductwork.refresh()
+    window.warren.refresh()
     return text
   })
   check('without save-in-place, the File menu says so and why',

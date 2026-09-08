@@ -1,4 +1,6 @@
-# Ductwork
+# Warren
+
+*a maze of burrows and passages*
 
 Draw pipes, ducts and circuits on top of your architect's floor plan PDFs.
 
@@ -120,16 +122,16 @@ column.
 
 ## Saving
 
-**Name the project first.** Click the title next to "Ductwork" in the toolbar (or File → Rename
+**Name the project first.** Click the title next to "Warren" in the toolbar (or File → Rename
 project…). That name is the print heading and the suggested file name, and Save as… on a still
 -untitled project adopts whatever file name you type.
 
-Your project is a single `*.ductwork.json` file with the source PDF embedded, so it is
+Your project is a single `*.warren.json` file with the source PDF embedded, so it is
 self-contained: back it up, mail it, put it in git. The JSON is formatted and diffs cleanly,
 which makes `git log` a decent history of how the design changed over the build.
 
 ```bash
-git init && git add my-house.ductwork.json && git commit -m "services, first pass"
+git init && git add my-house.warren.json && git commit -m "services, first pass"
 ```
 
 There is also a 30-second autosave to IndexedDB, but that is a **crash net, not a save**.
