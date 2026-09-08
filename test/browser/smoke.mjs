@@ -104,6 +104,7 @@ try {
   })
   const at = (fx, fy) => ({ x: rect.x + rect.w * fx, y: rect.y + rect.h * fy })
   const items = () => page.evaluate(() => window.ductwork.store.items().map((i) => ({ ...i })))
+  const selectionSizeOf = () => page.evaluate(() => window.ductwork.store.selection.size)
 
   // --- draw a three-corner run ----------------------------------------------------------
   await page.keyboard.press('l')
@@ -209,6 +210,58 @@ try {
     (await page.evaluate(() => window.ductwork.store.selection.size)) === 3)
   await page.keyboard.press('Escape')
 
+  // --- sticky notes ------------------------------------------------------------------------------
+  await page.keyboard.press('n')
+  const noteAt = at(0.20, 0.70)
+  await page.mouse.click(noteAt.x, noteAt.y)
+  const noteId = await page.evaluate(() => window.ductwork.store.items().find((i) => i.kind === 'note')?.id)
+  const note = () => page.evaluate((id) => ({ ...window.ductwork.store.item(id) }), noteId)
+  let n = await note()
+  check('note tool places a sticky sized from the sheet', !!noteId && n.w >= 60 && n.w <= 240 && n.text === '',
+    `w ${Math.round(n.w)} pt`)
+  check('a new note is tied to the active system', n.systemId === 'water.cold', n.systemId)
+
+  await page.type('.tab-body textarea', 'Check duct height with the architect before the pour')
+  await page.evaluate(() => document.querySelector('.tab-body textarea').blur())
+  n = await note()
+  check('typing in Properties fills the sticky', /architect/.test(n.text), `${n.text.length} chars`)
+
+  await page.keyboard.press('v')
+  await page.keyboard.press('Escape')
+  await page.mouse.click(noteAt.x + 12, noteAt.y + 10)
+  check('clicking the note body selects it', (await selectionSizeOf()) === 1)
+
+  // The one handle a note has: bottom-right, width only.
+  const noteHandle = await page.evaluate(async (id) => {
+    const { noteHeight } = await import('/src/render/notes.ts')
+    const app = window.ductwork
+    const item = app.store.item(id)
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    return {
+      x: r.x + app.editor.cam.toScreenX(item.x + item.w),
+      y: r.y + app.editor.cam.toScreenY(item.y + noteHeight(item)),
+    }
+  }, noteId)
+  const beforeNote = await note()
+  await page.mouse.move(noteHandle.x, noteHandle.y)
+  await page.mouse.down()
+  await page.mouse.move(noteHandle.x + 40, noteHandle.y + 25, { steps: 6 })
+  await page.mouse.up()
+  n = await note()
+  check('the note handle changes width only',
+    n.w > beforeNote.w + 5 && n.x === beforeNote.x && n.y === beforeNote.y, `w ${Math.round(n.w)} pt`)
+
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => {
+    ;[...document.querySelectorAll('#toolbar button')].find((b) => b.textContent === 'Notes').click()
+  })
+  await page.mouse.click(noteAt.x + 12, noteAt.y + 10)
+  check('hiding notes also stops them being clickable', (await selectionSizeOf()) === 0)
+  await page.evaluate(() => {
+    ;[...document.querySelectorAll('#toolbar button')].find((b) => b.textContent === 'Notes').click()
+  })
+  await page.keyboard.press('Escape')
+
   // --- lock is reversible, and a locked item explains itself -----------------------------------
   const panelButton = (label) => page.evaluate((l) => {
     const btn = [...document.querySelectorAll('.tab-body button')].find((b) => b.textContent.startsWith(l))
@@ -218,10 +271,9 @@ try {
   }, label)
   const markerId = (await items()).find((i) => i.kind === 'marker').id
   const isLocked = () => page.evaluate((id) => window.ductwork.store.item(id)?.locked === true, markerId)
-  const selectionSize = () => page.evaluate(() => window.ductwork.store.selection.size)
 
   await page.mouse.click(markerAt.x, markerAt.y)
-  check('the marker is selectable before locking', (await selectionSize()) === 1)
+  check('the marker is selectable before locking', (await selectionSizeOf()) === 1)
   check('Lock button found', await panelButton('Lock'))
   check('locking marks the item locked', await isLocked())
 
@@ -231,7 +283,7 @@ try {
   await panelButton('Lock')
   await page.keyboard.press('Escape')
   await page.mouse.click(markerAt.x, markerAt.y)
-  check('a locked item cannot be clicked', (await selectionSize()) === 0)
+  check('a locked item cannot be clicked', (await selectionSizeOf()) === 0)
 
   await page.mouse.move(markerAt.x + 3, markerAt.y + 3)
   await new Promise((r) => setTimeout(r, 200))
@@ -242,7 +294,7 @@ try {
   check('Unlock all is offered once something is locked', await panelButton('Unlock all'))
   check('unlock all makes it selectable again', !(await isLocked()))
   await page.mouse.click(markerAt.x, markerAt.y)
-  check('the marker selects again after unlocking', (await selectionSize()) === 1)
+  check('the marker selects again after unlocking', (await selectionSizeOf()) === 1)
   await page.keyboard.press('Escape')
 
   // --- calibrate against the printed 10000 mm dimension --------------------------------------------
@@ -297,7 +349,7 @@ try {
     app.duplicateSelectionToSheet(second)
     return app.store.project.sheets[1].items.length
   })
-  check('copy-to-sheet duplicates at the same coordinates', copied === 3, `${copied} items`)
+  check('copy-to-sheet duplicates at the same coordinates', copied === 4, `${copied} items`)
 
   // --- autosave round trip through IndexedDB -------------------------------------------------------------
   const autosave = await page.evaluate(async () => {
@@ -316,7 +368,7 @@ try {
     }
   })
   check('autosave survives a round trip through IndexedDB',
-    autosave.items === 3 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
+    autosave.items === 4 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
     JSON.stringify(autosave))
 
   // --- project file round trip ---------------------------------------------------------------------------

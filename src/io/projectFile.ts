@@ -1,4 +1,5 @@
 import { emptyProject } from '../model/doc.ts'
+import { NOTE_DEFAULT_WIDTH, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
@@ -37,15 +38,20 @@ function asItem(raw: unknown, index: number): Item | null {
   if (!isObj(raw)) return null
   // Optional fields are only written when they carry a value: the project file is meant to be
   // diffed in git, and a wall of `"locked": false` makes real changes hard to spot.
-  const common: Pick<Item, 'id' | 'systemId' | 'level'> & Partial<Item> = {
+  const base = {
     id: str(raw.id) || `it_recovered_${index}`,
     systemId: str(raw.systemId, 'water.cold'),
     level: asLevel(raw.level),
   }
-  if (typeof raw.label === 'string') common.label = raw.label
-  if (typeof raw.note === 'string') common.note = raw.note
-  if (typeof raw.colorOverride === 'string') common.colorOverride = raw.colorOverride
-  if (raw.locked === true) common.locked = true
+  const shared: { colorOverride?: string; locked?: true } = {}
+  if (typeof raw.colorOverride === 'string') shared.colorOverride = raw.colorOverride
+  if (raw.locked === true) shared.locked = true
+
+  const labelled: { label?: string; note?: string } = {}
+  if (typeof raw.label === 'string') labelled.label = raw.label
+  if (typeof raw.note === 'string') labelled.note = raw.note
+
+  const common = { ...base, ...shared, ...labelled }
 
   if (raw.kind === 'run') {
     const pts = Array.isArray(raw.points)
@@ -69,6 +75,19 @@ function asItem(raw: unknown, index: number): Item | null {
   if (raw.kind === 'marker') {
     const symbol = MARKER_SYMBOLS.includes(raw.symbol as MarkerSymbol) ? (raw.symbol as MarkerSymbol) : 'note'
     return { ...common, kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }
+  }
+  if (raw.kind === 'note') {
+    // Notes carry `text`, not `label`/`note` - a sticky whose content lived in a side field
+    // would be a trap.
+    return {
+      ...base,
+      ...shared,
+      kind: 'note',
+      x: num(raw.x),
+      y: num(raw.y),
+      w: Math.max(NOTE_MIN_WIDTH, num(raw.w, NOTE_DEFAULT_WIDTH)),
+      text: str(raw.text),
+    }
   }
   return null
 }

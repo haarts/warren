@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { emptyProject } from '../src/model/doc.ts'
 import { parseProject, serialize } from '../src/io/projectFile.ts'
-import type { BoxItem, MarkerItem, RunItem } from '../src/model/types.ts'
+import type { BoxItem, MarkerItem, NoteItem, RunItem } from '../src/model/types.ts'
 
 function sampleProject() {
   const project = emptyProject()
@@ -23,7 +23,11 @@ function sampleProject() {
     kind: 'marker', id: 'm1', systemId: 'drain.soil', level: 'floor',
     x: 5, y: 5, symbol: 'riser-down', label: 'to crawl space',
   }
-  sheet.items.push(run, box, marker)
+  const note: NoteItem = {
+    kind: 'note', id: 'n1', systemId: 'struct.note', level: 'wall',
+    x: 30, y: 40, w: 120, text: 'Check duct height with the architect\nbefore the pour',
+  }
+  sheet.items.push(run, box, marker, note)
   return project
 }
 
@@ -83,6 +87,21 @@ test('mounting levels survive a round trip, unknown ones fall back', () => {
     sheets: [{ id: 's', name: 'S', items: [{ kind: 'box', id: 'b', level: 'on-the-moon' }] }],
   }))
   assert.equal(junk.sheets[0].items[0].level, 'wall')
+})
+
+test('notes round trip, and a broken one is repaired rather than dropped', () => {
+  const restored = parseProject(serialize(sampleProject()))
+  const note = restored.sheets[0].items[3]
+  assert.equal(note.kind, 'note')
+  assert.equal(note.kind === 'note' && note.text.includes('architect'), true)
+  assert.equal(note.kind === 'note' && note.w, 120)
+
+  const odd = parseProject(JSON.stringify({
+    version: 1,
+    sheets: [{ id: 's', name: 'S', items: [{ kind: 'note', id: 'n', w: 2, x: 1, y: 1 }] }],
+  })).sheets[0].items[0]
+  assert.equal(odd.kind === 'note' && odd.w >= 30, true, 'a silly width is clamped, not honoured')
+  assert.equal(odd.kind === 'note' && odd.text, '', 'missing text becomes empty, not undefined')
 })
 
 test('a file with no systems falls back to the default catalogue', () => {

@@ -3,7 +3,8 @@ import {
   type Pt, type Rect,
 } from '../geom.ts'
 import type { Store } from '../model/doc.ts'
-import { LEVEL_SHORT, type BoxItem, type Item, type MarkerItem, type MarkerSymbol, type RunItem } from '../model/types.ts'
+import { LEVEL_SHORT, type BoxItem, type Item, type MarkerItem, type MarkerSymbol, type NoteItem, type RunItem } from '../model/types.ts'
+import { measureNote, noteFont, noteHeight, NOTE_LINE_HEIGHT, NOTE_PAD, NOTE_STRIPE } from './notes.ts'
 import { formatMetres, niceScaleLength } from '../units.ts'
 import type { Camera } from './camera.ts'
 
@@ -75,16 +76,25 @@ export function drawScene(opts: SceneOptions): void {
   const boxes = items.filter((i): i is BoxItem => i.kind === 'box')
   const runs = items.filter((i): i is RunItem => i.kind === 'run')
   const markers = items.filter((i): i is MarkerItem => i.kind === 'marker')
+  const notes = items.filter((i): i is NoteItem => i.kind === 'note')
 
   for (const box of boxes) drawBox(ctx, store, cam, box, ui)
   for (const run of runs) drawRun(ctx, store, cam, run, ui, settings.showFlow)
   for (const marker of markers) drawMarker(ctx, store, cam, marker, ui)
+  // Notes paint last so they are never buried under a duct, and hit-test first to match.
+  for (const note of notes) drawNote(ctx, store, cam, note, ui)
 
   if (settings.showLabels) {
     // One occupancy map for the whole frame: equipment and markers claim their spot first,
     // then runs take what is left. Parallel pipes 150 mm apart would otherwise stack three
     // labels on top of each other and none of them would be readable.
     const placed: Rect[] = []
+    for (const note of notes) {
+      placed.push({
+        x: cam.toScreenX(note.x), y: cam.toScreenY(note.y),
+        w: note.w * cam.zoom, h: noteHeight(note) * cam.zoom,
+      })
+    }
     for (const box of boxes) drawBoxLabel(ctx, store, cam, box, ui, placed)
     for (const marker of markers) drawMarkerLabel(ctx, store, cam, marker, ui, placed)
     for (const run of runs) drawRunLabel(ctx, store, cam, run, ui, placed)
@@ -221,6 +231,90 @@ function drawBox(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, box: 
   ctx.restore()
 }
 
+const NOTE_BODY = '#fef3c7'
+const NOTE_EDGE = '#d4a72c'
+const NOTE_FOLD = '#e8d08a'
+const NOTE_INK = '#422006'
+/** Below this on-screen width the text is unreadable, so collapse to a marker instead. */
+const NOTE_COLLAPSE_PX = 46
+
+function drawNote(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, note: NoteItem, ui: number): void {
+  const accent = note.colorOverride ?? store.system(note.systemId).color
+  const x = cam.toScreenX(note.x)
+  const y = cam.toScreenY(note.y)
+  const w = note.w * cam.zoom
+
+  ctx.save()
+  ctx.setLineDash([])
+
+  if (w < NOTE_COLLAPSE_PX) {
+    // Zoomed out: show where the note is, not what it says.
+    const s = 11 * ui
+    ctx.fillStyle = NOTE_BODY
+    ctx.strokeStyle = NOTE_EDGE
+    ctx.lineWidth = 1 * ui
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x + s, y)
+    ctx.lineTo(x + s, y + s * 0.65)
+    ctx.lineTo(x + s * 0.65, y + s)
+    ctx.lineTo(x, y + s)
+    ctx.closePath()
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = accent
+    ctx.fillRect(x, y, Math.max(1.5, s * 0.18), s)
+    ctx.restore()
+    return
+  }
+
+  const layout = measureNote(note)
+  const h = layout.h * cam.zoom
+  const fold = Math.min(10 * ui, w * 0.22, h * 0.4)
+
+  ctx.fillStyle = NOTE_BODY
+  ctx.strokeStyle = NOTE_EDGE
+  ctx.lineWidth = 1 * ui
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(x + w, y)
+  ctx.lineTo(x + w, y + h - fold)
+  ctx.lineTo(x + w - fold, y + h)
+  ctx.lineTo(x, y + h)
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+
+  // The folded corner, and the stripe that says which layer this note belongs to.
+  ctx.fillStyle = NOTE_FOLD
+  ctx.beginPath()
+  ctx.moveTo(x + w - fold, y + h)
+  ctx.lineTo(x + w - fold, y + h - fold)
+  ctx.lineTo(x + w, y + h - fold)
+  ctx.closePath()
+  ctx.fill()
+  ctx.strokeStyle = NOTE_EDGE
+  ctx.stroke()
+
+  ctx.fillStyle = accent
+  ctx.fillRect(x, y, NOTE_STRIPE * cam.zoom, h)
+
+  ctx.fillStyle = NOTE_INK
+  ctx.font = noteFont(cam.zoom)
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'top'
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  const left = x + (NOTE_STRIPE + NOTE_PAD) * cam.zoom
+  layout.lines.forEach((line, i) => {
+    ctx.fillText(line, left, y + (NOTE_PAD + i * NOTE_LINE_HEIGHT) * cam.zoom)
+  })
+  ctx.restore()
+  ctx.restore()
+}
+
 const MARKER_RADIUS = 8
 
 function drawMarker(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, marker: MarkerItem, ui: number): void {
@@ -321,7 +415,7 @@ export function drawMarkerGlyph(ctx: CanvasRenderingContext2D, symbol: MarkerSym
 // labels
 // ------------------------------------------------------------------------------------
 
-export function labelTextFor(store: Store, item: Item): string {
+export function labelTextFor(store: Store, item: RunItem | BoxItem | MarkerItem): string {
   const sys = store.system(item.systemId)
   const parts: string[] = []
   const main = (item.label ?? '').trim()
@@ -463,6 +557,12 @@ function drawItemOutline(ctx: CanvasRenderingContext2D, cam: Camera, item: Item,
     ctx.beginPath()
     ctx.arc(p.x, p.y, MARKER_RADIUS + 4, 0, Math.PI * 2)
     ctx.stroke()
+  } else if (item.kind === 'note') {
+    const pad = 3
+    ctx.strokeRect(
+      cam.toScreenX(item.x) - pad, cam.toScreenY(item.y) - pad,
+      item.w * cam.zoom + pad * 2, noteHeight(item) * cam.zoom + pad * 2,
+    )
   }
   ctx.restore()
 }
@@ -499,6 +599,15 @@ function drawHandles(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, u
         ctx.fill()
         ctx.stroke()
       }
+    } else if (item.kind === 'note') {
+      // One handle, bottom-right: a note only has a width. Height follows the text.
+      const p = cam.toScreen({ x: item.x + item.w, y: item.y + noteHeight(item) })
+      ctx.fillStyle = HANDLE_FILL
+      ctx.strokeStyle = ACCENT
+      ctx.beginPath()
+      ctx.rect(p.x - s / 2, p.y - s / 2, s, s)
+      ctx.fill()
+      ctx.stroke()
     }
   }
   ctx.restore()
@@ -688,5 +797,6 @@ function drawScaleBar(
 export function itemBounds(item: Item): Rect {
   if (item.kind === 'run') return boundsOf(item.points)
   if (item.kind === 'box') return { x: item.x, y: item.y, w: item.w, h: item.h }
+  if (item.kind === 'note') return { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }
   return { x: item.x, y: item.y, w: 0, h: 0 }
 }

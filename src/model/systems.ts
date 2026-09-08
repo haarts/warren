@@ -107,6 +107,7 @@ const SEEDS: Seed[] = [
   { id: 'struct.shaft', category: 'struct', name: 'Shaft / chase', color: '#475569', dash: D.long, width: 1.8 },
   { id: 'struct.nodrill', category: 'struct', name: 'No-drill zone', color: '#dc2626', dash: D.dashdotdot, width: 1.4 },
   { id: 'struct.airtight', category: 'struct', name: 'Airtightness penetration', color: '#db2777', dash: D.dot, width: 1.5 },
+  { id: 'struct.note', category: 'struct', name: 'General note', color: '#ca8a04', dash: D.solid, width: 1.2 },
 ]
 
 export function defaultSystems(): System[] {

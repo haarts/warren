@@ -87,10 +87,15 @@ export class Store {
     this.systemCacheKey = null
   }
 
-  /** Visible means: system visible, not filtered out by the level filter. */
+  /**
+   * Visible means: system visible, passes the level filter, and - for notes - the global note
+   * toggle is on. Visibility gates hit-testing too, so anything you cannot see is also
+   * something you cannot accidentally drag.
+   */
   isVisible(item: Item): boolean {
     const sys = this.system(item.systemId)
     if (!sys.visible) return false
+    if (item.kind === 'note' && !this.project.settings.showNotes) return false
     const filter = this.project.settings.levelFilter
     if (filter !== 'all' && item.level !== filter) return false
     return true

@@ -43,6 +43,21 @@ test('an uncalibrated sheet is reported instead of producing bogus metres', () =
   assert.equal(result.rows[0].runs, 1)
 })
 
+test('notes are counted apart from equipment and never become material', () => {
+  const store = new Store()
+  store.sheet.mmPerPoint = 10
+  store.sheet.items.push(
+    run('a', 'air.supply', [{ x: 0, y: 0 }, { x: 100, y: 0 }]),
+    { kind: 'note', id: 'n1', systemId: 'air.supply', level: 'ceiling', x: 0, y: 0, w: 90, text: 'reroute' },
+    { kind: 'marker', id: 'm1', systemId: 'air.supply', level: 'ceiling', x: 5, y: 5, symbol: 'outlet' },
+  )
+  const row = computeTakeoff(store, 'sheet').rows[0]
+  assert.equal(row.notes, 1)
+  assert.equal(row.markers, 1, 'a note must not be miscounted as a marker')
+  assert.equal(row.boxes, 0)
+  assert.equal(row.lengthMm, 1000, 'a note adds no length')
+})
+
 test('the legend only lists systems that are actually drawn', () => {
   const store = new Store()
   store.sheet.items.push(run('a', 'heat.ufh', [{ x: 0, y: 0 }, { x: 10, y: 0 }]))

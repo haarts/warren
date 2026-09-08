@@ -55,6 +55,7 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 | **Edit corners** | Drag a corner handle to move it. `Alt`+click a segment to insert a corner, `Alt`+click a corner to remove it. Double-click a segment also inserts |
 | **Equipment** | `R` draws a box — HRV unit, manifold, distribution board |
 | **Markers** | `M` places a riser, drain, cleanout or penetration |
+| **Notes** | `N` drops a sticky note. Type into Properties; drag the bottom-right handle for width, the height follows the text |
 | **Measure** | `D` |
 | **Calibrate** | `K`, then click the two ends of a dimension printed on the plan and type its real length in mm |
 | **Pan / zoom** | Space-drag or middle-drag to pan, wheel to zoom, `F` to fit |
@@ -91,6 +92,19 @@ on paper and never touch in reality.
 The `in` / `on` pairs carry two different facts. Runs are buried *in* something; equipment is
 mounted *on* something — the board hangs on a wall, the cylinder and the rainwater pump stand
 on the floor. Surface-run conduit in a garage uses "on wall" too.
+
+## Notes
+
+`N` drops a yellow sticky anywhere on the plan — "air gap on the mains top-up, confirm before
+first fill", the kind of thing you will not remember in eight months.
+
+A note belongs to a system like everything else, and the coloured stripe down its left edge
+tells you which. Hide ventilation and the notes about ventilation go with it. Notes that belong
+to no discipline can use **General note** in the structure group.
+
+The **Notes** button in the toolbar hides all of them at once, for a clean print. Hidden notes
+are unclickable as well as invisible, so you cannot drag one you cannot see. Notes never appear
+in the takeoff — they are annotations, not material.
 
 ## The takeoff
 

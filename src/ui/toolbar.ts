@@ -13,6 +13,7 @@ const TOOLS: { id: ToolId; label: string; key: string; title: string }[] = [
   { id: 'run', label: 'Run', key: 'L', title: 'Draw a pipe / duct / circuit as one multi-corner run (L)' },
   { id: 'box', label: 'Box', key: 'R', title: 'Equipment box: HRV unit, manifold, distribution board (R)' },
   { id: 'marker', label: 'Marker', key: 'M', title: 'Point marker: riser, drain, penetration (M)' },
+  { id: 'note', label: 'Note', key: 'N', title: 'Sticky note, tied to the selected system so it hides with that layer (N)' },
   { id: 'measure', label: 'Measure', key: 'D', title: 'Measure a distance (D)' },
   { id: 'calibrate', label: 'Calibrate', key: 'K', title: 'Set the sheet scale from a known dimension (K)' },
 ]
@@ -106,6 +107,11 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   }))
   host.appendChild(toggle('Flow', store.project.settings.showFlow, (v) => {
     store.project.settings.showFlow = v
+    store.touch()
+    editor.requestRender()
+  }))
+  host.appendChild(toggle('Notes', store.project.settings.showNotes, (v) => {
+    store.project.settings.showNotes = v
     store.touch()
     editor.requestRender()
   }))

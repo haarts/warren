@@ -130,8 +130,10 @@ function buildProperties(app: App, body: HTMLElement): void {
   }
   body.appendChild(field('Level', levelSelect))
 
-  if (!many) {
-    body.appendChild(field('Label', textInput(first.label ?? '', (v) => applyToAll((item) => { item.label = v }))))
+  if (!many && first.kind !== 'note') {
+    body.appendChild(field('Label', textInput(first.label ?? '', (v) => applyToAll((item) => {
+      if (item.kind !== 'note') item.label = v
+    }))))
   }
 
   if (first.kind === 'run' && !many) {
@@ -171,6 +173,37 @@ function buildProperties(app: App, body: HTMLElement): void {
     }
   }
 
+  if (first.kind === 'note' && !many) {
+    const text = el('textarea', {
+      value: first.text,
+      placeholder: 'Sticky note text…',
+      style: { minHeight: '92px' },
+    }) as HTMLTextAreaElement
+    const commit = (): void => applyToAll((item) => {
+      if (item.kind === 'note') item.text = text.value
+    })
+    text.addEventListener('change', commit)
+    // Live preview while typing, without pushing an undo step per keystroke.
+    text.addEventListener('input', () => {
+      const live = store.item(first.id)
+      if (live && live.kind === 'note') {
+        live.text = text.value
+        app.editor.requestRender()
+      }
+    })
+    body.appendChild(field('Text', text))
+    // A note placed a moment ago is empty and wants typing into.
+    if (first.text === '') setTimeout(() => text.focus(), 0)
+
+    const width = el('input', {
+      type: 'number', min: '30', step: '5', value: String(Math.round(first.w)),
+    }) as HTMLInputElement
+    width.addEventListener('change', () => applyToAll((item) => {
+      if (item.kind === 'note') item.w = Math.max(30, Number(width.value) || 90)
+    }))
+    body.appendChild(field('Width', width, 'Or drag the handle at the bottom-right corner. The height follows the text.'))
+  }
+
   if (first.kind === 'marker' && !many) {
     const symbolSelect = el('select', {
       onchange: (e: Event) => {
@@ -184,10 +217,12 @@ function buildProperties(app: App, body: HTMLElement): void {
     body.appendChild(field('Symbol', symbolSelect))
   }
 
-  if (!many) {
+  if (!many && first.kind !== 'note') {
     const note = el('textarea', {
       value: first.note ?? '',
-      onchange: (e: Event) => applyToAll((item) => { item.note = (e.target as HTMLTextAreaElement).value }),
+      onchange: (e: Event) => applyToAll((item) => {
+        if (item.kind !== 'note') item.note = (e.target as HTMLTextAreaElement).value
+      }),
     })
     body.appendChild(field('Note', note))
   }
@@ -244,7 +279,12 @@ function buildProperties(app: App, body: HTMLElement): void {
 }
 
 function labelForKind(item: Item): string {
-  return item.kind === 'run' ? 'Run' : item.kind === 'box' ? 'Equipment box' : 'Marker'
+  switch (item.kind) {
+    case 'run': return 'Run'
+    case 'box': return 'Equipment box'
+    case 'marker': return 'Marker'
+    case 'note': return 'Note'
+  }
 }
 
 function textInput(value: string, onChange: (v: string) => void, placeholder?: string): HTMLElement {

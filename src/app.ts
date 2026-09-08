@@ -353,6 +353,7 @@ export class App {
         case 'l': case 'L': this.editor.setTool('run'); return
         case 'r': case 'R': this.editor.setTool('box'); return
         case 'm': case 'M': this.editor.setTool('marker'); return
+        case 'n': case 'N': this.editor.setTool('note'); return
         case 'd': case 'D': this.editor.setTool('measure'); return
         case 'k': case 'K': this.editor.setTool('calibrate'); return
         case 'Escape':

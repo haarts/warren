@@ -62,7 +62,7 @@ export const MARKER_LABELS: Record<MarkerSymbol, string> = {
   valve: 'Valve / stopcock',
   outlet: 'Outlet / terminal',
   sensor: 'Sensor',
-  note: 'Note pin',
+  note: 'Dot / reference pin',
 }
 
 export interface System {
@@ -128,7 +128,26 @@ export interface MarkerItem {
   locked?: boolean
 }
 
-export type Item = RunItem | BoxItem | MarkerItem
+/**
+ * A sticky note anchored to a spot on the plan. It belongs to a system like everything else,
+ * so a note about the HRV hides when you hide ventilation. Height is not stored: it follows
+ * the wrapped text, so the only thing you ever set is the width.
+ */
+export interface NoteItem {
+  kind: 'note'
+  id: string
+  systemId: string
+  level: Level
+  x: number
+  y: number
+  /** Width in world units (PDF points). Height is derived from the text. */
+  w: number
+  text: string
+  colorOverride?: string
+  locked?: boolean
+}
+
+export type Item = RunItem | BoxItem | MarkerItem | NoteItem
 
 export interface SheetPdf {
   assetId: string
@@ -156,6 +175,7 @@ export interface Settings {
   backgroundOpacity: number
   showLabels: boolean
   showFlow: boolean
+  showNotes: boolean
   showLevels: boolean
   /** Percentage added to every takeoff total for drops, slack and verticals. */
   takeoffSlackPct: number
@@ -181,6 +201,7 @@ export const DEFAULT_SETTINGS: Settings = {
   backgroundOpacity: 0.55,
   showLabels: true,
   showFlow: true,
+  showNotes: true,
   showLevels: true,
   takeoffSlackPct: 10,
   levelFilter: 'all',

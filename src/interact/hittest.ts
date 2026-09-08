@@ -1,11 +1,12 @@
 import { closestOnPolyline, closestOnSegment, dist, rectContains, rectsIntersect, segmentIntersectsRect, type Pt, type Rect } from '../geom.ts'
 import type { Store, VertexRef } from '../model/doc.ts'
 import type { BoxItem, Item } from '../model/types.ts'
+import { noteHeight } from '../render/notes.ts'
 import { boxCorners, itemBounds } from '../render/scene.ts'
 
 /** Draw order is boxes → runs → markers, so we test back to front. */
 function topmost(items: Item[], p: Pt, tol: number): Item | null {
-  for (const kind of ['marker', 'run', 'box'] as const) {
+  for (const kind of ['note', 'marker', 'run', 'box'] as const) {
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i].kind === kind && hitsItem(items[i], p, tol)) return items[i]
     }
@@ -45,6 +46,8 @@ export function hitsItem(item: Item, p: Pt, tol: number): boolean {
     }
     case 'marker':
       return dist({ x: item.x, y: item.y }, p) <= tol * 1.4
+    case 'note':
+      return rectContains({ x: item.x, y: item.y, w: item.w, h: noteHeight(item) }, p)
   }
 }
 
@@ -95,13 +98,33 @@ export function itemsInRect(store: Store, rect: Rect): Item[] {
   })
 }
 
+export interface NoteHandleRef { noteId: string }
+
+/** The one resize handle a note has: bottom-right, and it only changes the width. */
+export function hitNoteHandle(store: Store, p: Pt, tol: number): NoteHandleRef | null {
+  for (const item of store.selectedItems()) {
+    if (item.kind !== 'note' || !store.isEditable(item)) continue
+    const corner = { x: item.x + item.w, y: item.y + noteHeight(item) }
+    if (dist(corner, p) <= tol) return { noteId: item.id }
+  }
+  return null
+}
+
 export function nearestPointOnItem(item: Item, p: Pt): { point: Pt; dist: number } | null {
   if (item.kind === 'run' && item.points.length >= 2) {
     const r = closestOnPolyline(p, item.points)
     return { point: r.point, dist: r.dist }
   }
-  if (item.kind === 'box') {
-    const corners = boxCorners(item as BoxItem)
+  if (item.kind === 'box' || item.kind === 'note') {
+    const rect = item.kind === 'box'
+      ? { x: item.x, y: item.y, w: item.w, h: item.h }
+      : { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }
+    const corners: Pt[] = [
+      { x: rect.x, y: rect.y },
+      { x: rect.x + rect.w, y: rect.y },
+      { x: rect.x + rect.w, y: rect.y + rect.h },
+      { x: rect.x, y: rect.y + rect.h },
+    ]
     let best: { point: Pt; dist: number } | null = null
     for (let i = 0; i < 4; i++) {
       const r = closestOnSegment(p, corners[i], corners[(i + 1) % 4])

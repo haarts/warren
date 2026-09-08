@@ -7,6 +7,8 @@ export interface TakeoffRow {
   runs: number
   boxes: number
   markers: number
+  /** Annotations, counted but never treated as material. */
+  notes: number
   /** Straight plan length, before slack. */
   lengthMm: number
   /** With the global slack percentage and any per-run extra applied. */
@@ -37,7 +39,7 @@ export function computeTakeoff(store: Store, scope: 'sheet' | 'project'): Takeof
       const system = store.system(item.systemId)
       let row = map.get(system.id)
       if (!row) {
-        row = { system, runs: 0, boxes: 0, markers: 0, lengthMm: 0, orderMm: 0 }
+        row = { system, runs: 0, boxes: 0, markers: 0, notes: 0, lengthMm: 0, orderMm: 0 }
         map.set(system.id, row)
       }
       if (item.kind === 'run') {
@@ -49,8 +51,10 @@ export function computeTakeoff(store: Store, scope: 'sheet' | 'project'): Takeof
         }
       } else if (item.kind === 'box') {
         row.boxes += 1
-      } else {
+      } else if (item.kind === 'marker') {
         row.markers += 1
+      } else {
+        row.notes += 1
       }
     }
   }

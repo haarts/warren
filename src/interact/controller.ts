@@ -1,15 +1,16 @@
 import { dist, normalizeRect, type Pt, type Rect } from '../geom.ts'
 import type { Store, VertexRef } from '../model/doc.ts'
 import { newId } from '../model/ids.ts'
-import type { BoxItem, Item, MarkerItem, MarkerSymbol, RunItem } from '../model/types.ts'
+import type { BoxItem, Item, MarkerItem, MarkerSymbol, NoteItem, RunItem } from '../model/types.ts'
 import { Background } from '../render/background.ts'
 import { Camera } from '../render/camera.ts'
-import { drawScene, type Overlay } from '../render/scene.ts'
+import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
+import { drawScene, itemBounds, type Overlay } from '../render/scene.ts'
 import { formatMetres } from '../units.ts'
-import { hitBoxCorner, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
+import { hitBoxCorner, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { resolvePoint } from './snap.ts'
 
-export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'measure' | 'calibrate'
+export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate'
 
 type Drag =
   | { mode: 'none' }
@@ -17,6 +18,7 @@ type Drag =
   | { mode: 'move'; start: Pt; originals: Map<string, Item>; moved: boolean }
   | { mode: 'vertex'; ref: VertexRef }
   | { mode: 'boxCorner'; boxId: string; anchor: Pt }
+  | { mode: 'noteWidth'; noteId: string }
   | { mode: 'rubber'; start: Pt; additive: boolean; current: Pt }
   | { mode: 'newBox'; start: Pt; current: Pt }
 
@@ -218,6 +220,7 @@ export class Editor {
       case 'run': this.runPointerDown(world); break
       case 'box': this.drag = { mode: 'newBox', start: this.resolve(world), current: this.resolve(world) }; break
       case 'marker': this.placeMarker(this.resolve(world)); break
+      case 'note': this.placeNote(this.resolve(world)); break
       case 'measure':
       case 'calibrate': this.measurePointerDown(world); break
     }
@@ -250,6 +253,13 @@ export class Editor {
         this.drag = { mode: 'boxCorner', boxId: box.id, anchor }
         return
       }
+    }
+
+    const noteHandle = hitNoteHandle(store, world, this.tol(HIT_TOL_PX))
+    if (noteHandle) {
+      store.begin()
+      this.drag = { mode: 'noteWidth', noteId: noteHandle.noteId }
+      return
     }
 
     const hit = hitTest(store, world, this.tol(HIT_TOL_PX))
@@ -336,6 +346,9 @@ export class Editor {
           } else if (live.kind === 'marker' && original.kind === 'marker') {
             live.x = original.x + dx
             live.y = original.y + dy
+          } else if (live.kind === 'note' && original.kind === 'note') {
+            live.x = original.x + dx
+            live.y = original.y + dy
           }
         }
         break
@@ -356,6 +369,11 @@ export class Editor {
           const r = normalizeRect(this.drag.anchor, p)
           box.x = r.x; box.y = r.y; box.w = r.w; box.h = r.h
         }
+        break
+      }
+      case 'noteWidth': {
+        const note = this.store.item(this.drag.noteId)
+        if (note && note.kind === 'note') note.w = Math.max(NOTE_MIN_WIDTH, world.x - note.x)
         break
       }
       case 'rubber': {
@@ -395,6 +413,7 @@ export class Editor {
         break
       case 'vertex':
       case 'boxCorner':
+      case 'noteWidth':
         store.commit()
         break
       case 'rubber': {
@@ -476,6 +495,21 @@ export class Editor {
       label: '',
     }
     this.store.addItem(marker)
+    this.onChange?.()
+  }
+
+  private placeNote(p: Pt): void {
+    const note: NoteItem = {
+      kind: 'note',
+      id: newId('note'),
+      systemId: this.activeSystemId,
+      level: this.activeLevel,
+      x: p.x,
+      y: p.y,
+      w: defaultNoteWidth(this.store.sheet.pdf?.widthPt ?? 595),
+      text: '',
+    }
+    this.store.addItem(note)
     this.onChange?.()
   }
 
@@ -639,11 +673,10 @@ export class Editor {
     if (items.length === 0) return this.zoomToFit()
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     for (const it of items) {
+      const b = itemBounds(it)
       const pts: Pt[] = it.kind === 'run'
         ? it.points
-        : it.kind === 'box'
-          ? [{ x: it.x, y: it.y }, { x: it.x + it.w, y: it.y + it.h }]
-          : [{ x: it.x, y: it.y }]
+        : [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y + b.h }]
       for (const p of pts) {
         minX = Math.min(minX, p.x); minY = Math.min(minY, p.y)
         maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y)
@@ -668,6 +701,7 @@ export class Editor {
           : '—'
         return `${sys.name} · ${it.points.length} points · ${len}`
       }
+      if (it.kind === 'note') return `Note · ${sys.name}`
       return `${sys.name} · ${it.kind}`
     }
     return `${items.length} items selected`
