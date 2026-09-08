@@ -145,10 +145,11 @@ what is missing, and keep the two in step.
 
 ## Two habits that pay off
 
-**Tag the level.** Every run gets `in floor / in wall / in ceiling / above ceiling / crawl /
-roof`. On a top-down plan a duct at ceiling level and a pipe in the screed cross constantly and
-never touch. Without the level tag, a busy drawing becomes unreadable and you cannot tell an
-installer anything useful.
+**Tag the level.** Every run gets `crawl / in floor / in wall / in ceiling / above ceiling /
+roof`, and every piece of equipment gets `on floor` or `on wall` — the board hangs on a wall,
+the cylinder and the rainwater pump stand on the floor. On a top-down plan a duct at ceiling
+level and a pipe in the screed cross constantly and never touch. Without the level tag, a busy
+drawing becomes unreadable and you cannot tell an installer anything useful.
 
 **Photograph before closing up.** Every wall and floor, before the plasterboard and the screed,
 with something in frame for scale. The drawing says what you intended; the photos say what

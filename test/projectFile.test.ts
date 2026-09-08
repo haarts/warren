@@ -69,6 +69,22 @@ test('a damaged file still opens with the good parts intact', () => {
   assert.equal(run.kind === 'run' && run.flow, 'none')
 })
 
+test('mounting levels survive a round trip, unknown ones fall back', () => {
+  const project = sampleProject()
+  const sheet = project.sheets[0]
+  sheet.items[1].level = 'on-wall'   // the distribution board hangs on a wall
+  sheet.items[2].level = 'on-floor'  // the cylinder stands on the floor
+  const restored = parseProject(serialize(project))
+  assert.equal(restored.sheets[0].items[1].level, 'on-wall')
+  assert.equal(restored.sheets[0].items[2].level, 'on-floor')
+
+  const junk = parseProject(JSON.stringify({
+    version: 1,
+    sheets: [{ id: 's', name: 'S', items: [{ kind: 'box', id: 'b', level: 'on-the-moon' }] }],
+  }))
+  assert.equal(junk.sheets[0].items[0].level, 'wall')
+})
+
 test('a file with no systems falls back to the default catalogue', () => {
   const project = parseProject(JSON.stringify({ version: 1, sheets: [], systems: [] }))
   assert.ok(project.systems.length > 20)

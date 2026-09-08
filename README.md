@@ -76,11 +76,15 @@ tab.
 **Layers** are the systems, grouped into disciplines. Toggle a whole discipline or a single
 system; hidden systems are also unclickable and excluded from exports and prints.
 
-**Level** is where a run sits in the building fabric: crawl space, in floor, in wall, in
-ceiling, above ceiling, roof. It is a property of each run, not a layer, and the toolbar filter
-shows one level at a time. A top-down plan cannot show height, so without this a busy drawing is
-unreadable — the duct at ceiling level and the pipe in the screed cross on paper and never touch
-in reality.
+**Level** is where something sits in the building fabric: crawl space, in floor, on floor, in
+wall, on wall, in ceiling, above ceiling, roof. It is a property of each item, not a layer, and
+the toolbar filter shows one level at a time. A top-down plan cannot show height, so without
+this a busy drawing is unreadable — the duct at ceiling level and the pipe in the screed cross
+on paper and never touch in reality.
+
+The `in` / `on` pairs carry two different facts. Runs are buried *in* something; equipment is
+mounted *on* something — the board hangs on a wall, the cylinder and the rainwater pump stand
+on the floor. Surface-run conduit in a garage uses "on wall" too.
 
 ## The takeoff
 

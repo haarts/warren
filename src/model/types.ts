@@ -14,21 +14,36 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   struct: 'Structure / coordination',
 }
 
-/** Where in the building fabric a run sits. A top-down plan cannot show this, so we tag it. */
-export const LEVELS = ['crawl', 'floor', 'wall', 'ceiling', 'above', 'roof'] as const
+/**
+ * Where something sits in the building fabric. A top-down plan cannot show height, so we tag
+ * it instead. Two distinct facts share this axis: what a run is buried *in*, and what a piece
+ * of equipment is mounted *on*. Hence the `in` / `on` pairs - a distribution board hangs on a
+ * wall, a DHW cylinder stands on the floor, and surface-run conduit is on a wall rather than
+ * chased into it.
+ */
+export const LEVELS = ['crawl', 'floor', 'on-floor', 'wall', 'on-wall', 'ceiling', 'above', 'roof'] as const
 export type Level = (typeof LEVELS)[number]
 
 export const LEVEL_LABELS: Record<Level, string> = {
   crawl: 'Crawl space',
   floor: 'In floor / screed',
+  'on-floor': 'On floor (standing)',
   wall: 'In wall',
+  'on-wall': 'On wall (surface)',
   ceiling: 'In ceiling',
   above: 'Above ceiling / void',
   roof: 'Roof / outside',
 }
 
 export const LEVEL_SHORT: Record<Level, string> = {
-  crawl: 'CRW', floor: 'FLR', wall: 'WAL', ceiling: 'CLG', above: 'VOID', roof: 'ROOF',
+  crawl: 'CRW',
+  floor: 'FLR',
+  'on-floor': 'ON FLR',
+  wall: 'WAL',
+  'on-wall': 'ON WAL',
+  ceiling: 'CLG',
+  above: 'VOID',
+  roof: 'ROOF',
 }
 
 export type Flow = 'none' | 'forward' | 'reverse'
