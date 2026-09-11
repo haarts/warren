@@ -1,5 +1,5 @@
 import type { App } from '../app.ts'
-import { DASH_PRESETS, PALETTE } from '../model/systems.ts'
+import { DASH_PRESETS, missingDefaults, PALETTE } from '../model/systems.ts'
 import { CATEGORIES, CATEGORY_LABELS, type Category, type System } from '../model/types.ts'
 import { newId } from '../model/ids.ts'
 import { el, swatch } from './dom.ts'
@@ -26,6 +26,23 @@ export function openSystemsEditor(app: App): void {
       body.appendChild(el('div', { class: 'hint' },
         'Colour alone cannot carry 40 systems — especially not on a greyscale print — so every system also has a ' +
         'dash pattern and a width. Changing a system restyles everything drawn with it.'))
+
+      // A project carries its own catalogue, so one started before a system existed will not
+      // have it. Offer the gap rather than merging it back in behind your back.
+      const missing = missingDefaults(store.project.systems)
+      if (missing.length) {
+        body.appendChild(el('div', { style: { margin: '6px 0 2px' } },
+          el('button', {
+            title: missing.map((m) => m.name).join(', '),
+            onclick: () => {
+              store.mutate(() => { store.project.systems.push(...missingDefaults(store.project.systems)) })
+              store.invalidateSystems()
+              build()
+              rerender()
+            },
+          }, `Add ${missing.length} missing default system${missing.length === 1 ? '' : 's'}`),
+        ))
+      }
 
       for (const category of CATEGORIES) {
         const systems = store.project.systems.filter((s) => s.category === category)

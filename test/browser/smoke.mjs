@@ -478,6 +478,30 @@ try {
   check('print view carries the plan, legend and takeoff',
     /Legend/.test(printText) && /takeoff/i.test(printText), printText.slice(0, 70))
 
+  // --- backfilling a catalogue that predates a system -------------------------------------------
+  const backfill = await page.evaluate(async () => {
+    const app = window.warren
+    // Simulate a project saved before power.smoke existed.
+    app.store.project.systems = app.store.project.systems.filter((s) => s.id !== 'power.smoke')
+    app.store.invalidateSystems()
+    app.refresh()
+    await new Promise((r) => setTimeout(r, 60))
+    ;[...document.querySelectorAll('#toolbar button')].find((b) => b.textContent === 'Systems…').click()
+    await new Promise((r) => setTimeout(r, 120))
+    const btn = [...document.querySelectorAll('.dialog button')].find((b) => /missing default/.test(b.textContent))
+    const offered = btn?.textContent ?? ''
+    btn?.click()
+    await new Promise((r) => setTimeout(r, 120))
+    const restored = app.store.project.systems.find((s) => s.id === 'power.smoke')
+    const stillOffered = [...document.querySelectorAll('.dialog button')].some((b) => /missing default/.test(b.textContent))
+    ;[...document.querySelectorAll('.dialog footer button')].find((b) => b.textContent === 'Done')?.click()
+    return { offered, category: restored?.category, stillOffered }
+  })
+  check('an older catalogue is offered the systems it lacks', /1 missing default system/.test(backfill.offered),
+    backfill.offered)
+  check('backfilling restores it into the power group',
+    backfill.category === 'power' && !backfill.stillOffered, backfill.category)
+
   // --- the fallback path explains itself ------------------------------------------------------
   // Reproduce a browser without the File System Access API (Firefox, or any non-secure origin).
   const fallbackHint = await page.evaluate(async () => {

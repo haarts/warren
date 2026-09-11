@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { Store } from '../src/model/doc.ts'
 import { computeTakeoff, systemsInUse } from '../src/takeoff.ts'
+import { defaultSystems, missingDefaults } from '../src/model/systems.ts'
 import type { RunItem } from '../src/model/types.ts'
 
 function run(id: string, systemId: string, points: { x: number; y: number }[], extraM?: number): RunItem {
@@ -56,6 +57,30 @@ test('notes are counted apart from equipment and never become material', () => {
   assert.equal(row.markers, 1, 'a note must not be miscounted as a marker')
   assert.equal(row.boxes, 0)
   assert.equal(row.lengthMm, 1000, 'a note adds no length')
+})
+
+test('interlinked smoke detectors are a power circuit, not low-voltage wiring', () => {
+  const smoke = defaultSystems().find((s) => s.id === 'power.smoke')
+  assert.ok(smoke, 'the catalogue seeds it')
+  assert.equal(smoke.category, 'power', 'it belongs with the electrician, not the data sheet')
+  assert.match(smoke.defaultSize ?? '', /interlink/)
+  // It must be tellable apart from every other power system on a greyscale print.
+  const others = defaultSystems().filter((s) => s.category === 'power' && s.id !== 'power.smoke')
+  const signature = (s: { color: string; dash: number[] }) => `${s.color}|${s.dash.join(',')}`
+  assert.equal(others.some((o) => signature(o) === signature(smoke)), false)
+})
+
+test('missingDefaults reports the gap without resurrecting deletions', () => {
+  const full = defaultSystems()
+  assert.deepEqual(missingDefaults(full), [], 'a complete catalogue has no gap')
+
+  const older = full.filter((s) => s.id !== 'power.smoke' && s.id !== 'struct.note')
+  const missing = missingDefaults(older).map((s) => s.id).sort()
+  assert.deepEqual(missing, ['power.smoke', 'struct.note'])
+
+  // A system the user renamed is still present, so it is never offered again.
+  const renamed = full.map((s) => (s.id === 'power.smoke' ? { ...s, name: 'Rookmelders' } : s))
+  assert.deepEqual(missingDefaults(renamed), [])
 })
 
 test('the legend only lists systems that are actually drawn', () => {

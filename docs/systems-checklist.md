@@ -101,7 +101,15 @@ what is missing, and keep the two in step.
 - [ ] ⚠ EV charger **including the load-balancing sensor cable back to the meter**
 - [ ] Doorbell transformer
 - [ ] Motorised blinds and screens, garage door, gate
-- [ ] ⚠ Mains-powered, interlinked smoke detectors
+- [ ] ⚠ Mains-powered, **interlinked smoke detectors** — a 230 V circuit, not alarm wiring.
+      Wired interlink needs a conductor between every detector (`3×1.5mm² + interlink`), so the
+      cable and the route have to be decided now; RF-interlinked detectors need only 230 V at
+      each position. One per storey and on every escape route, at minimum
+- [ ] Kitchen: a **heat** detector rather than a smoke detector, or a smoke detector kept well
+      clear of the hob. With a recirculating hood the HRV is the only extraction, so cooking
+      smoke hangs around longer than usual and nuisance alarms are likelier
+- [ ] No CO detector needed with no combustion in the house — worth confirming nothing
+      gas-fired sneaks back into the plan
 - [ ] ⚠ **Empty conduits (loze leidingen)** — the cheapest insurance in the whole build. Give
       them their own layer and be generous
 - [ ] ⚠ Feeds to the shed, garage or outbuilding — power, water and data, dug once

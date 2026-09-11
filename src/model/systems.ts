@@ -92,6 +92,7 @@ const SEEDS: Seed[] = [
   { id: 'power.earth', category: 'power', name: 'Earthing / bonding', color: '#16a34a', dash: D.solid, width: 1.9, defaultSize: '6mm²' },
   { id: 'power.pv', category: 'power', name: 'PV DC string', color: '#dc2626', dash: D.dot, width: 1.5, defaultSize: '2×6mm²' },
   { id: 'power.conduit', category: 'power', name: 'Empty conduit (loze leiding)', color: '#475569', dash: D.dot, width: 1.8, defaultSize: 'Ø19' },
+  { id: 'power.smoke', category: 'power', name: 'Smoke detectors (interlinked)', color: '#db2777', dash: D.dashdotdot, width: 1.4, defaultSize: '3×1.5mm² + interlink' },
   { id: 'power.outdoor', category: 'power', name: 'Outdoor / outbuilding feed', color: '#4d7c0f', dash: D.dash, width: 2.0, defaultSize: 'XMvK 4×6' },
 
   // --- Data / low voltage --------------------------------------------------------------
@@ -117,6 +118,17 @@ export function defaultSystems(): System[] {
     if (seed.tag === undefined) delete system.tag
     return system
   })
+}
+
+/**
+ * Seeded systems this project does not have. The catalogue is stored per project, so a
+ * project saved before a system existed will not have it - but silently merging new defaults
+ * back in on load would resurrect systems you deliberately deleted. The Systems editor offers
+ * this instead, so it stays your decision.
+ */
+export function missingDefaults(systems: System[]): System[] {
+  const present = new Set(systems.map((s) => s.id))
+  return defaultSystems().filter((seed) => !present.has(seed.id))
 }
 
 export const FALLBACK_SYSTEM: System = {
