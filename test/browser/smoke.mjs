@@ -420,6 +420,54 @@ try {
   }, savedCam)
   await new Promise((r) => setTimeout(r, 120))
 
+  // --- a wheel zooms, two fingers pan ------------------------------------------------------------
+  // Scrolling moves the view, and later checks click fixed screen positions, so put it back.
+  const wheelCam = await page.evaluate(() => ({ x: window.warren.editor.cam.x, y: window.warren.editor.cam.y, zoom: window.warren.editor.cam.zoom }))
+  const wheelTest = await page.evaluate(async () => {
+    const app = window.warren
+    const canvas = document.getElementById('canvas')
+    const fire = (init) => canvas.dispatchEvent(new WheelEvent('wheel', { bubbles: true, cancelable: true, clientX: 400, clientY: 300, ...init }))
+    const snap = () => ({ x: app.editor.cam.x, y: app.editor.cam.y, z: app.editor.cam.zoom })
+    const moved = (a, b) => Math.hypot(a.x - b.x, a.y - b.y) > 0.5
+
+    // A wheel mouse: whole lines, no sideways movement.
+    const a = snap()
+    fire({ deltaY: -3, deltaMode: 1 })
+    await new Promise((r) => setTimeout(r, 40))
+    const b = snap()
+
+    // A trackpad: small pixel deltas, and sideways movement a wheel cannot make.
+    fire({ deltaY: 12, deltaX: 7, deltaMode: 0 })
+    await new Promise((r) => setTimeout(r, 40))
+    const c = snap()
+    fire({ deltaY: 20, deltaX: 0, deltaMode: 0 })
+    await new Promise((r) => setTimeout(r, 40))
+    const d = snap()
+
+    // Pinch arrives as ctrl+wheel and must still zoom.
+    fire({ deltaY: -8, deltaMode: 0, ctrlKey: true })
+    await new Promise((r) => setTimeout(r, 40))
+    const e = snap()
+    return {
+      wheelZoomed: b.z > a.z,
+      trackpadPanned: c.z === b.z && moved(b, c),
+      staysPanning: d.z === c.z && moved(c, d),
+      pinchZoomed: e.z > d.z,
+      hint: document.getElementById('status-text').textContent,
+    }
+  })
+  check('a wheel mouse zooms', wheelTest.wheelZoomed)
+  check('two fingers pan instead of zooming', wheelTest.trackpadPanned)
+  check('and keep panning once the trackpad is recognised', wheelTest.staysPanning)
+  check('a pinch still zooms', wheelTest.pinchZoomed)
+  check('the status line says what the trackpad does', /two fingers pan/.test(wheelTest.hint || ''),
+    (wheelTest.hint || '').slice(-46))
+  await page.evaluate((cam) => {
+    Object.assign(window.warren.editor.cam, cam)
+    window.warren.editor.requestRender()
+  }, wheelCam)
+  await new Promise((r) => setTimeout(r, 120))
+
   // --- a room corner drags like any other corner ------------------------------------------------
   const roomCam = await page.evaluate(() => ({ x: window.warren.editor.cam.x, y: window.warren.editor.cam.y, zoom: window.warren.editor.cam.zoom }))
   const roomHandle = await page.evaluate(async () => {

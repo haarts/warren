@@ -79,6 +79,8 @@ export class Editor {
   private flashText: string | null = null
   private flashUntil = 0
   private flashHold = 0
+  /** Set the first time a wheel event looks like a trackpad rather than a wheel mouse. */
+  private trackpadSeen = false
   private cssWidth = 0
   private cssHeight = 0
 
@@ -209,6 +211,7 @@ export class Editor {
       }
     }
     parts.push(`zoom ${(this.cam.zoom * 100).toFixed(0)}%`)
+    if (this.trackpadSeen) parts.push('two fingers pan · pinch or ⌥scroll zooms')
     if (this.snap?.label) parts.push(`snap: ${this.snap.label}`)
     if (this.hoverLockedId) {
       const item = this.store.item(this.hoverLockedId)
@@ -513,11 +516,30 @@ export class Editor {
     if (hit && pointsOf(hit) && hit.kind !== 'door') this.insertVertex(hit, world)
   }
 
+  /**
+   * A wheel mouse and a trackpad send the same event and mean opposite things by it: one notch
+   * of a wheel means zoom, two fingers dragging mean pan. They are told apart by how the
+   * browser reports the movement - a wheel arrives in discrete lines or big pixel jumps, a
+   * trackpad in small pixel deltas and with sideways movement a wheel cannot produce. Once one
+   * has been seen, it is remembered.
+   *
+   * Ctrl or Cmd always means zoom, which is also how the browser reports a trackpad pinch.
+   */
   private onWheel = (e: WheelEvent): void => {
     e.preventDefault()
-    const rect = this.canvas.getBoundingClientRect()
-    const factor = Math.pow(0.999, e.deltaY * (e.deltaMode === 1 ? 16 : 1))
-    this.cam.zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor)
+    if (e.deltaX !== 0 || (e.deltaMode === 0 && Math.abs(e.deltaY) < 50 && e.deltaY !== 0)) {
+      this.trackpadSeen = true
+    }
+    const pinch = e.ctrlKey || e.metaKey
+    const pans = !pinch && this.trackpadSeen && !e.altKey
+
+    if (pans) {
+      this.cam.panByScreen(-e.deltaX, -e.deltaY)
+    } else {
+      const rect = this.canvas.getBoundingClientRect()
+      const factor = Math.pow(0.999, e.deltaY * (e.deltaMode === 1 ? 16 : 1) * (pinch ? 2 : 1))
+      this.cam.zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor)
+    }
     this.requestRender()
   }
 

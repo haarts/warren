@@ -62,7 +62,7 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 | **Notes** | `N` drops a sticky note. Type into Properties; drag the bottom-right handle for width, the height follows the text |
 | **Measure** | `D` |
 | **Calibrate** | `K`, then click the two ends of a dimension printed on the plan and type its real length in mm |
-| **Pan / zoom** | Space-drag or middle-drag to pan, wheel to zoom, `F` to fit |
+| **Pan / zoom** | **Trackpad:** two fingers pan, pinch zooms. **Mouse:** wheel zooms, middle-drag pans. Either way space-drag pans and `F` fits |
 | **Undo** | `Ctrl+Z` / `Ctrl+Shift+Z`, 100 deep |
 | **Save** | `Ctrl+S`, or `Ctrl+Shift+S` for Save as… |
 | **Rename** | Click the project title in the toolbar |
