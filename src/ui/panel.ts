@@ -2,7 +2,7 @@ import type { App } from '../app.ts'
 import { polygonArea } from '../geom.ts'
 import { ROOM_USES, ROOM_USE_LABELS, type Item, type Level, type RoomUse, type System } from '../model/types.ts'
 import {
-  CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS, MARKER_SYMBOLS,
+  CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS,
   type MarkerSymbol,
 } from '../model/types.ts'
 import { computeTakeoff } from '../takeoff.ts'
@@ -10,6 +10,7 @@ import { countBySeverity, runChecks, type Finding, type Severity } from '../chec
 import { missingAssetIds } from '../model/assets.ts'
 import { buildGraph, connectionsOf, networkOf } from '../topology.ts'
 import { adopt, generatedBy } from '../generate.ts'
+import { symbolsFor } from '../model/systems.ts'
 import { formatMetres } from '../units.ts'
 import { clear, el, field, swatch } from './dom.ts'
 
@@ -322,7 +323,7 @@ function buildProperties(app: App, body: HTMLElement): void {
         applyToAll((item) => { if (item.kind === 'marker') item.symbol = value })
       },
     }) as HTMLSelectElement
-    for (const symbol of MARKER_SYMBOLS) {
+    for (const symbol of symbolsFor(store.system(first.systemId), first.symbol)) {
       symbolSelect.appendChild(el('option', { value: symbol, selected: first.symbol === symbol }, MARKER_LABELS[symbol]))
     }
     body.appendChild(field('Symbol', symbolSelect))

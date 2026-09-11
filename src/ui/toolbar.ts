@@ -1,9 +1,10 @@
 import type { App } from '../app.ts'
 import type { ToolId } from '../interact/controller.ts'
 import {
-  CATEGORY_LABELS, CATEGORIES, LEVELS, LEVEL_LABELS, MARKER_LABELS, MARKER_SYMBOLS,
+  CATEGORY_LABELS, CATEGORIES, LEVELS, LEVEL_LABELS, MARKER_LABELS,
   type Level, type MarkerSymbol,
 } from '../model/types.ts'
+import { symbolsFor } from '../model/systems.ts'
 import { saveCapabilityNote } from '../io/projectFile.ts'
 import { alertDialog } from './modal.ts'
 import { clear, el } from './dom.ts'
@@ -42,7 +43,10 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   const systemSelect = el('select', {
     title: 'System for new items',
     style: { maxWidth: '210px' },
-    onchange: (e: Event) => { editor.activeSystemId = (e.target as HTMLSelectElement).value },
+    onchange: (e: Event) => {
+      editor.activeSystemId = (e.target as HTMLSelectElement).value
+      app.refresh()
+    },
   }) as HTMLSelectElement
   for (const category of CATEGORIES) {
     const systems = store.project.systems.filter((s) => s.category === category)
@@ -72,10 +76,14 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   host.appendChild(levelSelect)
 
   if (editor.tool === 'marker') {
+    const offered = symbolsFor(store.system(editor.activeSystemId))
+    // Picking a lighting group and being offered a gully is noise, so the list follows the
+    // system - and the active symbol follows it too rather than staying somewhere absurd.
+    if (!offered.includes(editor.activeMarkerSymbol)) editor.activeMarkerSymbol = offered[0]
     const symbolSelect = el('select', {
       onchange: (e: Event) => { editor.activeMarkerSymbol = (e.target as HTMLSelectElement).value as MarkerSymbol },
     }) as HTMLSelectElement
-    for (const symbol of MARKER_SYMBOLS) {
+    for (const symbol of offered) {
       symbolSelect.appendChild(el('option', { value: symbol, selected: symbol === editor.activeMarkerSymbol }, MARKER_LABELS[symbol]))
     }
     host.appendChild(symbolSelect)

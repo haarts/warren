@@ -39,18 +39,18 @@ export const DEFAULT_RULES: GenerateRule[] = [
     id: 'sockets', enabled: true, place: 'along-walls',
     // No label: fifty-six identical "socket" pills drown the drawing, and the symbol and the
     // system colour already say what it is. Rarer things keep their label.
-    systemId: 'power.socket', level: 'on-wall', symbol: 'outlet',
+    systemId: 'power.socket', level: 'on-wall', symbol: 'socket',
     uses: ['living', 'kitchen', 'dining', 'bedroom', 'workshop', 'utility'],
     perWall: 2, insetMm: 400, minWallMm: 1200, offWallMm: 120,
   },
   {
     id: 'switches', enabled: true, place: 'at-door-strike',
-    systemId: 'power.light', level: 'on-wall', symbol: 'outlet', label: 'switch',
+    systemId: 'power.light', level: 'on-wall', symbol: 'switch', label: 'switch',
     offsetMm: 200, offWallMm: 120,
   },
   {
     id: 'detectors', enabled: true, place: 'centre',
-    systemId: 'power.smoke', level: 'ceiling', symbol: 'sensor', label: 'rookmelder',
+    systemId: 'power.smoke', level: 'ceiling', symbol: 'detector', label: 'rookmelder',
     uses: ['hall', 'stairs', 'living', 'bedroom'],
   },
 ]

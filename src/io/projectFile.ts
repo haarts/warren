@@ -186,6 +186,12 @@ function asSystem(raw: unknown, index: number): System | null {
       if (!system.defaultSize) system.defaultSize = system.sizes[0]
     }
   }
+  if (Array.isArray(raw.symbols)) {
+    system.symbols = raw.symbols.filter((v): v is MarkerSymbol => MARKER_SYMBOLS.includes(v as MarkerSymbol))
+  } else {
+    const seed = seedSystem(id)?.symbols
+    if (seed) system.symbols = [...seed]
+  }
   // Same story as sizes: absent means the file predates the field, so take the seed's answer.
   // An explicit false is a decision, and is left alone.
   if (typeof raw.assumeFlow === 'boolean') system.assumeFlow = raw.assumeFlow

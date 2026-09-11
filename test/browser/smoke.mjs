@@ -420,6 +420,34 @@ try {
   }, savedCam)
   await new Promise((r) => setTimeout(r, 120))
 
+  // --- the symbol picker follows the system ---------------------------------------------------
+  const symbolPicker = await page.evaluate(async () => {
+    const app = window.warren
+    const read = async (systemId) => {
+      app.editor.activeSystemId = systemId
+      app.editor.setTool('marker')
+      await new Promise((r) => setTimeout(r, 140))
+      const sel = [...document.querySelectorAll('#toolbar select')]
+        .find((s) => [...s.options].some((o) => /Wandcontactdoos|Afvoerput|Rookmelder|Ventiel|Sparing|Lichtpunt/.test(o.textContent)))
+      return { options: [...(sel?.options ?? [])].map((o) => o.value), active: app.editor.activeMarkerSymbol }
+    }
+    const light = await read('power.light')
+    const soil = await read('drain.soil')
+    const smoke = await read('power.smoke')
+    // Put the toolbar back where the rest of the suite expects to find it.
+    app.editor.activeSystemId = 'water.cold'
+    app.editor.setTool('select')
+    return { light, soil, smoke }
+  })
+  check('a lighting group is not offered a gully',
+    symbolPicker.light.options.includes('light') && !symbolPicker.light.options.includes('drain'),
+    symbolPicker.light.options.join(' '))
+  check('a soil pipe is offered a gully and a cleanout',
+    symbolPicker.soil.options.includes('drain') && symbolPicker.soil.options.includes('cleanout')
+    && !symbolPicker.soil.options.includes('socket'), symbolPicker.soil.options.join(' '))
+  check('and the active symbol moves with the system rather than staying absurd',
+    symbolPicker.smoke.active === 'detector', symbolPicker.smoke.active)
+
   // --- the CAD habits an architect arrives with ---------------------------------------------------
   const cad = await page.evaluate(async () => {
     const app = window.warren

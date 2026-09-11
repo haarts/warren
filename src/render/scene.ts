@@ -442,6 +442,85 @@ export function drawMarkerGlyph(ctx: CanvasRenderingContext2D, symbol: MarkerSym
   ctx.fillStyle = '#ffffff'
   ctx.strokeStyle = color
   switch (symbol) {
+    case 'socket': {
+      // Wandcontactdoos: a half-round sitting on a base line wider than itself, as drawn on
+      // any Dutch elektratekening. The base line has to overhang, or it reads as an umbrella.
+      const base = r * 0.4
+      ctx.beginPath()
+      ctx.arc(0, base, r * 0.82, Math.PI, 0)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(-r * 1.15, base)
+      ctx.lineTo(r * 1.15, base)
+      ctx.stroke()
+      break
+    }
+    case 'switch': {
+      ctx.beginPath()
+      ctx.arc(0, r * 0.45, r * 0.38, 0, Math.PI * 2)
+      ctx.fillStyle = color
+      ctx.fill()
+      ctx.beginPath()
+      ctx.moveTo(0, r * 0.45)
+      ctx.lineTo(r * 0.85, -r * 0.75)
+      ctx.stroke()
+      break
+    }
+    case 'light': {
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.9, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      const d = r * 0.64
+      ctx.beginPath()
+      ctx.moveTo(-d, -d); ctx.lineTo(d, d)
+      ctx.moveTo(d, -d); ctx.lineTo(-d, d)
+      ctx.stroke()
+      break
+    }
+    case 'detector': {
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.3, 0, Math.PI * 2)
+      ctx.fillStyle = color
+      ctx.fill()
+      ctx.beginPath()
+      for (const a of [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4]) {
+        ctx.moveTo(Math.cos(a) * r * 0.95, Math.sin(a) * r * 0.95)
+        ctx.lineTo(Math.cos(a) * r * 1.4, Math.sin(a) * r * 1.4)
+      }
+      ctx.stroke()
+      break
+    }
+    case 'data-outlet': {
+      ctx.beginPath()
+      ctx.rect(-r * 0.85, -r * 0.85, r * 1.7, r * 1.7)
+      ctx.fill()
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(-r * 0.3, -r * 0.45)
+      ctx.lineTo(r * 0.5, 0)
+      ctx.lineTo(-r * 0.3, r * 0.45)
+      ctx.closePath()
+      ctx.fillStyle = color
+      ctx.fill()
+      break
+    }
+    case 'air-valve': {
+      ctx.beginPath()
+      ctx.rect(-r * 0.9, -r * 0.9, r * 1.8, r * 1.8)
+      ctx.fill()
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(0, 0, r * 0.58, 0, Math.PI * 2)
+      ctx.stroke()
+      break
+    }
     case 'riser-up':
     case 'riser-down': {
       ctx.beginPath()

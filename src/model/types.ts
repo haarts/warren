@@ -49,19 +49,31 @@ export const LEVEL_SHORT: Record<Level, string> = {
 
 export type Flow = 'none' | 'forward' | 'reverse'
 
+/**
+ * Deliberately short. These are the things that actually get marked on a Dutch installation
+ * drawing; anything rarer is best served by the nearest symbol plus a note, rather than by a
+ * catalogue nobody can find their way around.
+ */
 export const MARKER_SYMBOLS = [
+  'socket', 'switch', 'light', 'detector', 'data-outlet', 'air-valve',
   'riser-up', 'riser-down', 'penetration', 'drain', 'cleanout', 'valve', 'outlet', 'sensor', 'note',
 ] as const
 export type MarkerSymbol = (typeof MARKER_SYMBOLS)[number]
 
 export const MARKER_LABELS: Record<MarkerSymbol, string> = {
-  'riser-up': 'Riser up',
-  'riser-down': 'Riser down',
-  penetration: 'Penetration (sparing)',
-  drain: 'Drain / gully',
-  cleanout: 'Cleanout',
-  valve: 'Valve / stopcock',
-  outlet: 'Outlet / terminal',
+  socket: 'Wandcontactdoos (socket)',
+  switch: 'Schakelaar (switch)',
+  light: 'Lichtpunt (light point)',
+  detector: 'Rookmelder (detector)',
+  'data-outlet': 'Data-aansluitpunt (data outlet)',
+  'air-valve': 'Ventiel / rooster (air valve)',
+  'riser-up': 'Standleiding omhoog (riser up)',
+  'riser-down': 'Standleiding omlaag (riser down)',
+  penetration: 'Sparing (penetration)',
+  drain: 'Afvoerput (gully)',
+  cleanout: 'Ontstoppingsstuk (cleanout)',
+  valve: 'Afsluiter (valve)',
+  outlet: 'Tappunt (draw-off)',
   sensor: 'Sensor',
   note: 'Dot / reference pin',
 }
@@ -79,6 +91,11 @@ export interface System {
   defaultSize?: string
   /** Suggested sizes offered in the size field. Suggestions only - the field stays free text. */
   sizes?: string[]
+  /**
+   * Marker symbols worth offering for this system. A gully under a lighting group is noise,
+   * so the list is scoped; a symbol already in use is always still offered.
+   */
+  symbols?: MarkerSymbol[]
   /**
    * Direction is physically meaningful for this system, so a new run guesses it from the order
    * it was drawn in. True for anything that falls, is pumped, or is blown; false for a socket

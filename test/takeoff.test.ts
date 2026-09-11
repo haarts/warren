@@ -126,3 +126,42 @@ test('the legend only lists systems that are actually drawn', () => {
   const used = systemsInUse(store, 'sheet')
   assert.deepEqual(used.map((s) => s.id), ['heat.ufh'])
 })
+
+test('symbols are scoped to the system, and never silently changed', async () => {
+  const { symbolsFor } = await import('../src/model/systems.ts')
+  const by = (id: string) => defaultSystems().find((s) => s.id === id)!
+
+  const lighting = symbolsFor(by('power.light'))
+  assert.ok(lighting.includes('light') && lighting.includes('switch'))
+  assert.equal(lighting.includes('drain'), false, 'a gully under a lighting group is nonsense')
+  assert.equal(lighting.includes('cleanout'), false)
+
+  const soil = symbolsFor(by('drain.soil'))
+  assert.ok(soil.includes('drain') && soil.includes('cleanout'))
+  assert.equal(soil.includes('socket'), false)
+
+  assert.deepEqual(symbolsFor(by('power.smoke')), ['detector', 'penetration', 'note'])
+  assert.ok(symbolsFor(by('air.supply')).includes('air-valve'))
+  assert.ok(symbolsFor(by('data.cat6')).includes('data-outlet'))
+
+  // Every seeded system says what it wants, and says it briefly. A system of the user's own
+  // making has no opinion recorded and is offered everything, which is the right default.
+  for (const sys of defaultSystems()) {
+    assert.ok(sys.symbols?.length, `${sys.id} has no symbol list, so it would offer all of them`)
+    assert.ok(symbolsFor(sys).length <= 6, `${sys.id} offers too many symbols`)
+  }
+  assert.equal(symbolsFor({ ...by('power.light'), symbols: undefined }).length, 15, 'no opinion means all of them')
+
+  // Moving a marker to a system that does not list its symbol keeps the symbol on offer,
+  // so changing the system cannot quietly redraw the item as something else.
+  const moved = symbolsFor(by('power.light'), 'drain')
+  assert.equal(moved[0], 'drain')
+})
+
+test('the rules place the symbols a Dutch drawing expects', async () => {
+  const { DEFAULT_RULES } = await import('../src/generate.ts')
+  const symbolOf = (id: string) => DEFAULT_RULES.find((r) => r.id === id)?.symbol
+  assert.equal(symbolOf('sockets'), 'socket')
+  assert.equal(symbolOf('switches'), 'switch')
+  assert.equal(symbolOf('detectors'), 'detector')
+})

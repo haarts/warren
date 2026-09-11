@@ -58,7 +58,7 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 | **Move** | Drag the selection. Arrow keys nudge (`Shift` = 10×) |
 | **Edit corners** | Drag a corner handle to move it. `Alt`+click a segment to insert a corner, `Alt`+click a corner to remove it. Double-click a segment also inserts. Works the same on a room outline — a room is closed, so the edge back to the first corner takes a corner too |
 | **Equipment** | `R` draws a box — HRV unit, manifold, distribution board |
-| **Markers** | `M` places a riser, drain, cleanout or penetration |
+| **Markers** | `M` places a socket, switch, light point, detector, riser, gully, cleanout or penetration — the list follows the system you have selected |
 | **Notes** | `N` drops a sticky note. Type into Properties; drag the bottom-right handle for width, the height follows the text |
 | **Measure** | `D` |
 | **Calibrate** | `K`, then click the two ends of a dimension printed on the plan and type its real length in mm |
@@ -138,6 +138,18 @@ point, `5×6mm²` for 3×32 A (22 kW). Pipe and duct systems carry their own lis
 
 Edit any of them in **Systems…** — the Sizes column is comma-separated, and the first entry is
 what new runs get.
+
+## Symbols
+
+Markers use the symbols a Dutch installatietekening uses — wandcontactdoos, schakelaar,
+lichtpunt, rookmelder, data-aansluitpunt, ventiel, standleiding, afvoerput, ontstoppingsstuk,
+afsluiter, sparing. Fifteen in all, which is deliberately few: anything rarer is better served
+by the nearest symbol plus a note than by a catalogue nobody can navigate.
+
+**The list follows the system.** Pick a lighting group and you are offered a light point and a
+switch, not a gully. Each system names three to six symbols in the catalogue; a system of your
+own making has no opinion recorded and is offered all of them. A symbol already in use is
+always still listed, so moving an item to another system never silently redraws it.
 
 ## Notes
 
