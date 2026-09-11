@@ -25,6 +25,17 @@ export function serialize(project: Project): string {
 // Hand-rolled and forgiving on purpose: a file you wrote 18 months ago should still open
 // even if the app has moved on. Unknown fields survive; broken ones fall back to defaults.
 
+/** Seed size lists, by system id, built once per session. */
+let seedSizeCache: Map<string, string[]> | null = null
+function seedSizes(id: string): string[] | undefined {
+  if (!seedSizeCache) {
+    seedSizeCache = new Map(
+      defaultSystems().flatMap((s) => (s.sizes?.length ? [[s.id, s.sizes] as [string, string[]]] : [])),
+    )
+  }
+  return seedSizeCache.get(id)
+}
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
 const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : fallback)
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && isFinite(v) ? v : fallback)
@@ -109,8 +120,19 @@ function asSystem(raw: unknown, index: number): System | null {
   }
   if (typeof raw.defaultSize === 'string') system.defaultSize = raw.defaultSize
   if (Array.isArray(raw.sizes)) {
-    const sizes = raw.sizes.filter((v): v is string => typeof v === 'string' && v.trim() !== '')
-    if (sizes.length) system.sizes = sizes
+    // An empty list is kept, not discarded: it means "I cleared these deliberately", and that
+    // choice has to survive a reload or it is not a choice.
+    system.sizes = raw.sizes.filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+  } else {
+    // No `sizes` key at all: the file predates the field. Adopt the seed list for this system.
+    // Purely additive - nothing drawn changes, and a default the user picked stays the default.
+    const seed = seedSizes(id)
+    if (seed) {
+      system.sizes = system.defaultSize && !seed.includes(system.defaultSize)
+        ? [system.defaultSize, ...seed]
+        : [...seed]
+      if (!system.defaultSize) system.defaultSize = system.sizes[0]
+    }
   }
   if (typeof raw.tag === 'string') system.tag = raw.tag
   return system

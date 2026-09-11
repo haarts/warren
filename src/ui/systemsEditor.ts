@@ -150,13 +150,11 @@ function systemRow(app: App, sys: System, rebuild: () => void, rerender: () => v
   sizeInput.addEventListener('change', () => {
     const sizes = sizeInput.value.split(',').map((v) => v.trim()).filter(Boolean)
     store.mutate(() => {
-      if (sizes.length) {
-        sys.sizes = sizes
-        sys.defaultSize = sizes[0]
-      } else {
-        delete sys.sizes
-        delete sys.defaultSize
-      }
+      // An empty list is stored rather than deleted, so "no suggestions here" survives a
+      // reload instead of being refilled from the seed catalogue on the next open.
+      sys.sizes = sizes
+      if (sizes.length) sys.defaultSize = sizes[0]
+      else delete sys.defaultSize
     })
     sizeInput.value = sizes.join(', ')
   })

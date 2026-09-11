@@ -104,6 +104,48 @@ test('notes round trip, and a broken one is repaired rather than dropped', () =>
   assert.equal(odd.kind === 'note' && odd.text, '', 'missing text becomes empty, not undefined')
 })
 
+test('a catalogue written before size lists existed gains them on load', () => {
+  const older = JSON.stringify({
+    version: 1,
+    sheets: [{ id: 's', name: 'S', items: [] }],
+    systems: [
+      // Exactly how these were written before the field existed: a default, no list.
+      { id: 'power.socket', category: 'power', name: '230V socket group', color: '#ea580c', dash: [], width: 1.7, defaultSize: '3×2.5mm²' },
+      // A default the user edited away from the seed's first entry.
+      { id: 'power.outdoor', category: 'power', name: 'Outdoor feed', color: '#4d7c0f', dash: [7, 4], width: 2, defaultSize: 'XMvK 4×6' },
+      // A system that has no size list to inherit.
+      { id: 'struct.shaft', category: 'struct', name: 'Shaft', color: '#475569', dash: [14, 5], width: 1.8 },
+      // A system of the user's own invention matches no seed.
+      { id: 'mine.custom', category: 'water', name: 'Something of mine', color: '#123456', dash: [], width: 1 },
+    ],
+  })
+  const systems = parseProject(older).systems
+  const get = (id: string) => systems.find((s) => s.id === id)
+
+  assert.deepEqual(get('power.socket')?.sizes, ['3×2.5mm²', '3×1.5mm²', '3×4mm²'])
+  assert.equal(get('power.socket')?.defaultSize, '3×2.5mm²')
+
+  const outdoor = get('power.outdoor')
+  assert.equal(outdoor?.defaultSize, 'XMvK 4×6', 'an edited default is never overwritten')
+  assert.equal(outdoor?.sizes?.[0], 'XMvK 4×6', 'and stays first, because first is the default')
+  assert.ok((outdoor?.sizes?.length ?? 0) > 1, 'the seed suggestions come along too')
+
+  assert.equal(get('struct.shaft')?.sizes, undefined)
+  assert.equal(get('mine.custom')?.sizes, undefined, 'a system of your own gains nothing')
+})
+
+test('an emptied size list stays empty across a reload', () => {
+  const cleared = JSON.stringify({
+    version: 1,
+    sheets: [{ id: 's', name: 'S', items: [] }],
+    systems: [{ id: 'power.socket', category: 'power', name: 'Sockets', color: '#ea580c', dash: [], width: 1.7, sizes: [] }],
+  })
+  const once = parseProject(cleared)
+  assert.deepEqual(once.systems[0].sizes, [], 'clearing the list is a choice, not an absence')
+  // And it survives being written back out and read again.
+  assert.deepEqual(parseProject(serialize(once)).systems[0].sizes, [])
+})
+
 test('project name and file name convert both ways', () => {
   assert.equal(suggestedFileName('kelder 2026'), 'kelder-2026.warren.json')
   // Characters that are awkward in a file name are replaced rather than passed through.
