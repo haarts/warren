@@ -60,35 +60,35 @@ const SEEDS: Seed[] = [
   // --- Fresh water -------------------------------------------------------------------
   { id: 'water.cold', category: 'water', name: 'Cold water (KW)', color: '#2563eb', dash: D.solid, width: 1.8, sizes: ['Ø16', 'Ø20', 'Ø25', 'Ø32'] },
   { id: 'water.hot', category: 'water', name: 'Hot water (WW)', color: '#dc2626', dash: D.solid, width: 1.8, sizes: ['Ø16', 'Ø20', 'Ø25'] },
-  { id: 'water.circ', category: 'water', name: 'DHW circulation', color: '#dc2626', dash: D.dash, width: 1.3, sizes: ['Ø12', 'Ø16'] },
+  { id: 'water.circ', category: 'water', name: 'DHW circulation', color: '#dc2626', dash: D.dash, width: 1.3, sizes: ['Ø12', 'Ø16'], assumeFlow: true },
   { id: 'water.soft', category: 'water', name: 'Softened water', color: '#0891b2', dash: D.solid, width: 1.8, sizes: ['Ø16', 'Ø20', 'Ø25'] },
   { id: 'water.outdoor', category: 'water', name: 'Outdoor / garden tap', color: '#0f766e', dash: D.dash, width: 1.5, sizes: ['Ø16', 'Ø20'] },
   { id: 'water.fill', category: 'water', name: 'Heating fill loop', color: '#0891b2', dash: D.dot, width: 1.2, sizes: ['Ø12', 'Ø16'] },
 
   // --- Rainwater reuse (non-potable) -------------------------------------------------
-  { id: 'reuse.supply', category: 'reuse', name: 'Tank → pump suction', color: '#4d7c0f', dash: D.dashdot, width: 2.2, sizes: ['Ø32', 'Ø25', 'Ø40'], tag: 'NON-POTABLE' },
+  { id: 'reuse.supply', category: 'reuse', name: 'Tank → pump suction', color: '#4d7c0f', dash: D.dashdot, width: 2.2, sizes: ['Ø32', 'Ø25', 'Ø40'], tag: 'NON-POTABLE', assumeFlow: true },
   { id: 'reuse.dist', category: 'reuse', name: 'Non-potable distribution', color: '#4d7c0f', dash: D.solid, width: 1.8, sizes: ['Ø16', 'Ø20', 'Ø25'], tag: 'NON-POTABLE' },
   { id: 'reuse.topup', category: 'reuse', name: 'Mains top-up (air gap)', color: '#2563eb', dash: D.dashdot, width: 1.5, sizes: ['Ø16', 'Ø20'] },
-  { id: 'reuse.overflow', category: 'reuse', name: 'Tank overflow', color: '#4d7c0f', dash: D.long, width: 2.4, sizes: ['Ø110', 'Ø75', 'Ø125'] },
+  { id: 'reuse.overflow', category: 'reuse', name: 'Tank overflow', color: '#4d7c0f', dash: D.long, width: 2.4, sizes: ['Ø110', 'Ø75', 'Ø125'], assumeFlow: true },
 
   // --- Drainage ----------------------------------------------------------------------
-  { id: 'drain.soil', category: 'drain', name: 'Soil / black water', color: '#b45309', dash: D.solid, width: 3.0, sizes: ['Ø110', 'Ø125', 'Ø160'] },
-  { id: 'drain.waste', category: 'drain', name: 'Waste / grey water', color: '#b45309', dash: D.solid, width: 2.0, sizes: ['Ø50', 'Ø32', 'Ø40', 'Ø75'] },
-  { id: 'drain.vent', category: 'drain', name: 'Vent / stack vent', color: '#b45309', dash: D.dashdot, width: 1.5, sizes: ['Ø75', 'Ø50', 'Ø110'] },
-  { id: 'drain.rain', category: 'drain', name: 'Rainwater downpipe (HWA)', color: '#1e3a8a', dash: D.solid, width: 2.4, sizes: ['Ø80', 'Ø70', 'Ø100', 'Ø110', 'Ø125'] },
-  { id: 'drain.condensate', category: 'drain', name: 'Condensate drain', color: '#0891b2', dash: D.dot, width: 1.3, sizes: ['Ø20', 'Ø25', 'Ø32'] },
+  { id: 'drain.soil', category: 'drain', name: 'Soil / black water', color: '#b45309', dash: D.solid, width: 3.0, sizes: ['Ø110', 'Ø125', 'Ø160'], assumeFlow: true },
+  { id: 'drain.waste', category: 'drain', name: 'Waste / grey water', color: '#b45309', dash: D.solid, width: 2.0, sizes: ['Ø50', 'Ø32', 'Ø40', 'Ø75'], assumeFlow: true },
+  { id: 'drain.vent', category: 'drain', name: 'Vent / stack vent', color: '#b45309', dash: D.dashdot, width: 1.5, sizes: ['Ø75', 'Ø50', 'Ø110'], assumeFlow: true },
+  { id: 'drain.rain', category: 'drain', name: 'Rainwater downpipe (HWA)', color: '#1e3a8a', dash: D.solid, width: 2.4, sizes: ['Ø80', 'Ø70', 'Ø100', 'Ø110', 'Ø125'], assumeFlow: true },
+  { id: 'drain.condensate', category: 'drain', name: 'Condensate drain', color: '#0891b2', dash: D.dot, width: 1.3, sizes: ['Ø20', 'Ø25', 'Ø32'], assumeFlow: true },
 
   // --- Heating / heat pump ------------------------------------------------------------
   { id: 'heat.ufh', category: 'heat', name: 'Underfloor heating loop', color: '#ea580c', dash: D.solid, width: 1.4, sizes: ['Ø16', 'Ø17', 'Ø20'] },
-  { id: 'heat.flow', category: 'heat', name: 'Heating flow', color: '#dc2626', dash: D.long, width: 2.2, sizes: ['Ø22', 'Ø16', 'Ø28', 'Ø35'] },
-  { id: 'heat.return', category: 'heat', name: 'Heating return', color: '#7c3aed', dash: D.long, width: 2.2, sizes: ['Ø22', 'Ø16', 'Ø28', 'Ø35'] },
+  { id: 'heat.flow', category: 'heat', name: 'Heating flow', color: '#dc2626', dash: D.long, width: 2.2, sizes: ['Ø22', 'Ø16', 'Ø28', 'Ø35'], assumeFlow: true },
+  { id: 'heat.return', category: 'heat', name: 'Heating return', color: '#7c3aed', dash: D.long, width: 2.2, sizes: ['Ø22', 'Ø16', 'Ø28', 'Ø35'], assumeFlow: true },
   { id: 'heat.hp', category: 'heat', name: 'Heat pump line set', color: '#a21caf', dash: D.dash, width: 2.4, sizes: ['2×Ø28', '2×Ø35', '1/4"+3/8"', '1/4"+5/8"', '3/8"+5/8"'] },
 
   // --- Ventilation --------------------------------------------------------------------
-  { id: 'air.supply', category: 'air', name: 'Supply air (toevoer)', color: '#0891b2', dash: D.solid, width: 3.4, sizes: ['Ø125', 'Ø75', 'Ø90', 'Ø100', 'Ø160', 'Ø180'] },
-  { id: 'air.extract', category: 'air', name: 'Extract air (afvoer)', color: '#ca8a04', dash: D.solid, width: 3.4, sizes: ['Ø125', 'Ø75', 'Ø90', 'Ø100', 'Ø160', 'Ø180'] },
-  { id: 'air.outside', category: 'air', name: 'Outside air / exhaust', color: '#475569', dash: D.solid, width: 3.8, sizes: ['Ø160', 'Ø125', 'Ø180', 'Ø200'] },
-  { id: 'air.dryer', category: 'air', name: 'Tumble dryer exhaust', color: '#475569', dash: D.dash, width: 2.8, sizes: ['Ø100', 'Ø125', 'Ø150'] },
+  { id: 'air.supply', category: 'air', name: 'Supply air (toevoer)', color: '#0891b2', dash: D.solid, width: 3.4, sizes: ['Ø125', 'Ø75', 'Ø90', 'Ø100', 'Ø160', 'Ø180'], assumeFlow: true },
+  { id: 'air.extract', category: 'air', name: 'Extract air (afvoer)', color: '#ca8a04', dash: D.solid, width: 3.4, sizes: ['Ø125', 'Ø75', 'Ø90', 'Ø100', 'Ø160', 'Ø180'], assumeFlow: true },
+  { id: 'air.outside', category: 'air', name: 'Outside air / exhaust', color: '#475569', dash: D.solid, width: 3.8, sizes: ['Ø160', 'Ø125', 'Ø180', 'Ø200'], assumeFlow: true },
+  { id: 'air.dryer', category: 'air', name: 'Tumble dryer exhaust', color: '#475569', dash: D.dash, width: 2.8, sizes: ['Ø100', 'Ø125', 'Ø150'], assumeFlow: true },
 
   // --- Power --------------------------------------------------------------------------
   { id: 'power.light', category: 'power', name: '230V lighting group', color: '#ca8a04', dash: D.solid, width: 1.4, sizes: ['3×1.5mm²', '4×1.5mm²', '5×1.5mm²', '3×2.5mm²'] },

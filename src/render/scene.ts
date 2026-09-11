@@ -185,12 +185,14 @@ function drawRun(
   }
 
   if (showFlow && run.flow !== 'none') {
-    drawFlowArrows(ctx, pts, run.flow === 'reverse', style.color, ui)
+    drawFlowArrows(ctx, pts, run.flow === 'reverse', style.color, ui, run.flowAssumed === true)
   }
   ctx.restore()
 }
 
-function drawFlowArrows(ctx: CanvasRenderingContext2D, screenPts: Pt[], reverse: boolean, color: string, ui: number): void {
+function drawFlowArrows(
+  ctx: CanvasRenderingContext2D, screenPts: Pt[], reverse: boolean, color: string, ui: number, assumed = false,
+): void {
   const path = reverse ? [...screenPts].reverse() : screenPts
   const spacing = 34 * ui
   const size = 4.5 * ui
@@ -201,6 +203,8 @@ function drawFlowArrows(ctx: CanvasRenderingContext2D, screenPts: Pt[], reverse:
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.setLineDash([])
+  // Faint means guessed. Solid means somebody looked at it and agreed.
+  if (assumed) ctx.globalAlpha = 0.45
   for (const m of marks) {
     ctx.save()
     ctx.translate(m.p.x, m.p.y)

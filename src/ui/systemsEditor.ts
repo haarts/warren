@@ -55,6 +55,7 @@ export function openSystemsEditor(app: App): void {
           el('th', { style: { width: '58px' } }, 'Width'),
           el('th', { style: { width: '150px' } }, 'Sizes (first is default)'),
           el('th', { style: { width: '92px' } }, 'Tag'),
+          el('th', { style: { width: '38px' }, title: 'Guess a direction for new runs from the order they are drawn' }, 'Dir'),
           el('th', { style: { width: '28px' } }, ''),
         ))
         for (const sys of systems) table.appendChild(systemRow(app, sys, build, rerender))
@@ -198,6 +199,18 @@ function systemRow(app: App, sys: System, rebuild: () => void, rerender: () => v
     rerender()
   })
 
+  const flowBox = el('input', {
+    type: 'checkbox',
+    checked: sys.assumeFlow === true,
+    title: 'New runs guess a direction from the order you drew them. For things that fall, are '
+      + 'pumped or are blown — not for a socket circuit, where an arrow would be noise.',
+  }) as HTMLInputElement
+  flowBox.addEventListener('change', () => {
+    // Written explicitly either way, so unticking is a decision rather than an absence that
+    // gets refilled from the seed catalogue on the next open.
+    store.mutate(() => { sys.assumeFlow = flowBox.checked })
+  })
+
   return el('tr', {},
     el('td', {}, preview),
     el('td', {}, nameInput),
@@ -205,6 +218,7 @@ function systemRow(app: App, sys: System, rebuild: () => void, rerender: () => v
     el('td', {}, widthInput),
     el('td', {}, sizeInput),
     el('td', {}, tagInput),
+    el('td', { style: { textAlign: 'center' } }, flowBox),
     el('td', {}, remove),
   )
 }

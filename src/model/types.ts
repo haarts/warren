@@ -79,6 +79,12 @@ export interface System {
   defaultSize?: string
   /** Suggested sizes offered in the size field. Suggestions only - the field stays free text. */
   sizes?: string[]
+  /**
+   * Direction is physically meaningful for this system, so a new run guesses it from the order
+   * it was drawn in. True for anything that falls, is pumped, or is blown; false for a socket
+   * circuit, where an arrow would be noise.
+   */
+  assumeFlow?: boolean
   /** Appended to the auto-label, e.g. "NON-POTABLE". */
   tag?: string
   visible: boolean
@@ -95,6 +101,12 @@ export interface RunItem {
   label?: string
   note?: string
   flow: Flow
+  /**
+   * The direction was guessed from the order the run was drawn in, and nobody has confirmed
+   * it. Drawn faintly and reported by `warren check`, because a confidently wrong fall
+   * direction on a sheet an installer builds from is worse than no arrow at all.
+   */
+  flowAssumed?: boolean
   /** Drainage fall, free text e.g. "1:60". */
   slope?: string
   colorOverride?: string

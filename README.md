@@ -98,6 +98,22 @@ The `in` / `on` pairs carry two different facts. Runs are buried *in* something;
 mounted *on* something — the board hangs on a wall, the cylinder and the rainwater pump stand
 on the floor. Surface-run conduit in a garage uses "on wall" too.
 
+## Direction
+
+Anything that falls, is pumped or is blown — drains, rainwater, ventilation, heating flow and
+return, the DHW loop — takes its direction from the order you drew it in, because that is
+usually the direction you were thinking in.
+
+Usually, not always: draw a drain from the stack outward instead of from the fixture inward and
+the guess comes out backwards. So a guessed direction is drawn **faintly** and stays marked as a
+guess until you say otherwise. Select the run and either confirm it or flip it; both count as
+confirmation. `warren check` reports how many are still assumed, and a print carrying any says
+so on the sheet — a confidently wrong fall direction on a drawing somebody builds from is worse
+than no arrow at all.
+
+Systems where an arrow would just be noise — socket circuits, CAT6, empty conduit — get none.
+That is the `assumeFlow` flag in the catalogue, and it is yours to change.
+
 ## Sizes
 
 The **Size / spec** field is a combo box: click it for the sizes that system normally uses, or

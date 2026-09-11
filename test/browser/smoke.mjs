@@ -214,6 +214,58 @@ try {
     (await page.evaluate(() => window.warren.store.selection.size)) === 3)
   await page.keyboard.press('Escape')
 
+  // --- a drainage run guesses its fall, and says that it guessed ---------------------------------
+  await page.evaluate(() => { window.warren.editor.activeSystemId = 'drain.soil' })
+  await page.keyboard.press('l')
+  for (const [fx, fy] of [[0.30, 0.72], [0.62, 0.72]]) {
+    const p = at(fx, fy)
+    await page.mouse.move(p.x, p.y)
+    await page.mouse.click(p.x, p.y)
+  }
+  await page.keyboard.press('Enter')
+  const drain = await page.evaluate(() => {
+    const r = window.warren.store.items().filter((i) => i.systemId === 'drain.soil').pop()
+    return { flow: r?.flow, assumed: r?.flowAssumed, id: r?.id }
+  })
+  check('a drain run takes its direction from the order it was drawn',
+    drain.flow === 'forward' && drain.assumed === true, `${drain.flow}, assumed=${drain.assumed}`)
+
+  await page.keyboard.press('v')
+  const confirmed = await page.evaluate(async (id) => {
+    const app = window.warren
+    app.store.selection.clear()
+    app.store.selection.add(id)
+    app.store.touch(false)
+    app.refresh()
+    await new Promise((r) => setTimeout(r, 120))
+    const btn = [...document.querySelectorAll('.tab-body button')].find((b) => b.textContent === 'It is right')
+    const offered = !!btn
+    btn?.click()
+    await new Promise((r) => setTimeout(r, 80))
+    const run = app.store.item(id)
+    return { offered, flow: run.flow, assumed: run.flowAssumed }
+  }, drain.id)
+  check('confirming keeps the direction and drops the guess',
+    confirmed.offered && confirmed.flow === 'forward' && confirmed.assumed === undefined,
+    JSON.stringify(confirmed))
+
+  // A power circuit gets no arrow at all - an arrow there would be noise.
+  await page.evaluate(() => { window.warren.editor.activeSystemId = 'power.socket' })
+  await page.keyboard.press('l')
+  for (const [fx, fy] of [[0.30, 0.80], [0.62, 0.80]]) {
+    const p = at(fx, fy)
+    await page.mouse.move(p.x, p.y)
+    await page.mouse.click(p.x, p.y)
+  }
+  await page.keyboard.press('Enter')
+  check('a socket circuit does not sprout an arrow', await page.evaluate(() => {
+    const r = window.warren.store.items().filter((i) => i.systemId === 'power.socket').pop()
+    return r?.flow === 'none' && r?.flowAssumed === undefined
+  }))
+  await page.keyboard.press('v')
+  await page.keyboard.press('Escape')
+  await page.evaluate(() => { window.warren.editor.activeSystemId = 'water.cold' })
+
   // --- the size field is a dropdown that still takes anything ---------------------------------
   const runId = (await items()).find((i) => i.kind === 'run').id
   const selectRun = async () => {
@@ -415,8 +467,9 @@ try {
     const rows = computeTakeoff(window.warren.store, 'sheet').rows.filter((r) => r.runs > 0)
     return rows.map((r) => ({ id: r.system.id, m: r.lengthMm / 1000, order: r.orderMm / 1000 }))
   })
-  check('takeoff reports real metres', takeoff.length === 1 && takeoff[0].m > 1 && takeoff[0].order > takeoff[0].m,
-    `${takeoff[0]?.m.toFixed(2)} m plan, ${takeoff[0]?.order.toFixed(2)} m to order`)
+  const cold = takeoff.find((r) => r.id === 'water.cold')
+  check('takeoff reports real metres', !!cold && cold.m > 1 && cold.order > cold.m,
+    `cold water ${cold?.m.toFixed(2)} m plan, ${cold?.order.toFixed(2)} m to order, ${takeoff.length} systems`)
 
   // --- hiding a layer also removes it from editing --------------------------------------------------
   check('hiding a layer makes its items unclickable', await page.evaluate(() => {
@@ -442,7 +495,7 @@ try {
     app.duplicateSelectionToSheet(second)
     return app.store.project.sheets[1].items.length
   })
-  check('copy-to-sheet duplicates at the same coordinates', copied === 4, `${copied} items`)
+  check('copy-to-sheet duplicates at the same coordinates', copied === 6, `${copied} items`)
 
   // --- autosave round trip through IndexedDB -------------------------------------------------------------
   const autosave = await page.evaluate(async () => {
@@ -461,7 +514,7 @@ try {
     }
   })
   check('autosave survives a round trip through IndexedDB',
-    autosave.items === 4 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
+    autosave.items === 6 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
     JSON.stringify(autosave))
 
   // --- a recovery copy written before the rename is still found --------------------------------

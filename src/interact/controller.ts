@@ -526,7 +526,10 @@ export class Editor {
       level: this.activeLevel,
       points: this.draft.map((p) => ({ ...p })),
       size: sys.defaultSize ?? '',
-      flow: 'none',
+      // The order you drew it in is a decent guess at which way it falls or blows - but only
+      // a guess, so it is marked as one until somebody says otherwise.
+      flow: sys.assumeFlow ? 'forward' : 'none',
+      ...(sys.assumeFlow ? { flowAssumed: true } : {}),
     }
     this.draft = []
     this.draftCursor = null

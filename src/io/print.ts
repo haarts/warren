@@ -80,6 +80,12 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
        </section>`
     : ''
 
+  const assumedCount = sheet.items.filter((i) => i.kind === 'run' && i.flowAssumed).length
+  const assumedNote = assumedCount
+    ? `<p class="warn">${assumedCount} run${assumedCount === 1 ? ' has a' : 's have an'} <b>assumed</b> direction, drawn faintly: `
+      + 'guessed from the order it was drawn and not confirmed. Do not set out falls from these.</p>'
+    : ''
+
   const categoryNote = opts.categories
     ? `<span class="muted"> · showing ${opts.categories.map((c) => CATEGORY_LABELS[c]).join(', ')}</span>`
     : ''
@@ -108,6 +114,7 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
     sheet.mmPerPoint ? ` · calibrated (1 pt = ${sheet.mmPerPoint.toFixed(3)} mm)` : ' · <span class="warn">not calibrated</span>'
   }</div>
   <img class="plan" src="${dataUrl}" alt="plan">
+  ${assumedNote}
   <div class="sheets">${legendHtml}${takeoffHtml}</div>
 </body></html>`
 

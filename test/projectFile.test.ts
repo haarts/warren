@@ -134,6 +134,26 @@ test('a catalogue written before size lists existed gains them on load', () => {
   assert.equal(get('mine.custom')?.sizes, undefined, 'a system of your own gains nothing')
 })
 
+test('a catalogue written before direction guessing gains it too', () => {
+  const older = JSON.stringify({
+    version: 1,
+    sheets: [{ id: 's', name: 'S', items: [] }],
+    systems: [
+      { id: 'drain.soil', category: 'drain', name: 'Soil', color: '#b45309', dash: [], width: 3 },
+      { id: 'power.socket', category: 'power', name: 'Sockets', color: '#ea580c', dash: [], width: 1.7 },
+      // Somebody turned it off on purpose; that must survive.
+      { id: 'air.supply', category: 'air', name: 'Supply air', color: '#0891b2', dash: [], width: 3.4, assumeFlow: false },
+      { id: 'mine.custom', category: 'water', name: 'Mine', color: '#123456', dash: [], width: 1 },
+    ],
+  })
+  const systems = parseProject(older).systems
+  const get = (id: string) => systems.find((s) => s.id === id)
+  assert.equal(get('drain.soil')?.assumeFlow, true, 'a drain falls, so it guesses')
+  assert.equal(get('power.socket')?.assumeFlow, undefined, 'a socket circuit does not')
+  assert.equal(get('air.supply')?.assumeFlow, false, 'an explicit false is a decision, not an absence')
+  assert.equal(get('mine.custom')?.assumeFlow, undefined)
+})
+
 test('an emptied size list stays empty across a reload', () => {
   const cleared = JSON.stringify({
     version: 1,
@@ -144,6 +164,19 @@ test('an emptied size list stays empty across a reload', () => {
   assert.deepEqual(once.systems[0].sizes, [], 'clearing the list is a choice, not an absence')
   // And it survives being written back out and read again.
   assert.deepEqual(parseProject(serialize(once)).systems[0].sizes, [])
+})
+
+test('an assumed direction survives a save, but cannot exist without one', () => {
+  const kept = parseProject(JSON.stringify({
+    version: 1,
+    sheets: [{ id: 's', name: 'S', items: [
+      { kind: 'run', id: 'a', systemId: 'drain.soil', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], flow: 'forward', flowAssumed: true },
+      // Nonsense: assumed, but no direction to have assumed. The flag is dropped.
+      { kind: 'run', id: 'b', systemId: 'drain.soil', points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], flow: 'none', flowAssumed: true },
+    ] }],
+  })).sheets[0].items
+  assert.equal(kept[0].kind === 'run' && kept[0].flowAssumed, true)
+  assert.equal(kept[1].kind === 'run' && kept[1].flowAssumed, undefined)
 })
 
 test('project name and file name convert both ways', () => {

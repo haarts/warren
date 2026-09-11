@@ -67,6 +67,25 @@ function buildProperties(app: App, body: HTMLElement): void {
     }, `Unlock all (${lockedOnSheet.length})`)))
   }
 
+  const flowless = store.items().filter(
+    (i) => i.kind === 'run' && i.flow === 'none' && store.system(i.systemId).assumeFlow,
+  )
+  if (flowless.length) {
+    body.appendChild(field('Flow', el('button', {
+      title: 'Sets each one along the order it was drawn in, marked as a guess until you confirm it',
+      onclick: () => {
+        store.mutate(() => {
+          for (const item of store.items()) {
+            if (item.kind !== 'run' || item.flow !== 'none') continue
+            if (!store.system(item.systemId).assumeFlow) continue
+            item.flow = 'forward'
+            item.flowAssumed = true
+          }
+        })
+      },
+    }, `Assume direction for ${flowless.length} run${flowless.length === 1 ? '' : 's'}`)))
+  }
+
   if (items.length === 0) {
     body.appendChild(el('div', { class: 'section-title' }, 'Nothing selected'))
     body.appendChild(el('div', { class: 'hint' },
@@ -146,7 +165,12 @@ function buildProperties(app: App, body: HTMLElement): void {
     const flowSelect = el('select', {
       onchange: (e: Event) => {
         const value = (e.target as HTMLSelectElement).value as 'none' | 'forward' | 'reverse'
-        applyToAll((item) => { if (item.kind === 'run') item.flow = value })
+        // Choosing a direction by hand is the confirmation, whichever direction you choose.
+        applyToAll((item) => {
+          if (item.kind !== 'run') return
+          item.flow = value
+          delete item.flowAssumed
+        })
       },
     }) as HTMLSelectElement
     for (const [value, label] of [['none', 'No arrows'], ['forward', 'Along the run'], ['reverse', 'Against the run']] as const) {
@@ -155,6 +179,24 @@ function buildProperties(app: App, body: HTMLElement): void {
       }, label))
     }
     body.appendChild(field('Flow', flowSelect))
+
+    if (items.some((i) => i.kind === 'run' && i.flowAssumed)) {
+      body.appendChild(el('div', { class: 'hint warn', style: { gridColumn: '1 / -1' } },
+        'Direction guessed from the order this was drawn in — about half of those come out backwards. ',
+        el('button', {
+          style: { marginTop: '4px' },
+          onclick: () => applyToAll((item) => { if (item.kind === 'run') delete item.flowAssumed }),
+        }, 'It is right'),
+        ' ',
+        el('button', {
+          onclick: () => applyToAll((item) => {
+            if (item.kind !== 'run') return
+            item.flow = item.flow === 'reverse' ? 'forward' : 'reverse'
+            delete item.flowAssumed
+          }),
+        }, 'Flip it'),
+      ))
+    }
 
     if (!many && first.kind === 'run') {
       body.appendChild(field('Fall / slope', textInput(first.slope ?? '', (v) => applyToAll((item) => {

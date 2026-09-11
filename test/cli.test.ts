@@ -83,8 +83,23 @@ test('check finds what the parser would quietly forgive', async () => {
   assert.ok(rules.includes('duplicate-id'))
   assert.ok(rules.includes('unknown-system'))
   assert.ok(rules.includes('off-page'), 'coordinates far off the page are flagged')
-  assert.ok(rules.includes('drain-no-fall'))
+  assert.ok(rules.includes('no-direction'), 'a drain with no fall direction is flagged')
   assert.equal(code, 1, 'errors exit non-zero so CI can use it')
+})
+
+test('an assumed direction is reported once, not once per run', async () => {
+  const { dir, file } = await fixture()
+  const project = JSON.parse(readFileSync(join(dir, file), 'utf8'))
+  for (const item of project.sheets[0].items) {
+    if (item.kind === 'run') { item.flow = 'forward'; item.flowAssumed = true }
+  }
+  writeFileSync(join(dir, file), JSON.stringify(project))
+
+  const result = JSON.parse(warren(['check', file, '--json'], dir).out)
+  const assumed = result.findings.filter((f: { rule: string }) => f.rule === 'direction-assumed')
+  assert.equal(assumed.length, 1, 'one finding however many runs are assumed')
+  assert.equal(result.assumedDirection.length, 2, 'but every one of them is listed for a fixer')
+  assert.equal(result.findings.some((f: { rule: string }) => f.rule === 'no-direction'), false)
 })
 
 test('check refuses a non-potable cross-connection', async () => {

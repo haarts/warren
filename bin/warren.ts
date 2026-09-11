@@ -341,8 +341,9 @@ async function cmdCheck(args: Args): Promise<void> {
       if (item.kind === 'run' && !item.size && args.flags.strict) {
         add('warning', 'no-size', where, 'no size or spec, so it cannot be ordered from')
       }
-      if (item.kind === 'run' && store.system(item.systemId).category === 'drain' && item.flow === 'none') {
-        add('warning', 'drain-no-fall', where, 'a drainage run with no flow direction: which way does it fall?')
+      if (item.kind === 'run' && store.system(item.systemId).assumeFlow && item.flow === 'none') {
+        add('warning', 'no-direction', where,
+          `a ${store.system(item.systemId).name} run with no direction: which way does it fall or blow?`)
       }
     }
 
@@ -365,8 +366,21 @@ async function cmdCheck(args: Args): Promise<void> {
     }
   }
 
+  // Reported once rather than per run: every new run of a directional system starts assumed,
+  // so one finding per item would drown everything else.
+  const assumed = project.sheets.flatMap((sheet) =>
+    sheet.items.filter((i) => i.kind === 'run' && i.flowAssumed).map((i) => `${sheet.name}/${i.id}`))
+  if (assumed.length) {
+    add('warning', 'direction-assumed', `${assumed.length} run${assumed.length === 1 ? '' : 's'}`,
+      'direction was guessed from the order they were drawn in and nobody has confirmed it — check these before anyone builds from the sheet')
+  }
+
   if (args.flags.json) {
-    console.log(JSON.stringify({ findings, errors: findings.filter((f) => f.level === 'error').length }, null, 2))
+    console.log(JSON.stringify({
+      findings,
+      errors: findings.filter((f) => f.level === 'error').length,
+      assumedDirection: assumed,
+    }, null, 2))
   } else if (findings.length === 0) {
     console.log('no findings')
   } else {

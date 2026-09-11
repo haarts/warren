@@ -94,6 +94,19 @@ test('the common electrical specs are the ones an electrician expects', () => {
   assert.ok(by('power.earth')?.sizes?.includes('16mm²'), 'main earthing conductor')
 })
 
+test('only systems with a physical direction guess one', () => {
+  const systems = defaultSystems()
+  const assumes = (id: string): boolean => systems.find((s) => s.id === id)?.assumeFlow === true
+  // Things that fall, are pumped or are blown.
+  for (const id of ['drain.soil', 'drain.waste', 'drain.rain', 'reuse.overflow', 'air.supply', 'heat.flow', 'water.circ']) {
+    assert.equal(assumes(id), true, `${id} should guess a direction`)
+  }
+  // Things where an arrow would be noise.
+  for (const id of ['power.socket', 'power.3ph', 'data.cat6', 'water.cold', 'heat.ufh', 'struct.shaft']) {
+    assert.equal(assumes(id), false, `${id} should not sprout arrows`)
+  }
+})
+
 test('missingDefaults reports the gap without resurrecting deletions', () => {
   const full = defaultSystems()
   assert.deepEqual(missingDefaults(full), [], 'a complete catalogue has no gap')

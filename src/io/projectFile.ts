@@ -43,15 +43,11 @@ export function serialize(project: Project, opts: SerializeOptions = {}): string
 // Hand-rolled and forgiving on purpose: a file you wrote 18 months ago should still open
 // even if the app has moved on. Unknown fields survive; broken ones fall back to defaults.
 
-/** Seed size lists, by system id, built once per session. */
-let seedSizeCache: Map<string, string[]> | null = null
-function seedSizes(id: string): string[] | undefined {
-  if (!seedSizeCache) {
-    seedSizeCache = new Map(
-      defaultSystems().flatMap((s) => (s.sizes?.length ? [[s.id, s.sizes] as [string, string[]]] : [])),
-    )
-  }
-  return seedSizeCache.get(id)
+/** The seeded catalogue by id, built once per session, for filling in fields a file predates. */
+let seedCache: Map<string, System> | null = null
+function seedSystem(id: string): System | undefined {
+  if (!seedCache) seedCache = new Map(defaultSystems().map((s) => [s.id, s]))
+  return seedCache.get(id)
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null
@@ -93,6 +89,7 @@ function asItem(raw: unknown, index: number): Item | null {
       points: pts,
       flow: raw.flow === 'forward' || raw.flow === 'reverse' ? raw.flow : 'none',
     }
+    if (raw.flowAssumed === true && run.flow !== 'none') run.flowAssumed = true
     if (typeof raw.size === 'string') run.size = raw.size
     if (typeof raw.slope === 'string') run.slope = raw.slope
     if (typeof raw.extraM === 'number' && isFinite(raw.extraM)) run.extraM = raw.extraM
@@ -144,7 +141,7 @@ function asSystem(raw: unknown, index: number): System | null {
   } else {
     // No `sizes` key at all: the file predates the field. Adopt the seed list for this system.
     // Purely additive - nothing drawn changes, and a default the user picked stays the default.
-    const seed = seedSizes(id)
+    const seed = seedSystem(id)?.sizes
     if (seed) {
       system.sizes = system.defaultSize && !seed.includes(system.defaultSize)
         ? [system.defaultSize, ...seed]
@@ -152,6 +149,10 @@ function asSystem(raw: unknown, index: number): System | null {
       if (!system.defaultSize) system.defaultSize = system.sizes[0]
     }
   }
+  // Same story as sizes: absent means the file predates the field, so take the seed's answer.
+  // An explicit false is a decision, and is left alone.
+  if (typeof raw.assumeFlow === 'boolean') system.assumeFlow = raw.assumeFlow
+  else if (seedSystem(id)?.assumeFlow) system.assumeFlow = true
   if (typeof raw.tag === 'string') system.tag = raw.tag
   return system
 }
