@@ -5,10 +5,13 @@ import {
   type MarkerSymbol,
 } from '../model/types.ts'
 import { computeTakeoff } from '../takeoff.ts'
+import { countBySeverity, runChecks, type Finding, type Severity } from '../check.ts'
+import { missingAssetIds } from '../model/assets.ts'
+import { buildGraph, connectionsOf, networkOf } from '../topology.ts'
 import { formatMetres } from '../units.ts'
 import { clear, el, field, swatch } from './dom.ts'
 
-type TabId = 'properties' | 'layers' | 'takeoff'
+type TabId = 'properties' | 'layers' | 'takeoff' | 'check'
 let activeTab: TabId = 'properties'
 let takeoffScope: 'sheet' | 'project' = 'sheet'
 
@@ -22,6 +25,7 @@ export function buildPanel(app: App, host: HTMLElement): void {
     { id: 'properties', label: 'Properties' },
     { id: 'layers', label: 'Layers' },
     { id: 'takeoff', label: 'Takeoff' },
+    { id: 'check', label: 'Check' },
   ]
   for (const tab of tabDefs) {
     tabs.appendChild(el('button', {
@@ -34,7 +38,8 @@ export function buildPanel(app: App, host: HTMLElement): void {
 
   if (activeTab === 'properties') buildProperties(app, body)
   else if (activeTab === 'layers') buildLayers(app, body)
-  else buildTakeoff(app, body)
+  else if (activeTab === 'takeoff') buildTakeoff(app, body)
+  else buildCheck(app, body)
 
   body.scrollTop = scrollTop
 }
@@ -212,6 +217,28 @@ function buildProperties(app: App, body: HTMLElement): void {
         body.appendChild(field('Plan length', el('div', {}, formatMetres(length * mmPerPoint, 2))))
       }
       body.appendChild(field('Corners', el('div', {}, String(first.points.length))))
+
+      // What this is joined to, derived from where the ends actually land. Stated as fact,
+      // not as a complaint - plenty of drawings are half-finished on purpose.
+      const graph = buildGraph(sheet)
+      const joined = connectionsOf(graph, first.id)
+      const network = networkOf(graph, first.id)
+      const loose = graph.freeEnds.filter((f) => f.itemId === first.id).length
+      body.appendChild(field('Joined to', el('div', {},
+        joined.length === 0 ? 'nothing yet' : `${joined.length} item${joined.length === 1 ? '' : 's'}`,
+        loose > 0 ? el('span', { style: { color: 'var(--ink-soft)' } }, `, ${loose} loose end${loose === 1 ? '' : 's'}`) : null,
+      )))
+      if (network && network.items.length > 1) {
+        body.appendChild(field('Network', el('button', {
+          onclick: () => {
+            store.selection.clear()
+            for (const id of network.items) store.selection.add(id)
+            store.touch(false)
+            editor.zoomToSelection()
+            app.refresh()
+          },
+        }, `Select all ${network.items.length} joined`)))
+      }
     }
   }
 
@@ -516,6 +543,70 @@ function buildTakeoff(app: App, body: HTMLElement): void {
     style: { marginTop: '8px' },
     onclick: () => copyTakeoffCsv(app, result.rows),
   }, 'Copy as CSV'))
+}
+
+// ------------------------------------------------------------------------------- check
+
+const SEVERITY_STYLE: Record<Severity, { label: string; color: string }> = {
+  error: { label: 'worth fixing', color: 'var(--danger)' },
+  warning: { label: 'worth a look', color: 'var(--warn)' },
+  note: { label: 'just so you know', color: 'var(--ink-soft)' },
+}
+
+function buildCheck(app: App, body: HTMLElement): void {
+  const { store, editor } = app
+  body.appendChild(el('div', { class: 'hint' },
+    'A second pair of eyes, not a set of rules. Nothing here runs unless you open this tab, '
+    + 'nothing is stopping you drawing, and a half-finished drawing is allowed to look half-finished.'))
+
+  const findings = runChecks(store, { missingAssets: missingAssetIds(store.project.assets) })
+  const counts = countBySeverity(findings)
+  if (findings.length === 0) {
+    body.appendChild(el('div', { class: 'hint', style: { color: 'var(--ok)' } }, 'Nothing to report.'))
+    return
+  }
+
+  body.appendChild(el('div', { class: 'hint' },
+    `${counts.error} worth fixing · ${counts.warning} worth a look · ${counts.note} just so you know`))
+
+  for (const severity of ['error', 'warning', 'note'] as Severity[]) {
+    const group = findings.filter((f) => f.severity === severity)
+    if (group.length === 0) continue
+    body.appendChild(el('div', { class: 'section-title' }, SEVERITY_STYLE[severity].label))
+    for (const finding of group) body.appendChild(findingRow(app, finding))
+  }
+
+  body.appendChild(el('div', { class: 'hint', style: { marginTop: '10px' } },
+    'The same rules run from a terminal with ', el('code', {}, 'warren check'), '.'))
+  void editor
+}
+
+function findingRow(app: App, finding: Finding): HTMLElement {
+  const { store, editor } = app
+  const canShow = finding.itemIds.length > 0
+  const row = el('div', {
+    class: 'layer-row',
+    style: { alignItems: 'flex-start', cursor: canShow ? 'pointer' : 'default', padding: '5px 7px' },
+    title: canShow ? 'Show me' : '',
+    onclick: () => {
+      if (!canShow) return
+      if (finding.sheetId && finding.sheetId !== store.project.activeSheetId) {
+        store.setActiveSheet(finding.sheetId)
+        editor.invalidateBackground()
+      }
+      store.selection.clear()
+      for (const id of finding.itemIds) if (store.item(id)) store.selection.add(id)
+      store.touch(false)
+      editor.zoomToSelection()
+      app.refresh()
+    },
+  },
+    el('div', { style: { flex: '1', lineHeight: '1.4' } },
+      el('div', {}, finding.message),
+      el('div', { style: { color: 'var(--ink-soft)', fontSize: '11px' } }, `${finding.rule} · ${finding.where}`),
+    ),
+  )
+  return row
 }
 
 function copyTakeoffCsv(app: App, rows: ReturnType<typeof computeTakeoff>['rows']): void {

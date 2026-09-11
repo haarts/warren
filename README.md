@@ -176,6 +176,41 @@ There is also a 30-second autosave to IndexedDB, but that is a **crash net, not 
 Browser storage gets cleared by updates and cleanup tools, and does not follow you to another
 machine. Save to a file.
 
+## Connections
+
+Nothing records what is joined to what — it is read from the drawing. Endpoints snap while you
+draw, so runs that meet already share a coordinate, and storing a second editable copy of that
+fact would only give it a way to disagree with the picture.
+
+The tolerance is deliberately tiny (5 mm of real world). Measured on a real drawing, genuinely
+connected endpoints sit at *exactly* the same coordinate and the next nearest pair is 35 mm
+away — so a generous tolerance does not find more connections, it invents them. Two things that
+look joined but are not will show up as loose ends, which is the honest answer: they are not
+joined.
+
+Select a run and Properties tells you what it is joined to, how many loose ends it has, and
+offers **Select all n joined** — the quick way to grab a whole circuit or a whole drain line and
+move it. A branch landing part way along a main is recorded as a *tee* rather than a joint,
+because the difference matters.
+
+## Checks
+
+Behind the **Check** tab, and nowhere else. It runs when you open it and not before: nothing
+badges you, nothing blocks a tool, and a half-finished drawing is allowed to look half-finished.
+Findings are grouped as *worth fixing*, *worth a look* and *just so you know*, and clicking one
+selects and zooms to what it is about.
+
+The rigour is aimed at whatever writes to the file without looking at it. `warren check` runs
+the same rules from a terminal and exits non-zero on errors, so it can sit in CI or in front of
+an agent. The parser is forgiving by design — it repairs damage so a file you wrote 18 months
+ago still opens — and that is right for a person and dangerous for a machine, so `check` fails
+where the parser forgives: a run with one vertex, coordinates in millimetres where points
+belong, a system id that does not exist.
+
+One rule is an error rather than a suggestion: **non-potable water may never reach drinking
+water**. That is derived from the geometry, so it holds whether or not anyone remembered to
+label anything.
+
 ## The `warren` command
 
 Everything the app computes is available from a terminal, running the same modules — so a
@@ -187,6 +222,8 @@ warren summary house.warren.json            # sheets, scale, counts, total metre
 warren items   house.warren.json --system 'power.*' --level wall
 warren takeoff house.warren.json --csv
 warren check   house.warren.json --strict   # exits 1 on errors, so CI can use it
+warren graph   house.warren.json            # derived networks, junctions, loose ends
+warren trace   house.warren.json --id run_x # what one run is joined to, and what it reaches
 warren split   house.warren.json            # move the PDF out beside the file
 warren bundle  house.warren.json            # one self-contained file
 warren apply   house.warren.json ops.json   # validated batch edits
@@ -237,6 +274,8 @@ drawing you can read.
 bin/warren.ts      the command line, over the same modules the app runs on
 src/
   geom.ts          pure geometry (distances, ortho snap, polyline walking)
+  topology.ts      what is joined to what, read from the geometry
+  check.ts         the rules, shared by the Check tab and `warren check`
   takeoff.ts       metres per system
   units.ts         metric formatting
   model/           types, the systems catalogue, the document store + undo

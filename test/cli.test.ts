@@ -98,7 +98,7 @@ test('an assumed direction is reported once, not once per run', async () => {
   const result = JSON.parse(warren(['check', file, '--json'], dir).out)
   const assumed = result.findings.filter((f: { rule: string }) => f.rule === 'direction-assumed')
   assert.equal(assumed.length, 1, 'one finding however many runs are assumed')
-  assert.equal(result.assumedDirection.length, 2, 'but every one of them is listed for a fixer')
+  assert.equal(assumed[0].itemIds.length, 2, 'but every one of them is listed, so a fixer can work through them')
   assert.equal(result.findings.some((f: { rule: string }) => f.rule === 'no-direction'), false)
 })
 
@@ -113,7 +113,8 @@ test('check refuses a non-potable cross-connection', async () => {
   const findings = JSON.parse(warren(['check', file, '--json'], dir).out).findings
   const cross = findings.find((f: { rule: string }) => f.rule === 'cross-connection')
   assert.ok(cross, 'non-potable sharing an endpoint with drinking water is an error')
-  assert.equal(cross.level, 'error')
+  assert.equal(cross.severity, 'error')
+  assert.ok(cross.itemIds.includes('rain') && cross.itemIds.includes('r1'), 'names both sides')
 })
 
 test('apply validates the whole batch before writing any of it', async () => {

@@ -336,6 +336,90 @@ try {
   }, runId)
   await page.keyboard.press('Escape')
 
+  // --- connections are derived, and checks stay behind a tab you open --------------------------
+  // This section zooms around, and later checks click fixed screen positions, so put the view
+  // back exactly where it was afterwards.
+  const savedCam = await page.evaluate(() => ({ x: window.warren.editor.cam.x, y: window.warren.editor.cam.y, zoom: window.warren.editor.cam.zoom }))
+  const topo = await page.evaluate(async () => {
+    const { buildGraph, connectionsOf, networkOf } = await import('/src/topology.ts')
+    const app = window.warren
+    const sheet = app.store.sheet
+    const g = buildGraph(sheet)
+    const runs = sheet.items.filter((i) => i.kind === 'run')
+    return {
+      tolerance: g.tolerance,
+      networks: g.networks.length,
+      freeEnds: g.freeEnds.length,
+      firstRunJoins: connectionsOf(g, runs[0].id).length,
+      lonely: networkOf(g, runs[0].id)?.items.length,
+    }
+  })
+  check('drawn-apart runs are read as separate networks, not one merged blob',
+    topo.networks >= 2 && topo.freeEnds > 0 && topo.tolerance < 1,
+    `${topo.networks} networks, ${topo.freeEnds} free ends, tol ${topo.tolerance.toFixed(2)} pt`)
+
+  // Draw one run that deliberately starts exactly where another ends.
+  const joinPoint = await page.evaluate(() => {
+    const app = window.warren
+    const run = app.store.items().find((i) => i.kind === 'run')
+    const p = run.points[run.points.length - 1]
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    return { x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y), id: run.id }
+  })
+  await page.keyboard.press('l')
+  await page.mouse.move(joinPoint.x, joinPoint.y)
+  await page.mouse.click(joinPoint.x, joinPoint.y)
+  await page.mouse.move(joinPoint.x + 90, joinPoint.y + 60)
+  await page.mouse.click(joinPoint.x + 90, joinPoint.y + 60)
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('v')
+
+  const joined = await page.evaluate(async (id) => {
+    const { buildGraph, connectionsOf, networkOf } = await import('/src/topology.ts')
+    const g = buildGraph(window.warren.store.sheet)
+    return { joins: connectionsOf(g, id).length, network: networkOf(g, id)?.items.length }
+  }, joinPoint.id)
+  check('snapping to an end makes a real connection', joined.joins >= 1 && joined.network >= 2,
+    `${joined.joins} joined, network of ${joined.network}`)
+
+  // Properties offers it as navigation, not as a complaint.
+  const netButton = await page.evaluate(async (id) => {
+    const app = window.warren
+    app.store.selection.clear()
+    app.store.selection.add(id)
+    app.store.touch(false)
+    app.refresh()
+    await new Promise((r) => setTimeout(r, 140))
+    const btn = [...document.querySelectorAll('.tab-body button')].find((b) => /Select all \d+ joined/.test(b.textContent))
+    const label = btn?.textContent ?? ''
+    btn?.click()
+    await new Promise((r) => setTimeout(r, 80))
+    return { label, selected: app.store.selection.size }
+  }, joinPoint.id)
+  check('Properties can select the whole connected network', netButton.selected >= 2, netButton.label)
+  await page.keyboard.press('Escape')
+
+  const checkTab = await page.evaluate(async () => {
+    const tabs = [...document.querySelectorAll('#panel .tabs button')].map((b) => b.textContent)
+    const before = document.querySelector('.tab-body')?.textContent ?? ''
+    ;[...document.querySelectorAll('#panel .tabs button')].find((b) => b.textContent === 'Check').click()
+    await new Promise((r) => setTimeout(r, 200))
+    const after = document.querySelector('.tab-body')?.textContent ?? ''
+    ;[...document.querySelectorAll('#panel .tabs button')].find((b) => b.textContent === 'Properties').click()
+    return { tabs, mentionedBefore: /second pair of eyes/.test(before), after }
+  })
+  check('checks live behind a tab and say nothing until opened',
+    checkTab.tabs.includes('Check') && !checkTab.mentionedBefore && /second pair of eyes/.test(checkTab.after),
+    checkTab.tabs.join('/'))
+  check('the Check tab is worded as help, not as a telling-off',
+    /not a set of rules/.test(checkTab.after) && !/error|invalid|must/i.test(checkTab.after.slice(0, 220)))
+
+  await page.evaluate((cam) => {
+    Object.assign(window.warren.editor.cam, cam)
+    window.warren.editor.requestRender()
+  }, savedCam)
+  await new Promise((r) => setTimeout(r, 120))
+
   // --- naming the project -------------------------------------------------------------------
   const projectName = () => page.evaluate(() => window.warren.store.project.name)
   check('a new project starts as Untitled', (await projectName()) === 'Untitled')
@@ -495,7 +579,7 @@ try {
     app.duplicateSelectionToSheet(second)
     return app.store.project.sheets[1].items.length
   })
-  check('copy-to-sheet duplicates at the same coordinates', copied === 6, `${copied} items`)
+  check('copy-to-sheet duplicates at the same coordinates', copied === 7, `${copied} items`)
 
   // --- autosave round trip through IndexedDB -------------------------------------------------------------
   const autosave = await page.evaluate(async () => {
@@ -514,7 +598,7 @@ try {
     }
   })
   check('autosave survives a round trip through IndexedDB',
-    autosave.items === 6 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
+    autosave.items === 7 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
     JSON.stringify(autosave))
 
   // --- a recovery copy written before the rename is still found --------------------------------

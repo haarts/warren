@@ -17,6 +17,8 @@ import { Store } from '../src/model/doc.ts'
 import { newId } from '../src/model/ids.ts'
 import { LEVELS, type Item, type Level, type Project, type Sheet } from '../src/model/types.ts'
 import { computeTakeoff } from '../src/takeoff.ts'
+import { countBySeverity, runChecks } from '../src/check.ts'
+import { buildGraph, connectionsOf, networkOf } from '../src/topology.ts'
 
 // ---------------------------------------------------------------------------- arguments
 
@@ -280,117 +282,94 @@ async function cmdTakeoff(args: Args): Promise<void> {
 
 // ------------------------------------------------------------------------------- check
 
-interface Finding { level: 'error' | 'warning'; rule: string; where: string; message: string }
-
 /**
- * The parser is deliberately forgiving so an old file still opens. That is right for a person
- * and dangerous for a machine: a run written with one vertex, or coordinates in millimetres,
- * gets quietly repaired into something plausible and wrong. This fails where the parser
- * forgives.
+ * The rules live in src/check.ts so the app and this tool cannot drift apart on what counts as
+ * a problem. Nothing runs unless you type `check`.
  */
 async function cmdCheck(args: Args): Promise<void> {
-  const { project, store, missingAssets, path } = await load(args)
-  const findings: Finding[] = []
-  const add = (level: Finding['level'], rule: string, where: string, message: string): void => {
-    findings.push({ level, rule, where, message })
-  }
-
-  const systemIds = new Set(project.systems.map((s) => s.id))
-  const seenIds = new Set<string>()
-
-  for (const id of missingAssets) {
-    add('warning', 'asset-missing', basename(path),
-      `the plan PDF "${project.assets[id]?.name}" is not beside this file; drawings render without it`)
-  }
-
-  for (const sheet of project.sheets) {
-    if (sheet.mmPerPoint === null && sheet.items.some((i) => i.kind === 'run')) {
-      add('warning', 'uncalibrated', sheet.name, 'runs are drawn but the sheet has no scale, so no length is knowable')
-    }
-    if (sheet.pdf && !project.assets[sheet.pdf.assetId]) {
-      add('error', 'asset-dangling', sheet.name, `refers to asset ${sheet.pdf.assetId.slice(0, 8)} which the file does not list`)
-    }
-
-    const page = sheet.pdf
-    for (const item of sheet.items) {
-      const where = `${sheet.name}/${item.id}`
-      if (seenIds.has(item.id)) add('error', 'duplicate-id', where, 'two items share this id')
-      seenIds.add(item.id)
-      if (!systemIds.has(item.systemId)) {
-        add('error', 'unknown-system', where, `systemId "${item.systemId}" is not in this project's catalogue`)
-      }
-      if (!LEVELS.includes(item.level)) add('error', 'unknown-level', where, `level "${item.level}" is not a level`)
-
-      const coords: Pt[] = item.kind === 'run' ? item.points : [{ x: item.x, y: item.y }]
-      if (item.kind === 'run' && item.points.length < 2) {
-        add('error', 'run-too-short', where, `a run needs two points, this has ${item.points.length}`)
-      }
-      if (coords.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y))) {
-        add('error', 'bad-coordinate', where, 'has a coordinate that is not a finite number')
-      }
-      if (page) {
-        // Coordinates are PDF points. A value far off the page usually means metres or
-        // millimetres were written where points were expected.
-        const margin = Math.max(page.widthPt, page.heightPt)
-        const off = coords.some((p) => p.x < -margin || p.y < -margin || p.x > page.widthPt + margin || p.y > page.heightPt + margin)
-        if (off) {
-          add('warning', 'off-page', where,
-            `sits far outside the ${Math.round(page.widthPt)}×${Math.round(page.heightPt)} pt page — are these points, or did millimetres get written here?`)
-        }
-      }
-      if (item.kind === 'run' && !item.size && args.flags.strict) {
-        add('warning', 'no-size', where, 'no size or spec, so it cannot be ordered from')
-      }
-      if (item.kind === 'run' && store.system(item.systemId).assumeFlow && item.flow === 'none') {
-        add('warning', 'no-direction', where,
-          `a ${store.system(item.systemId).name} run with no direction: which way does it fall or blow?`)
-      }
-    }
-
-    // The one rule worth enforcing before anything else: potable and non-potable water must
-    // never be able to meet.
-    const endpoints = (i: Item): Pt[] => (i.kind === 'run' ? [i.points[0], i.points[i.points.length - 1]] : [{ x: i.x, y: i.y }])
-    const potable = sheet.items.filter((i) => store.system(i.systemId).category === 'water')
-    const nonPotable = sheet.items.filter((i) => store.system(i.systemId).tag === 'NON-POTABLE')
-    for (const a of nonPotable) {
-      for (const b of potable) {
-        for (const pa of endpoints(a)) {
-          for (const pb of endpoints(b)) {
-            if (Math.hypot(pa.x - pb.x, pa.y - pb.y) < 0.5) {
-              add('error', 'cross-connection', `${sheet.name}/${a.id}`,
-                `touches drinking water (${b.id}, ${store.system(b.systemId).name}) — non-potable must never cross-connect`)
-            }
-          }
-        }
-      }
-    }
-  }
-
-  // Reported once rather than per run: every new run of a directional system starts assumed,
-  // so one finding per item would drown everything else.
-  const assumed = project.sheets.flatMap((sheet) =>
-    sheet.items.filter((i) => i.kind === 'run' && i.flowAssumed).map((i) => `${sheet.name}/${i.id}`))
-  if (assumed.length) {
-    add('warning', 'direction-assumed', `${assumed.length} run${assumed.length === 1 ? '' : 's'}`,
-      'direction was guessed from the order they were drawn in and nobody has confirmed it — check these before anyone builds from the sheet')
-  }
+  const { store, missingAssets } = await load(args)
+  const findings = runChecks(store, { strict: args.flags.strict === true, missingAssets })
+  const counts = countBySeverity(findings)
 
   if (args.flags.json) {
-    console.log(JSON.stringify({
-      findings,
-      errors: findings.filter((f) => f.level === 'error').length,
-      assumedDirection: assumed,
-    }, null, 2))
+    console.log(JSON.stringify({ findings, ...counts }, null, 2))
   } else if (findings.length === 0) {
-    console.log('no findings')
+    console.log('nothing to report')
   } else {
     for (const f of findings) {
-      console.log(`${f.level === 'error' ? 'error  ' : 'warning'} ${f.rule.padEnd(18)} ${f.where.padEnd(34)} ${f.message}`)
+      console.log(`${f.severity.padEnd(7)} ${f.rule.padEnd(18)} ${f.where.padEnd(34)} ${f.message}`)
     }
-    const errors = findings.filter((f) => f.level === 'error').length
-    console.log(`${findings.length} finding${findings.length === 1 ? '' : 's'}, ${errors} error${errors === 1 ? '' : 's'}`)
+    console.log(`${counts.error} error(s), ${counts.warning} warning(s), ${counts.note} note(s)`)
   }
-  if (findings.some((f) => f.level === 'error')) process.exit(1)
+  if (counts.error > 0) process.exit(1)
+}
+
+// ---------------------------------------------------------------------------- topology
+
+async function cmdGraph(args: Args): Promise<void> {
+  const { project, store } = await load(args)
+  const sheets = sheetOf(project, args.flags.sheet)
+  const out = sheets.map((sheet) => {
+    const graph = buildGraph(sheet)
+    const name = (id: string): string => {
+      const item = sheet.items.find((i) => i.id === id)
+      return item ? store.system(item.systemId).name : id
+    }
+    return {
+      sheet: sheet.name,
+      toleranceMm: sheet.mmPerPoint ? round(graph.tolerance * sheet.mmPerPoint, 1) : null,
+      networks: graph.networks.map((n) => ({
+        items: n.items,
+        systems: [...new Set(n.items.map(name))],
+        hasEquipment: n.hasEquipment,
+      })),
+      junctions: graph.junctions.map((j) => ({ atM: pointAtM(sheet, j.at), items: j.items })),
+      freeEnds: graph.freeEnds.map((f) => ({ itemId: f.itemId, end: f.end, atM: pointAtM(sheet, f.at) })),
+    }
+  })
+
+  if (args.flags.json) return void console.log(JSON.stringify(out, null, 2))
+  for (const sheet of out) {
+    console.log(`${sheet.sheet}  (things within ${sheet.toleranceMm ?? '—'} mm count as joined)`)
+    for (const n of sheet.networks.filter((x) => x.items.length > 1)) {
+      console.log(`  ${String(n.items.length).padStart(3)} joined: ${n.systems.join(' + ')}${n.hasEquipment ? '' : '  (no equipment)'}`)
+    }
+    console.log(`  ${sheet.junctions.length} junctions, ${sheet.freeEnds.length} free ends`)
+  }
+}
+
+async function cmdTrace(args: Args): Promise<void> {
+  const { project, store } = await load(args)
+  const id = typeof args.flags.id === 'string' ? args.flags.id : args.positional[1]
+  if (!id) fail('which item? usage: warren trace <file> --id <item id>')
+
+  for (const sheet of project.sheets) {
+    const item = sheet.items.find((i) => i.id === id)
+    if (!item) continue
+    store.setActiveSheet(sheet.id)
+    const graph = buildGraph(sheet)
+    const network = networkOf(graph, id)
+    const describe = (other: string): string => {
+      const o = sheet.items.find((i) => i.id === other)
+      return o ? `${o.id} (${o.kind}, ${store.system(o.systemId).name})` : other
+    }
+    const data = {
+      item: reportItem(store, sheet, item),
+      connections: connectionsOf(graph, id).map((c) => ({
+        itemId: c.otherId, how: c.how, atM: pointAtM(sheet, c.at), what: describe(c.otherId),
+      })),
+      freeEnds: graph.freeEnds.filter((f) => f.itemId === id).map((f) => ({ end: f.end, atM: pointAtM(sheet, f.at) })),
+      network: network ? { size: network.items.length, items: network.items, hasEquipment: network.hasEquipment } : null,
+    }
+    if (args.flags.json) return void console.log(JSON.stringify(data, null, 2))
+    console.log(`${id} — ${data.item.system} on ${sheet.name}`)
+    if (data.connections.length === 0) console.log('  joined to nothing')
+    for (const c of data.connections) console.log(`  ${c.how.padEnd(11)} ${c.what} @ ${c.atM?.join(',')} m`)
+    for (const f of data.freeEnds) console.log(`  free ${f.end.padEnd(6)} @ ${f.atM?.join(',')} m`)
+    if (network) console.log(`  in a network of ${network.items.length}${network.hasEquipment ? '' : ', reaching no equipment'}`)
+    return
+  }
+  fail(`no item with id "${id}"`)
 }
 
 // ----------------------------------------------------------------------- split / bundle
@@ -588,7 +567,9 @@ const HELP = `warren — read and edit a Warren project from the command line
   warren summary <file>                      what is in this project
   warren items   <file> [filters]            list items, with real-world positions
   warren takeoff <file> [--scope sheet]      metres per system
-  warren check   <file> [--strict]           validate; exits 1 on errors
+  warren check   <file> [--strict]           a second pair of eyes; exits 1 on errors
+  warren graph   <file>                      derived connections: networks, junctions, free ends
+  warren trace   <file> --id <item>          what one item is joined to, and what it reaches
   warren split   <file>                      move the PDF out beside the file
   warren bundle  <file> [--out X]            write one self-contained file
   warren apply   <file> <ops.json>           apply validated edits
@@ -606,6 +587,8 @@ const commands: Record<string, (a: Args) => Promise<void>> = {
   items: cmdItems,
   takeoff: cmdTakeoff,
   check: cmdCheck,
+  graph: cmdGraph,
+  trace: cmdTrace,
   split: cmdSplit,
   bundle: cmdBundle,
   apply: cmdApply,
