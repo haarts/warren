@@ -426,6 +426,9 @@ function drawMarker(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, ma
   const p = cam.toScreen(marker)
   const r = MARKER_RADIUS * ui
   ctx.save()
+  // Faint means a rule put it there and nobody has looked yet - the same language as an
+  // assumed flow direction.
+  if (marker.generated) ctx.globalAlpha = 0.5
   ctx.translate(p.x, p.y)
   ctx.setLineDash([])
   ctx.lineWidth = 1.8 * ui

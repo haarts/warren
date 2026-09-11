@@ -8,6 +8,7 @@ import {
 
 /** Move any item by a delta, whatever shape it is made of. */
 function shiftItem(item: Item, dx: number, dy: number): void {
+  adopt(item)
   const points = pointsOf(item)
   if (points) (item as { points: Pt[] }).points = points.map((p) => ({ x: p.x + dx, y: p.y + dy }))
   else if (isPositioned(item)) { item.x += dx; item.y += dy }
@@ -16,6 +17,7 @@ import { Background } from '../render/background.ts'
 import { Camera } from '../render/camera.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { drawScene, itemBounds, type Overlay } from '../render/scene.ts'
+import { adopt } from '../generate.ts'
 import { formatMetres } from '../units.ts'
 import { hitBoxCorner, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { resolvePoint } from './snap.ts'
@@ -348,6 +350,7 @@ export class Editor {
         for (const [id, original] of this.drag.originals) {
           const live = this.store.item(id)
           if (!live) continue
+          adopt(live)
           const from = pointsOf(original)
           const live2 = pointsOf(live)
           if (from && live2) {

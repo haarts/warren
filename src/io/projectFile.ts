@@ -5,7 +5,7 @@ import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
   ROOM_USES,
-  type DoorItem, type Item, type Level, type MarkerSymbol, type Project, type RoomItem,
+  type DoorItem, type Item, type Level, type MarkerItem, type MarkerSymbol, type Project, type RoomItem,
   type RoomUse, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
@@ -102,7 +102,11 @@ function asItem(raw: unknown, index: number): Item | null {
   }
   if (raw.kind === 'marker') {
     const symbol = MARKER_SYMBOLS.includes(raw.symbol as MarkerSymbol) ? (raw.symbol as MarkerSymbol) : 'note'
-    return { ...common, kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }
+    const item: MarkerItem = { ...common, kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }
+    if (isObj(raw.generated) && typeof raw.generated.rule === 'string' && typeof raw.generated.from === 'string') {
+      item.generated = { rule: raw.generated.rule, from: raw.generated.from }
+    }
+    return item
   }
   if (raw.kind === 'room') {
     const pts = Array.isArray(raw.points)
@@ -253,9 +257,14 @@ export function parseProject(text: string): Project {
 
   const activeSheetId = sheets.some((s) => s.id === raw.activeSheetId) ? String(raw.activeSheetId) : sheets[0].id
 
+  const rules = Array.isArray(raw.rules)
+    ? (raw.rules.filter(isObj) as unknown as Project['rules'])
+    : undefined
+
   return {
     version: 1,
     name: str(raw.name, 'Untitled'),
+    ...(rules?.length ? { rules } : {}),
     systems: systems.length > 0 ? systems : defaultSystems(),
     sheets,
     assets,

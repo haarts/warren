@@ -2,6 +2,7 @@ import type { App } from '../app.ts'
 import { canvasToBlob, downloadBlob, renderSheetImage } from '../io/exportImage.ts'
 import { openPrintView } from '../io/print.ts'
 import { CATEGORIES, CATEGORY_LABELS, type Category } from '../model/types.ts'
+import { applyGenerated, generate, rulesOf } from '../generate.ts'
 import { el } from './dom.ts'
 import { alertDialog, openModal } from './modal.ts'
 
@@ -57,6 +58,63 @@ export function openExportDialog(app: App): void {
       footer: el('div', { style: { display: 'flex', gap: '8px' } },
         el('button', { onclick: close }, 'Cancel'),
         el('button', { class: 'primary', onclick: () => void run() }, 'Export'),
+      ),
+    }
+  })
+}
+
+/**
+ * Runs the placement rules over the rooms. Opt-in like everything else that has an opinion:
+ * it shows what it would do before it does it, and says what it will leave alone.
+ */
+export function openGenerateDialog(app: App): void {
+  openModal((close) => {
+    const { store } = app
+    const rules = rulesOf(store).filter((r) => r.enabled)
+    const preview = rules.map((rule) => ({ rule, result: generate(store.sheet, rule) }))
+    const total = preview.reduce((n, p) => n + p.result.create.length, 0)
+    const mine = preview.reduce((n, p) => n + p.result.adopted.length, 0)
+    const rooms = store.items().filter((i) => i.kind === 'room').length
+
+    const table = el('table', { class: 'data' })
+    table.appendChild(el('tr', {},
+      el('th', {}, 'Rule'), el('th', {}, 'Places'), el('th', { class: 'num' }, 'New'),
+      el('th', { class: 'num' }, 'Replaces'), el('th', { class: 'num' }, 'Yours'),
+    ))
+    for (const { rule, result } of preview) {
+      table.appendChild(el('tr', {},
+        el('td', {}, rule.id),
+        el('td', {}, rule.uses?.length ? rule.uses.join(', ') : 'every room'),
+        el('td', { class: 'num' }, String(result.create.length)),
+        el('td', { class: 'num' }, String(result.replace.length)),
+        el('td', { class: 'num' }, String(result.adopted.length)),
+      ))
+    }
+
+    const run = (): void => {
+      close()
+      store.mutate(() => {
+        for (const { rule } of preview) applyGenerated(store.sheet, generate(store.sheet, rule))
+      })
+      app.editor.onStatus?.(`Placed ${total} item(s) from ${preview.length} rule(s)`)
+    }
+
+    return {
+      title: 'Generate from rooms',
+      width: '520px',
+      body: el('div', {},
+        el('div', { class: 'hint' },
+          rooms === 0
+            ? 'No rooms on this sheet yet. Rules work from rooms and doors — draw them, or have something else draw them, and they become the thing rules can act on.'
+            : `${rooms} room${rooms === 1 ? '' : 's'} on this sheet. Generated items are drawn faintly; move or change one and it becomes yours, and re-running will leave it alone.`),
+        rooms > 0 ? table : null,
+        mine > 0 ? el('div', { class: 'hint' }, `${mine} item(s) you have edited will be kept as they are.`) : null,
+        el('div', { class: 'hint' },
+          'The rules are data, not code — read and replace them with ', el('code', {}, 'warren rules'), '.'),
+      ),
+      footer: el('div', { style: { display: 'flex', gap: '8px' } },
+        el('button', { onclick: close }, 'Cancel'),
+        el('button', { class: 'primary', disabled: total === 0, onclick: run }, `Place ${total} item(s)`),
       ),
     }
   })

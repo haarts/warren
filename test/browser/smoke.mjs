@@ -737,6 +737,56 @@ try {
   check('backfilling restores it into the power group',
     backfill.category === 'power' && !backfill.stillOffered, backfill.category)
 
+  // --- rules place things, and editing one protects it ------------------------------------------
+  const generated = await page.evaluate(async () => {
+    const { generate, applyGenerated, rulesOf, generatedBy } = await import('/src/generate.ts')
+    const app = window.warren
+    const sheet = app.store.sheet
+    // A room a person (or an AI) put there; the rule only supplies the arithmetic.
+    sheet.items.push({
+      kind: 'room', id: 'demo-room', systemId: 'struct.room', level: 'floor',
+      name: 'Keuken', use: 'kitchen',
+      points: [{ x: 100, y: 100 }, { x: 400, y: 100 }, { x: 400, y: 300 }, { x: 100, y: 300 }],
+    })
+    const rule = rulesOf(app.store).find((r) => r.id === 'sockets')
+    applyGenerated(sheet, generate(sheet, rule))
+    const placed = sheet.items.filter((i) => generatedBy(i)?.rule === 'sockets')
+    const first = placed[0]
+
+    // Same rule again: same result, no churn.
+    const before = placed.map((i) => `${i.id}@${i.x.toFixed(2)}`).join('|')
+    applyGenerated(sheet, generate(sheet, rule))
+    const after = sheet.items.filter((i) => generatedBy(i)?.rule === 'sockets')
+      .map((i) => `${i.id}@${i.x.toFixed(2)}`).join('|')
+
+    app.store.touch(false)
+    return { count: placed.length, idempotent: before === after, id: first.id, x: first.x }
+  })
+  check('a rule places two sockets on each wall of the room', generated.count === 8, `${generated.count} placed`)
+  check('running the same rule again changes nothing', generated.idempotent)
+
+  const protectedEdit = await page.evaluate(async (id) => {
+    const { generate, applyGenerated, rulesOf, generatedBy } = await import('/src/generate.ts')
+    const app = window.warren
+    // Drag it the way a person would, through the editor rather than by poking the model.
+    app.store.selection.clear()
+    app.store.selection.add(id)
+    app.editor.nudge(40, 0)
+    const moved = app.store.item(id)
+    const wasClaimed = generatedBy(moved) === undefined
+    const x = moved.x
+    const rule = rulesOf(app.store).find((r) => r.id === 'sockets')
+    const result = generate(app.store.sheet, rule)
+    applyGenerated(app.store.sheet, result)
+    app.store.selection.clear()
+    app.store.touch(false)
+    return { wasClaimed, keptX: app.store.item(id).x === x, leftAlone: result.adopted.length, replaced: result.replace.length }
+  }, generated.id)
+  check('moving a generated item makes it yours', protectedEdit.wasClaimed)
+  check('and re-running the rule leaves it exactly where you put it',
+    protectedEdit.keptX && protectedEdit.leftAlone === 1 && protectedEdit.replaced === 7,
+    `${protectedEdit.replaced} replaced, ${protectedEdit.leftAlone} left alone`)
+
   // --- the fallback path explains itself ------------------------------------------------------
   // Reproduce a browser without the File System Access API (Firefox, or any non-secure origin).
   const fallbackHint = await page.evaluate(async () => {

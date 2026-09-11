@@ -13,10 +13,11 @@ import { polygonArea, polygonCentroid, polylineLength, type Pt } from '../src/ge
 import { bytesToBase64, base64ToBytes, sha256Hex } from '../src/io/base64.ts'
 import { parseProject, serialize } from '../src/io/projectFile.ts'
 import { missingDefaults } from '../src/model/systems.ts'
+import { adopt, applyGenerated, generate, rulesOf } from '../src/generate.ts'
 import { assetData, registerAsset } from '../src/model/assets.ts'
 import { Store } from '../src/model/doc.ts'
 import { newId } from '../src/model/ids.ts'
-import { ROOM_USES, LEVELS, type Item, type Level, type Project, type RoomUse, type Sheet } from '../src/model/types.ts'
+import { isPositioned, pointsOf, ROOM_USES, LEVELS, type Item, type Level, type Project, type RoomUse, type Sheet } from '../src/model/types.ts'
 import { computeTakeoff } from '../src/takeoff.ts'
 import { countBySeverity, runChecks } from '../src/check.ts'
 import { buildGraph, connectionsOf, networkOf } from '../src/topology.ts'
@@ -419,6 +420,63 @@ async function cmdSystems(args: Args): Promise<void> {
   if (missing.length) console.log(`\n${missing.length} default system(s) missing: ${missing.map((s) => s.id).join(', ')} — add with --add-missing`)
 }
 
+// -------------------------------------------------------------------------- generate
+
+/**
+ * Runs the placement rules. Warren supplies the arithmetic; the rules supply the opinion, and
+ * the rooms supply the understanding — which came from a person or an AI, not from here.
+ */
+async function cmdGenerate(args: Args): Promise<void> {
+  const { project, store, path } = await load(args)
+  const rules = rulesOf(store).filter((r) => r.enabled)
+  const only = typeof args.flags.rule === 'string' ? args.flags.rule : null
+  const sheets = sheetOf(project, args.flags.sheet)
+  const report: Record<string, unknown>[] = []
+
+  for (const sheet of sheets) {
+    for (const rule of rules) {
+      if (only && rule.id !== only) continue
+      const result = generate(sheet, rule)
+      report.push({
+        sheet: sheet.name,
+        rule: rule.id,
+        wouldCreate: result.create.length,
+        replacing: result.replace.length,
+        leftAlone: result.adopted.length,
+      })
+      if (!args.flags['dry-run']) applyGenerated(sheet, result)
+    }
+  }
+
+  if (args.flags.json) return void console.log(JSON.stringify(report, null, 2))
+  for (const r of report) {
+    console.log(`${String(r.sheet).padEnd(22)} ${String(r.rule).padEnd(12)} ${String(r.wouldCreate).padStart(4)} placed, `
+      + `${String(r.replacing).padStart(3)} replaced, ${String(r.leftAlone).padStart(3)} left alone (yours)`)
+  }
+  if (args.flags['dry-run']) return void console.log('nothing written')
+  writeFileSync(path, serialize(project))
+  console.log(`written to ${basename(path)}`)
+}
+
+/** The rules themselves, so they can be read and replaced without opening the app. */
+async function cmdRules(args: Args): Promise<void> {
+  const { project, store, path } = await load(args)
+  if (typeof args.flags.set === 'string') {
+    const incoming: unknown = JSON.parse(readFileSync(args.flags.set, 'utf8'))
+    const list = Array.isArray(incoming) ? incoming : (incoming as { rules?: unknown }).rules
+    if (!Array.isArray(list)) fail('expected an array of rules, or {"rules": [...]}')
+    project.rules = list as typeof project.rules
+    writeFileSync(path, serialize(project))
+    return void console.log(`set ${list.length} rule(s)`)
+  }
+  const rules = rulesOf(store)
+  if (args.flags.json) return void console.log(JSON.stringify(rules, null, 2))
+  for (const r of rules) {
+    console.log(`${r.id.padEnd(12)} ${r.enabled ? 'on ' : 'off'} ${r.place.padEnd(16)} ${r.systemId.padEnd(16)} ${r.uses?.join(',') ?? 'any room'}`)
+  }
+  console.log(`\n${project.rules ? 'from this project' : 'built-in defaults; --set rules.json to replace them'}`)
+}
+
 // ----------------------------------------------------------------------- split / bundle
 
 async function cmdSplit(args: Args): Promise<void> {
@@ -513,7 +571,12 @@ async function cmdApply(args: Args): Promise<void> {
           return void problems.push(`${at}: level "${op.patch.level}" is not one of ${LEVELS.join(', ')}`)
         }
         describe.push(`${at}: ${Object.keys(op.patch).join(', ')} on ${op.id}`)
-        planned.push(() => Object.assign(target!.item, op.patch))
+        planned.push(() => {
+          Object.assign(target!.item, op.patch)
+          // Editing claims machine output, whoever does the editing. Without this a later
+          // `generate` would quietly undo the change.
+          adopt(target!.item)
+        })
         break
       }
       case 'delete': {
@@ -536,8 +599,10 @@ async function cmdApply(args: Args): Promise<void> {
         describe.push(`${at}: move ${op.id}`)
         planned.push(() => {
           const item = target!.item
-          if (item.kind === 'run') item.points = item.points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y }))
-          else { item.x += delta.x; item.y += delta.y }
+          const points = pointsOf(item)
+          if (points) (item as { points: Pt[] }).points = points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y }))
+          else if (isPositioned(item)) { item.x += delta.x; item.y += delta.y }
+          adopt(item)
         })
         break
       }
@@ -649,6 +714,8 @@ const HELP = `warren — read and edit a Warren project from the command line
   warren graph   <file>                      derived connections: networks, junctions, free ends
   warren trace   <file> --id <item>          what one item is joined to, and what it reaches
   warren systems <file> [--add-missing]      list the catalogue, or fill in newer defaults
+  warren rules   <file> [--set rules.json]   the placement rules (data, so they are yours)
+  warren generate <file> [--rule sockets]    run the rules over the rooms and doors
   warren split   <file>                      move the PDF out beside the file
   warren bundle  <file> [--out X]            write one self-contained file
   warren apply   <file> <ops.json>           apply validated edits
@@ -667,6 +734,8 @@ const commands: Record<string, (a: Args) => Promise<void>> = {
   takeoff: cmdTakeoff,
   check: cmdCheck,
   systems: cmdSystems,
+  generate: cmdGenerate,
+  rules: cmdRules,
   graph: cmdGraph,
   trace: cmdTrace,
   split: cmdSplit,

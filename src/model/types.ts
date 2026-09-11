@@ -130,6 +130,13 @@ export interface BoxItem {
   locked?: boolean
 }
 
+/** Stamped on anything a rule produced, and dropped the moment a person edits it. */
+export interface GeneratedBy {
+  rule: string
+  /** The room or door it was placed from. */
+  from: string
+}
+
 export interface MarkerItem {
   kind: 'marker'
   id: string
@@ -142,6 +149,7 @@ export interface MarkerItem {
   note?: string
   colorOverride?: string
   locked?: boolean
+  generated?: GeneratedBy
 }
 
 /**
@@ -275,6 +283,8 @@ export interface Settings {
 export interface Project {
   version: 1
   name: string
+  /** Placement rules. Data rather than code, so they are yours to change. */
+  rules?: import('../generate.ts').GenerateRule[]
   systems: System[]
   sheets: Sheet[]
   /**

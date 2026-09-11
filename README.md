@@ -192,6 +192,52 @@ Rooms show their computed floor area, which is also how a traced outline checks 
 architect's plans print the area of every room, so `warren apply` accepts an `expectM2` on a
 room and refuses the op if the polygon disagrees by more than 8%.
 
+## Generating the repetitive half
+
+Two sockets on each wall of every room, a switch by each door on the side it opens, a detector
+in the halls. That is not design work, it is typing — and it is why the electrical layer starts
+as a blank page you do not want to look at.
+
+`File → Generate from rooms…`, or `warren generate`, runs a set of placement rules over the
+rooms and doors and puts them all down at once. It shows you what it will do first.
+
+**The rules are data, not code.** "Two sockets per wall" is an opinion about one house, so
+Warren executes a rule set rather than believing one — `warren rules --set mine.json` replaces
+them wholesale. Three placements exist: `along-walls`, `at-door-strike`, `centre`. Each rule
+says which room uses it applies to, which system and level the result belongs to, and the
+distances involved.
+
+Generated items are **drawn faintly** and stamped with the rule that made them. Move or change
+one and it becomes yours: the stamp comes off, and re-running the rule leaves it exactly where
+you put it. That holds whoever does the editing — the app, or `warren apply`. Ids are derived
+from the rule and the room rather than being random, so re-running produces the same file
+instead of a diff full of new identifiers.
+
+What Warren will never do is decide *which room is the kitchen*. That is understanding, and it
+comes from you or from something you point at the drawing — see below.
+
+## Working with an AI
+
+Warren is meant to be a thing a person and an AI both work on, and it stays deliberately dumb
+so that is possible. It knows how to hold a drawing, place things by arithmetic, and check
+claims rigorously. It knows nothing about reading a floor plan.
+
+That boundary is the useful part. An agent can render a page of the PDF, decide that *this*
+rectangle is the kitchen and *that* arc is a door hinged on the left, and hand the result over
+as ops:
+
+```bash
+warren systems house.warren.json --add-missing   # a project can predate a system
+warren apply   house.warren.json rooms.json      # rooms and doors, validated
+warren generate house.warren.json                # the repetitive half, by rule
+warren check   house.warren.json                 # a second pair of eyes
+```
+
+Warren cannot trace a room, but it can grade one. Dutch plans print the area of every room, so
+a room op takes an `expectM2` and the whole batch is refused if the polygon disagrees by more
+than 8%. Tracing three rooms off a real plan came out at 15.3/15.2, 29.3/29.2 and 10.8/10.9 m²,
+with a deliberately wrong fourth caught at 62% out.
+
 ## Connections
 
 Nothing records what is joined to what — it is read from the drawing. Endpoints snap while you
@@ -239,6 +285,8 @@ warren items   house.warren.json --system 'power.*' --level wall
 warren takeoff house.warren.json --csv
 warren check   house.warren.json --strict   # exits 1 on errors, so CI can use it
 warren systems house.warren.json            # the catalogue; --add-missing fills in newer defaults
+warren rules   house.warren.json            # the placement rules; --set replaces them
+warren generate house.warren.json           # run the rules over the rooms and doors
 warren graph   house.warren.json            # derived networks, junctions, loose ends
 warren trace   house.warren.json --id run_x # what one run is joined to, and what it reaches
 warren split   house.warren.json            # move the PDF out beside the file
@@ -293,6 +341,7 @@ src/
   geom.ts          pure geometry (distances, ortho snap, polyline walking)
   topology.ts      what is joined to what, read from the geometry
   check.ts         the rules, shared by the Check tab and `warren check`
+  generate.ts      placement rules: arithmetic here, opinions in the data
   takeoff.ts       metres per system
   units.ts         metric formatting
   model/           types, the systems catalogue, the document store + undo

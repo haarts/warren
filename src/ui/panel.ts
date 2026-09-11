@@ -9,6 +9,7 @@ import { computeTakeoff } from '../takeoff.ts'
 import { countBySeverity, runChecks, type Finding, type Severity } from '../check.ts'
 import { missingAssetIds } from '../model/assets.ts'
 import { buildGraph, connectionsOf, networkOf } from '../topology.ts'
+import { adopt, generatedBy } from '../generate.ts'
 import { formatMetres } from '../units.ts'
 import { clear, el, field, swatch } from './dom.ts'
 
@@ -108,7 +109,9 @@ function buildProperties(app: App, body: HTMLElement): void {
     store.mutate(() => {
       for (const id of store.selection) {
         const live = store.item(id)
-        if (live && store.isEditable(live)) fn(live)
+        if (!live || !store.isEditable(live)) continue
+        fn(live)
+        adopt(live)
       }
     })
   }
@@ -350,6 +353,13 @@ function buildProperties(app: App, body: HTMLElement): void {
     }))
   }
   body.appendChild(field('Colour', colorRow))
+
+  if (items.some((i) => generatedBy(i))) {
+    body.appendChild(el('div', { class: 'hint' },
+      'Placed by the ', el('b', {}, generatedBy(first)?.rule ?? 'rules'),
+      ' rule, and drawn faintly until you touch it. Move or change it and it becomes yours — '
+      + 'regenerating will leave it alone after that.'))
+  }
 
   const actions = el('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' } },
     el('button', { onclick: () => editor.zoomToSelection() }, 'Zoom to'),
