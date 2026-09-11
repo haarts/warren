@@ -1,12 +1,12 @@
-import { closestOnPolyline, closestOnSegment, dist, rectContains, rectsIntersect, segmentIntersectsRect, type Pt, type Rect } from '../geom.ts'
+import { closestOnPolyline, closestOnSegment, dist, polygonEdges, rectContains, rectsIntersect, segmentIntersectsRect, type Pt, type Rect } from '../geom.ts'
 import type { Store, VertexRef } from '../model/doc.ts'
-import type { BoxItem, Item } from '../model/types.ts'
+import { pointsOf, type BoxItem, type Item } from '../model/types.ts'
 import { noteHeight } from '../render/notes.ts'
 import { boxCorners, itemBounds } from '../render/scene.ts'
 
 /** Draw order is boxes → runs → markers, so we test back to front. */
 function topmost(items: Item[], p: Pt, tol: number): Item | null {
-  for (const kind of ['note', 'marker', 'run', 'box'] as const) {
+  for (const kind of ['note', 'marker', 'run', 'door', 'box', 'room'] as const) {
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i].kind === kind && hitsItem(items[i], p, tol)) return items[i]
     }
@@ -48,15 +48,28 @@ export function hitsItem(item: Item, p: Pt, tol: number): boolean {
       return dist({ x: item.x, y: item.y }, p) <= tol * 1.4
     case 'note':
       return rectContains({ x: item.x, y: item.y, w: item.w, h: noteHeight(item) }, p)
+    case 'door':
+      return closestOnPolyline(p, item.points).dist <= tol * 1.4
+    case 'room': {
+      // The outline is the grab target; the middle is not, or a room would swallow every
+      // click inside it and you could never select the pipes you drew across it.
+      if (item.points.length < 3) return false
+      for (const [a, b] of polygonEdges(item.points)) {
+        if (closestOnSegment(p, a, b).dist <= tol) return true
+      }
+      return false
+    }
   }
 }
 
 /** Vertex handles are only live for selected runs, so ordinary clicks never grab one. */
 export function hitVertex(store: Store, p: Pt, tol: number): VertexRef | null {
   for (const item of store.selectedItems()) {
-    if (item.kind !== 'run' || !store.isEditable(item)) continue
-    for (let i = 0; i < item.points.length; i++) {
-      if (dist(item.points[i], p) <= tol) return { runId: item.id, index: i }
+    if (!store.isEditable(item)) continue
+    const points = pointsOf(item)
+    if (!points) continue
+    for (let i = 0; i < points.length; i++) {
+      if (dist(points[i], p) <= tol) return { runId: item.id, index: i }
     }
   }
   return null
@@ -77,8 +90,9 @@ export function hitBoxCorner(store: Store, p: Pt, tol: number): BoxCornerRef | n
 
 /** Which segment of a run is under `p` - used to insert a vertex at the right place. */
 export function hitSegment(item: Item, p: Pt, tol: number): { index: number; point: Pt } | null {
-  if (item.kind !== 'run' || item.points.length < 2) return null
-  const r = closestOnPolyline(p, item.points)
+  const points = pointsOf(item)
+  if (!points || points.length < 2) return null
+  const r = closestOnPolyline(p, points)
   if (r.dist > tol) return null
   return { index: r.index, point: r.point }
 }
@@ -93,6 +107,8 @@ export function itemsInRect(store: Store, rect: Rect): Item[] {
       }
       return false
     }
+    const points = pointsOf(item)
+    if (points) return points.some((pt) => rectContains(rect, pt)) || rectsIntersect(rect, itemBounds(item))
     if (item.kind === 'marker') return rectContains(rect, { x: item.x, y: item.y })
     return rectsIntersect(rect, itemBounds(item))
   })
@@ -111,8 +127,17 @@ export function hitNoteHandle(store: Store, p: Pt, tol: number): NoteHandleRef |
 }
 
 export function nearestPointOnItem(item: Item, p: Pt): { point: Pt; dist: number } | null {
-  if (item.kind === 'run' && item.points.length >= 2) {
-    const r = closestOnPolyline(p, item.points)
+  if (item.kind === 'room' && item.points.length >= 3) {
+    let best: { point: Pt; dist: number } | null = null
+    for (const [a, b] of polygonEdges(item.points)) {
+      const r = closestOnSegment(p, a, b)
+      if (!best || r.dist < best.dist) best = { point: r.point, dist: r.dist }
+    }
+    return best
+  }
+  const line = pointsOf(item)
+  if (line && line.length >= 2) {
+    const r = closestOnPolyline(p, line)
     return { point: r.point, dist: r.dist }
   }
   if (item.kind === 'box' || item.kind === 'note') {

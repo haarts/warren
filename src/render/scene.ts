@@ -1,9 +1,10 @@
 import {
-  boundsOf, pointAtFraction, polylineLength, rectsIntersect, walkPolyline,
-  type Pt, type Rect,
+  boundsOf, dist, pointAtFraction, polygonArea, polygonCentroid, polylineLength, rectsIntersect,
+  walkPolyline, type Pt, type Rect,
 } from '../geom.ts'
 import type { Store } from '../model/doc.ts'
-import { LEVEL_SHORT, type BoxItem, type Item, type MarkerItem, type MarkerSymbol, type NoteItem, type RunItem } from '../model/types.ts'
+import { LEVEL_SHORT, type BoxItem, type DoorItem, type Item, type MarkerItem, type MarkerSymbol, type NoteItem, type RoomItem, type RunItem } from '../model/types.ts'
+import { pointsOf } from '../model/types.ts'
 import { measureNote, noteFont, noteHeight, NOTE_LINE_HEIGHT, NOTE_PAD, NOTE_STRIPE } from './notes.ts'
 import { formatMetres, niceScaleLength } from '../units.ts'
 import type { Camera } from './camera.ts'
@@ -73,11 +74,16 @@ export function drawScene(opts: SceneOptions): void {
 
   // --- items ------------------------------------------------------------------------
   const items = store.items().filter((i) => store.isVisible(i))
+  // Rooms are the backdrop: painted first, under everything they give context to.
+  const rooms = items.filter((i): i is RoomItem => i.kind === 'room')
+  const doors = items.filter((i): i is DoorItem => i.kind === 'door')
   const boxes = items.filter((i): i is BoxItem => i.kind === 'box')
   const runs = items.filter((i): i is RunItem => i.kind === 'run')
   const markers = items.filter((i): i is MarkerItem => i.kind === 'marker')
   const notes = items.filter((i): i is NoteItem => i.kind === 'note')
 
+  for (const room of rooms) drawRoom(ctx, store, cam, room)
+  for (const door of doors) drawDoor(ctx, store, cam, door, ui)
   for (const box of boxes) drawBox(ctx, store, cam, box, ui)
   for (const run of runs) drawRun(ctx, store, cam, run, ui, settings.showFlow)
   for (const marker of markers) drawMarker(ctx, store, cam, marker, ui)
@@ -95,6 +101,8 @@ export function drawScene(opts: SceneOptions): void {
         w: note.w * cam.zoom, h: noteHeight(note) * cam.zoom,
       })
     }
+    // Room names claim their spot first: they are what you orient by.
+    for (const room of rooms) drawRoomLabel(ctx, store, cam, room, ui, placed)
     for (const box of boxes) drawBoxLabel(ctx, store, cam, box, ui, placed)
     for (const marker of markers) drawMarkerLabel(ctx, store, cam, marker, ui, placed)
     for (const run of runs) drawRunLabel(ctx, store, cam, run, ui, placed)
@@ -232,6 +240,98 @@ function drawBox(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, box: 
   ctx.globalAlpha = 1
   applyStroke(ctx, cam, style)
   ctx.strokeRect(x, y, w, h)
+  ctx.restore()
+}
+
+function drawRoom(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, room: RoomItem): void {
+  if (room.points.length < 3) return
+  const color = room.colorOverride ?? store.system(room.systemId).color
+  const pts = screenPoints(cam, room.points)
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(pts[0].x, pts[0].y)
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+  ctx.closePath()
+  ctx.fillStyle = color
+  ctx.globalAlpha = 0.05
+  ctx.fill()
+  ctx.globalAlpha = 0.65
+  ctx.strokeStyle = color
+  ctx.lineWidth = Math.max(1, 1.1 * cam.zoom)
+  ctx.setLineDash([Math.max(2, 5 * cam.zoom), Math.max(2, 4 * cam.zoom)])
+  ctx.stroke()
+  ctx.restore()
+}
+
+function drawRoomLabel(
+  ctx: CanvasRenderingContext2D, store: Store, cam: Camera, room: RoomItem, ui: number, placed: Rect[],
+): void {
+  if (room.points.length < 3) return
+  const mmPerPoint = store.sheet.mmPerPoint
+  const area = mmPerPoint ? Math.abs(polygonArea(room.points)) * (mmPerPoint / 1000) ** 2 : null
+  const parts = [room.ref, room.name].filter(Boolean).join(' ')
+  const text = area !== null ? `${parts} · ${area.toFixed(1)} m²` : parts
+  if (!text.trim()) return
+  const c = cam.toScreen(polygonCentroid(room.points))
+
+  ctx.save()
+  ctx.font = `600 ${11.5 * ui}px ui-sans-serif, system-ui, sans-serif`
+  const w = ctx.measureText(text).width
+  const box = { x: c.x - w / 2 - 3 * ui, y: c.y - 9 * ui, w: w + 6 * ui, h: 16 * ui }
+  if (placed.some((r) => rectsIntersect(r, box))) { ctx.restore(); return }
+  placed.push(box)
+  // A room name is quiet context, so no pill - just a halo so it survives a busy plan.
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.lineWidth = 3 * ui
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'
+  ctx.setLineDash([])
+  ctx.strokeText(text, c.x, c.y)
+  ctx.fillStyle = store.system(room.systemId).color
+  ctx.fillText(text, c.x, c.y)
+  ctx.restore()
+}
+
+/** The architect's door symbol: the opening, the leaf from the hinge, and its swing. */
+function drawDoor(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, door: DoorItem, ui: number): void {
+  if (door.points.length < 2) return
+  const color = door.colorOverride ?? store.system(door.systemId).color
+  const hinge = door.points[0]
+  const strike = door.points[1]
+  const width = dist(hinge, strike) * cam.zoom
+  if (width < 2) return
+  const h = cam.toScreen(hinge)
+  const st = cam.toScreen(strike)
+  const angle = Math.atan2(st.y - h.y, st.x - h.x)
+
+  ctx.save()
+  ctx.setLineDash([])
+  ctx.strokeStyle = color
+  ctx.lineWidth = Math.max(1.2, store.system(door.systemId).width * cam.zoom)
+  // The opening itself.
+  ctx.beginPath()
+  ctx.moveTo(h.x, h.y)
+  ctx.lineTo(st.x, st.y)
+  ctx.stroke()
+
+  // The leaf, swung a quarter turn, and the arc it sweeps.
+  const swept = angle + (door.swing * Math.PI) / 2
+  ctx.beginPath()
+  ctx.moveTo(h.x, h.y)
+  ctx.lineTo(h.x + Math.cos(swept) * width, h.y + Math.sin(swept) * width)
+  ctx.stroke()
+  ctx.globalAlpha = 0.45
+  ctx.lineWidth = Math.max(0.8, 0.8 * cam.zoom)
+  ctx.beginPath()
+  ctx.arc(h.x, h.y, width, Math.min(angle, swept), Math.max(angle, swept))
+  ctx.stroke()
+  ctx.globalAlpha = 1
+
+  // A dot on the hinge, so which end is which is readable at a glance.
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.arc(h.x, h.y, Math.max(1.5, 2 * ui), 0, Math.PI * 2)
+  ctx.fill()
   ctx.restore()
 }
 
@@ -544,11 +644,13 @@ function drawItemOutline(ctx: CanvasRenderingContext2D, cam: Camera, item: Item,
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
   ctx.setLineDash([])
-  if (item.kind === 'run' && item.points.length >= 2) {
-    const pts = screenPoints(cam, item.points)
+  const line = pointsOf(item)
+  if (line && line.length >= 2) {
+    const pts = screenPoints(cam, line)
     ctx.beginPath()
     ctx.moveTo(pts[0].x, pts[0].y)
     for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y)
+    if (item.kind === 'room') ctx.closePath()
     ctx.stroke()
   } else if (item.kind === 'box') {
     const pad = 3
@@ -582,8 +684,9 @@ function drawHandles(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, u
   const s = HANDLE_SIZE * ui
   for (const item of sel) {
     if (!store.isVisible(item)) continue
-    if (item.kind === 'run') {
-      item.points.forEach((wp, i) => {
+    const handlePoints = pointsOf(item)
+    if (handlePoints) {
+      handlePoints.forEach((wp, i) => {
         const p = cam.toScreen(wp)
         const active = store.activeVertex?.runId === item.id && store.activeVertex.index === i
         ctx.fillStyle = active ? ACCENT : HANDLE_FILL
@@ -799,8 +902,10 @@ function drawScaleBar(
 }
 
 export function itemBounds(item: Item): Rect {
-  if (item.kind === 'run') return boundsOf(item.points)
+  const points = pointsOf(item)
+  if (points) return boundsOf(points)
   if (item.kind === 'box') return { x: item.x, y: item.y, w: item.w, h: item.h }
   if (item.kind === 'note') return { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }
-  return { x: item.x, y: item.y, w: 0, h: 0 }
+  if (item.kind === 'marker') return { x: item.x, y: item.y, w: 0, h: 0 }
+  return { x: 0, y: 0, w: 0, h: 0 }
 }

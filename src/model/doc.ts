@@ -1,6 +1,6 @@
 import { defaultSystems, FALLBACK_SYSTEM } from './systems.ts'
 import { newId } from './ids.ts'
-import { DEFAULT_SETTINGS, type Item, type Project, type Sheet, type System } from './types.ts'
+import { ARCHITECTURE_KINDS, DEFAULT_SETTINGS, type Item, type Project, type Sheet, type System } from './types.ts'
 
 /** Everything under undo control. Assets (PDF bytes) sit outside - they are big and never edited. */
 interface Snapshot {
@@ -96,6 +96,9 @@ export class Store {
     const sys = this.system(item.systemId)
     if (!sys.visible) return false
     if (item.kind === 'note' && !this.project.settings.showNotes) return false
+    // Rooms and doors are the context you read everything else against, so filtering services
+    // by level must not take the building away with them.
+    if (ARCHITECTURE_KINDS.includes(item.kind)) return true
     const filter = this.project.settings.levelFilter
     if (filter !== 'all' && item.level !== filter) return false
     return true

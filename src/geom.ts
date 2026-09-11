@@ -150,6 +150,60 @@ export function pointAtFraction(points: Pt[], fraction: number): { p: Pt; angle:
   return { p: b, angle: Math.atan2(b.y - a.y, b.x - a.x) }
 }
 
+/** Signed area of a closed polygon; negative means the points wind the other way. */
+export function polygonArea(points: Pt[]): number {
+  let sum = 0
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]
+    const b = points[(i + 1) % points.length]
+    sum += a.x * b.y - b.x * a.y
+  }
+  return sum / 2
+}
+
+export function polygonCentroid(points: Pt[]): Pt {
+  const area = polygonArea(points)
+  if (Math.abs(area) < 1e-9) return points[0] ?? { x: 0, y: 0 }
+  let cx = 0
+  let cy = 0
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i]
+    const b = points[(i + 1) % points.length]
+    const cross = a.x * b.y - b.x * a.y
+    cx += (a.x + b.x) * cross
+    cy += (a.y + b.y) * cross
+  }
+  return { x: cx / (6 * area), y: cy / (6 * area) }
+}
+
+export function pointInPolygon(p: Pt, points: Pt[]): boolean {
+  let inside = false
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const a = points[i]
+    const b = points[j]
+    if ((a.y > p.y) !== (b.y > p.y) && p.x < ((b.x - a.x) * (p.y - a.y)) / (b.y - a.y) + a.x) {
+      inside = !inside
+    }
+  }
+  return inside
+}
+
+/** The closed edges of a polygon, as point pairs. */
+export function polygonEdges(points: Pt[]): [Pt, Pt][] {
+  return points.map((p, i) => [p, points[(i + 1) % points.length]] as [Pt, Pt])
+}
+
+/** Unit vector pointing into the polygon from an edge. */
+export function inwardNormal(a: Pt, b: Pt, points: Pt[]): Pt {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const len = Math.hypot(dx, dy) || 1
+  const n = { x: -dy / len, y: dx / len }
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+  const probe = { x: mid.x + n.x * 0.5, y: mid.y + n.y * 0.5 }
+  return pointInPolygon(probe, points) ? n : { x: -n.x, y: -n.y }
+}
+
 export function roundTo(value: number, step: number): number {
   return step > 0 ? Math.round(value / step) * step : value
 }

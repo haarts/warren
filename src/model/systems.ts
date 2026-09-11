@@ -115,6 +115,8 @@ const SEEDS: Seed[] = [
   { id: 'struct.nodrill', category: 'struct', name: 'No-drill zone', color: '#dc2626', dash: D.dashdotdot, width: 1.4 },
   { id: 'struct.airtight', category: 'struct', name: 'Airtightness penetration', color: '#db2777', dash: D.dot, width: 1.5 },
   { id: 'struct.note', category: 'struct', name: 'General note', color: '#ca8a04', dash: D.solid, width: 1.2 },
+  { id: 'struct.room', category: 'struct', name: 'Room', color: '#0f766e', dash: D.solid, width: 1.0 },
+  { id: 'struct.door', category: 'struct', name: 'Door', color: '#7c3aed', dash: D.solid, width: 1.6 },
 ]
 
 export function defaultSystems(): System[] {

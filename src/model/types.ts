@@ -163,7 +163,81 @@ export interface NoteItem {
   locked?: boolean
 }
 
-export type Item = RunItem | BoxItem | MarkerItem | NoteItem
+/**
+ * What a room is for. This is what turns a shape into something rules can act on: a bedroom
+ * wants sockets and a smoke detector, a toilet wants neither.
+ */
+export const ROOM_USES = [
+  'living', 'kitchen', 'dining', 'bedroom', 'bathroom', 'toilet', 'hall', 'stairs',
+  'utility', 'storage', 'technical', 'workshop', 'garage', 'outdoor', 'other',
+] as const
+export type RoomUse = (typeof ROOM_USES)[number]
+
+export const ROOM_USE_LABELS: Record<RoomUse, string> = {
+  living: 'Living room', kitchen: 'Kitchen', dining: 'Dining room', bedroom: 'Bedroom',
+  bathroom: 'Bathroom', toilet: 'Toilet', hall: 'Hall / landing', stairs: 'Stairs',
+  utility: 'Utility', storage: 'Storage', technical: 'Technical', workshop: 'Workshop',
+  garage: 'Garage', outdoor: 'Outdoor', other: 'Other',
+}
+
+/**
+ * A room outline. Architecture rather than a service, so it ignores the level filter - rooms
+ * are the context you read everything else against.
+ */
+export interface RoomItem {
+  kind: 'room'
+  id: string
+  systemId: string
+  level: Level
+  name: string
+  use: RoomUse
+  /** The architect's reference, e.g. "0.04". */
+  ref?: string
+  /** A closed polygon; the last point joins back to the first. */
+  points: Pt[]
+  note?: string
+  colorOverride?: string
+  locked?: boolean
+}
+
+/**
+ * A doorway. The hinge jamb is points[0] and the strike jamb points[1], which is the whole
+ * point of recording it: a light switch belongs by the strike, not behind the door.
+ */
+export interface DoorItem {
+  kind: 'door'
+  id: string
+  systemId: string
+  level: Level
+  points: Pt[]
+  /** Which side of the opening the door swings to: +1 or -1 along the wall normal. */
+  swing: 1 | -1
+  ref?: string
+  label?: string
+  note?: string
+  colorOverride?: string
+  locked?: boolean
+}
+
+export type Item = RunItem | BoxItem | MarkerItem | NoteItem | RoomItem | DoorItem
+
+/** Architecture, not services: exempt from the level filter and never material. */
+export const ARCHITECTURE_KINDS: Item['kind'][] = ['room', 'door']
+
+/** Items defined by a list of points: runs, room outlines and door openings. */
+export function pointsOf(item: Item): Pt[] | null {
+  return item.kind === 'run' || item.kind === 'room' || item.kind === 'door' ? item.points : null
+}
+
+/** Items defined by a single position. */
+export function isPositioned(item: Item): item is BoxItem | MarkerItem | NoteItem {
+  return item.kind === 'box' || item.kind === 'marker' || item.kind === 'note'
+}
+
+/** Every coordinate an item is made of, whichever shape it is. */
+export function coordsOf(item: Item): Pt[] {
+  return pointsOf(item) ?? [{ x: (item as BoxItem).x, y: (item as BoxItem).y }]
+}
 
 export interface SheetPdf {
   assetId: string

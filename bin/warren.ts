@@ -9,13 +9,14 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
-import { polylineLength, type Pt } from '../src/geom.ts'
+import { polygonArea, polygonCentroid, polylineLength, type Pt } from '../src/geom.ts'
 import { bytesToBase64, base64ToBytes, sha256Hex } from '../src/io/base64.ts'
 import { parseProject, serialize } from '../src/io/projectFile.ts'
+import { missingDefaults } from '../src/model/systems.ts'
 import { assetData, registerAsset } from '../src/model/assets.ts'
 import { Store } from '../src/model/doc.ts'
 import { newId } from '../src/model/ids.ts'
-import { LEVELS, type Item, type Level, type Project, type Sheet } from '../src/model/types.ts'
+import { ROOM_USES, LEVELS, type Item, type Level, type Project, type RoomUse, type Sheet } from '../src/model/types.ts'
 import { computeTakeoff } from '../src/takeoff.ts'
 import { countBySeverity, runChecks } from '../src/check.ts'
 import { buildGraph, connectionsOf, networkOf } from '../src/topology.ts'
@@ -143,6 +144,8 @@ interface ItemReport {
   lengthM?: number | null
   atM?: [number, number] | null
   text?: string
+  use?: string
+  areaM2?: number
 }
 
 function reportItem(store: Store, sheet: Sheet, item: Item): ItemReport {
@@ -155,7 +158,20 @@ function reportItem(store: Store, sheet: Sheet, item: Item): ItemReport {
     systemId: item.systemId,
     level: item.level,
   }
-  if (item.kind !== 'note' && item.label) report.label = item.label
+  if (item.kind !== 'note' && item.kind !== 'room' && item.label) report.label = item.label
+  if (item.kind === 'room') {
+    report.label = [item.ref, item.name].filter(Boolean).join(' ')
+    report.use = item.use
+    const mm = sheet.mmPerPoint
+    if (mm) report.areaM2 = round(Math.abs(polygonArea(item.points)) * (mm / 1000) ** 2, 1)
+    report.atM = pointAtM(sheet, polygonCentroid(item.points))
+    return report
+  }
+  if (item.kind === 'door') {
+    report.atM = pointAtM(sheet, item.points[0])
+    report.label = [item.ref, item.label].filter(Boolean).join(' ')
+    return report
+  }
   if (item.kind === 'run') {
     if (item.size) report.size = item.size
     if (item.flow !== 'none') report.flow = item.flow
@@ -163,7 +179,7 @@ function reportItem(store: Store, sheet: Sheet, item: Item): ItemReport {
     report.lengthM = len === null ? null : round(len)
     const first = item.points[0]
     report.atM = pointAtM(sheet, first)
-  } else {
+  } else if (item.kind === 'box' || item.kind === 'marker' || item.kind === 'note') {
     report.atM = pointAtM(sheet, { x: item.x, y: item.y })
     if (item.kind === 'note') report.text = item.text
   }
@@ -372,6 +388,37 @@ async function cmdTrace(args: Args): Promise<void> {
   fail(`no item with id "${id}"`)
 }
 
+/**
+ * A project carries its own catalogue, so one saved before a system existed does not have it.
+ * The app offers this in the Systems editor; without it here, nothing headless could draw a
+ * room in an older project.
+ */
+async function cmdSystems(args: Args): Promise<void> {
+  const { project, path } = await load(args)
+  const missing = missingDefaults(project.systems)
+
+  if (args.flags['add-missing']) {
+    if (missing.length === 0) return void console.log('catalogue is already complete')
+    project.systems.push(...missing)
+    writeFileSync(path, serialize(project))
+    console.log(`added ${missing.length}: ${missing.map((s) => s.id).join(', ')}`)
+    return
+  }
+
+  if (args.flags.json) {
+    return void console.log(JSON.stringify({
+      systems: project.systems.map((s) => ({
+        id: s.id, name: s.name, category: s.category, sizes: s.sizes ?? null, assumeFlow: s.assumeFlow ?? false,
+      })),
+      missingDefaults: missing.map((s) => s.id),
+    }, null, 2))
+  }
+  for (const sys of project.systems) {
+    console.log(`${sys.id.padEnd(22)} ${sys.category.padEnd(8)} ${sys.name}`)
+  }
+  if (missing.length) console.log(`\n${missing.length} default system(s) missing: ${missing.map((s) => s.id).join(', ')} — add with --add-missing`)
+}
+
 // ----------------------------------------------------------------------- split / bundle
 
 async function cmdSplit(args: Args): Promise<void> {
@@ -419,7 +466,8 @@ interface AddOp { op: 'add'; sheet?: string; item: Record<string, unknown> }
 type Op = SetOp | DeleteOp | MoveOp | AddOp
 
 const PATCHABLE = new Set([
-  'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride', 'locked', 'symbol',
+  'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride',
+  'locked', 'symbol', 'name', 'use', 'ref', 'swing',
 ])
 
 /**
@@ -501,9 +549,13 @@ async function cmdApply(args: Args): Promise<void> {
           return void problems.push(`${at}: item.systemId must be one of this project's systems`)
         }
         const level = typeof raw.level === 'string' && LEVELS.includes(raw.level as Level) ? raw.level as Level : 'wall'
-        if (raw.kind === 'run') {
+        const shaped = raw.kind === 'run' || raw.kind === 'room' || raw.kind === 'door'
+        if (shaped) {
           const source = Array.isArray(raw.pointsM) ? raw.pointsM : Array.isArray(raw.points) ? raw.points : null
-          if (!source || source.length < 2) return void problems.push(`${at}: a run needs at least two points`)
+          const least = raw.kind === 'room' ? 3 : 2
+          if (!source || source.length < least) {
+            return void problems.push(`${at}: a ${raw.kind} needs at least ${least} points`)
+          }
           const inMetres = Array.isArray(raw.pointsM)
           const points: Pt[] = []
           for (const pair of source as [number, number][]) {
@@ -512,14 +564,40 @@ async function cmdApply(args: Args): Promise<void> {
             if (x === null || y === null) return void problems.push(`${at}: sheet "${sheet.name}" has no scale, so pointsM mean nothing here`)
             points.push({ x, y })
           }
-          describe.push(`${at}: add run of ${points.length} points to ${sheet.name}`)
+          if (raw.kind === 'room' && typeof raw.expectM2 === 'number') {
+            // The architect prints the area on the plan, so a traced outline can check itself.
+            const got = Math.abs(polygonArea(points)) * ((sheet.mmPerPoint ?? 0) / 1000) ** 2
+            const off = Math.abs(got - raw.expectM2) / raw.expectM2
+            if (off > 0.08) {
+              return void problems.push(
+                `${at}: "${raw.name}" traces to ${got.toFixed(1)} m² but the plan says ${raw.expectM2} m² — ${(off * 100).toFixed(0)}% out`)
+            }
+          }
+          describe.push(`${at}: add ${raw.kind} ${raw.name ?? raw.label ?? ''} of ${points.length} points to ${sheet.name}`.replace(/\s+/g, ' '))
           planned.push(() => {
-            sheet.items.push({
-              kind: 'run', id: newId('run'), systemId: raw.systemId as string, level, points,
-              flow: raw.flow === 'forward' || raw.flow === 'reverse' ? raw.flow : 'none',
-              size: typeof raw.size === 'string' ? raw.size : store.system(raw.systemId as string).defaultSize,
-              ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
-            })
+            if (raw.kind === 'room') {
+              sheet.items.push({
+                kind: 'room', id: newId('room'), systemId: raw.systemId as string, level, points,
+                name: String(raw.name ?? 'Room'),
+                use: ROOM_USES.includes(raw.use as RoomUse) ? (raw.use as RoomUse) : 'other',
+                ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
+              })
+            } else if (raw.kind === 'door') {
+              sheet.items.push({
+                kind: 'door', id: newId('door'), systemId: raw.systemId as string, level,
+                points: [points[0], points[1]],
+                swing: raw.swing === -1 ? -1 : 1,
+                ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
+                ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+              })
+            } else {
+              sheet.items.push({
+                kind: 'run', id: newId('run'), systemId: raw.systemId as string, level, points,
+                flow: raw.flow === 'forward' || raw.flow === 'reverse' ? raw.flow : 'none',
+                size: typeof raw.size === 'string' ? raw.size : store.system(raw.systemId as string).defaultSize,
+                ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+              })
+            }
           })
         } else if (raw.kind === 'marker' || raw.kind === 'note') {
           const x = typeof raw.xM === 'number' ? pointsFromMetres(sheet, raw.xM) : typeof raw.x === 'number' ? raw.x : null
@@ -538,7 +616,7 @@ async function cmdApply(args: Args): Promise<void> {
             }
           })
         } else {
-          problems.push(`${at}: kind must be run, marker or note`)
+          problems.push(`${at}: kind must be run, room, door, marker or note`)
         }
         break
       }
@@ -570,6 +648,7 @@ const HELP = `warren — read and edit a Warren project from the command line
   warren check   <file> [--strict]           a second pair of eyes; exits 1 on errors
   warren graph   <file>                      derived connections: networks, junctions, free ends
   warren trace   <file> --id <item>          what one item is joined to, and what it reaches
+  warren systems <file> [--add-missing]      list the catalogue, or fill in newer defaults
   warren split   <file>                      move the PDF out beside the file
   warren bundle  <file> [--out X]            write one self-contained file
   warren apply   <file> <ops.json>           apply validated edits
@@ -587,6 +666,7 @@ const commands: Record<string, (a: Args) => Promise<void>> = {
   items: cmdItems,
   takeoff: cmdTakeoff,
   check: cmdCheck,
+  systems: cmdSystems,
   graph: cmdGraph,
   trace: cmdTrace,
   split: cmdSplit,

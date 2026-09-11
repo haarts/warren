@@ -1,5 +1,6 @@
 import { dist, orthoConstrain, roundTo, type Pt } from '../geom.ts'
 import type { Store } from '../model/doc.ts'
+import { isPositioned, pointsOf } from '../model/types.ts'
 import { boxCorners } from '../render/scene.ts'
 import { nearestPointOnItem } from './hittest.ts'
 
@@ -59,16 +60,17 @@ function snapToVertices(store: Store, raw: Pt, tol: number, opts: SnapOptions): 
   }
   for (const item of store.items()) {
     if (!store.isVisible(item)) continue
-    if (item.kind === 'run') {
-      for (let i = 0; i < item.points.length; i++) {
+    const points = pointsOf(item)
+    if (points) {
+      for (let i = 0; i < points.length; i++) {
         if (item.id === opts.excludeRunId && i === opts.excludeIndex) continue
-        const isEnd = i === 0 || i === item.points.length - 1
-        consider(item.points[i], isEnd ? 'end' : 'corner')
+        const isEnd = item.kind === 'run' && (i === 0 || i === points.length - 1)
+        consider(points[i], isEnd ? 'end' : 'corner')
       }
     } else if (item.kind === 'box') {
       for (const c of boxCorners(item)) consider(c, 'corner')
       consider({ x: item.x + item.w / 2, y: item.y + item.h / 2 }, 'centre')
-    } else {
+    } else if (isPositioned(item)) {
       consider({ x: item.x, y: item.y }, 'marker')
     }
   }

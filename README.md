@@ -176,6 +176,22 @@ There is also a 30-second autosave to IndexedDB, but that is a **crash net, not 
 Browser storage gets cleared by updates and cleanup tools, and does not follow you to another
 machine. Save to a file.
 
+## Rooms and doors
+
+A room is an outline with a **name** and a **use** — kitchen, bedroom, hall. A door records its
+two jambs, **hinge first**, and which way it swings. Both are architecture rather than services,
+so they sit under everything else and a level filter never hides them: they are the context you
+read the rest against.
+
+This is not drawing for its own sake. What a room is *for* is what lets rules act on it: a
+bedroom wants sockets and a smoke detector, a toilet wants neither, and a light switch belongs
+by the strike jamb rather than behind the door. Recording the building once turns the
+repetitive half of an electrical layout into something that can be generated instead of typed.
+
+Rooms show their computed floor area, which is also how a traced outline checks itself — Dutch
+architect's plans print the area of every room, so `warren apply` accepts an `expectM2` on a
+room and refuses the op if the polygon disagrees by more than 8%.
+
 ## Connections
 
 Nothing records what is joined to what — it is read from the drawing. Endpoints snap while you
@@ -222,6 +238,7 @@ warren summary house.warren.json            # sheets, scale, counts, total metre
 warren items   house.warren.json --system 'power.*' --level wall
 warren takeoff house.warren.json --csv
 warren check   house.warren.json --strict   # exits 1 on errors, so CI can use it
+warren systems house.warren.json            # the catalogue; --add-missing fills in newer defaults
 warren graph   house.warren.json            # derived networks, junctions, loose ends
 warren trace   house.warren.json --id run_x # what one run is joined to, and what it reaches
 warren split   house.warren.json            # move the PDF out beside the file

@@ -1,7 +1,17 @@
 import { dist, normalizeRect, type Pt, type Rect } from '../geom.ts'
 import type { Store, VertexRef } from '../model/doc.ts'
 import { newId } from '../model/ids.ts'
-import type { BoxItem, Item, MarkerItem, MarkerSymbol, NoteItem, RunItem } from '../model/types.ts'
+import {
+  isPositioned, pointsOf,
+  type BoxItem, type Item, type MarkerItem, type MarkerSymbol, type NoteItem, type RunItem,
+} from '../model/types.ts'
+
+/** Move any item by a delta, whatever shape it is made of. */
+function shiftItem(item: Item, dx: number, dy: number): void {
+  const points = pointsOf(item)
+  if (points) (item as { points: Pt[] }).points = points.map((p) => ({ x: p.x + dx, y: p.y + dy }))
+  else if (isPositioned(item)) { item.x += dx; item.y += dy }
+}
 import { Background } from '../render/background.ts'
 import { Camera } from '../render/camera.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
@@ -338,15 +348,11 @@ export class Editor {
         for (const [id, original] of this.drag.originals) {
           const live = this.store.item(id)
           if (!live) continue
-          if (live.kind === 'run' && original.kind === 'run') {
-            live.points = original.points.map((p) => ({ x: p.x + dx, y: p.y + dy }))
-          } else if (live.kind === 'box' && original.kind === 'box') {
-            live.x = original.x + dx
-            live.y = original.y + dy
-          } else if (live.kind === 'marker' && original.kind === 'marker') {
-            live.x = original.x + dx
-            live.y = original.y + dy
-          } else if (live.kind === 'note' && original.kind === 'note') {
+          const from = pointsOf(original)
+          const live2 = pointsOf(live)
+          if (from && live2) {
+            ;(live as { points: Pt[] }).points = from.map((p) => ({ x: p.x + dx, y: p.y + dy }))
+          } else if (isPositioned(live) && isPositioned(original)) {
             live.x = original.x + dx
             live.y = original.y + dy
           }
@@ -610,10 +616,7 @@ export class Editor {
     const items = this.store.selectedItems().filter((i) => this.store.isEditable(i))
     if (items.length === 0) return
     this.store.mutate(() => {
-      for (const item of items) {
-        if (item.kind === 'run') item.points = item.points.map((p) => ({ x: p.x + dx, y: p.y + dy }))
-        else { item.x += dx; item.y += dy }
-      }
+      for (const item of items) shiftItem(item, dx, dy)
     })
   }
 

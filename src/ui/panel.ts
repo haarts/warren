@@ -1,5 +1,6 @@
 import type { App } from '../app.ts'
-import type { Item, Level, System } from '../model/types.ts'
+import { polygonArea } from '../geom.ts'
+import { ROOM_USES, ROOM_USE_LABELS, type Item, type Level, type RoomUse, type System } from '../model/types.ts'
 import {
   CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS, MARKER_SYMBOLS,
   type MarkerSymbol,
@@ -154,10 +155,48 @@ function buildProperties(app: App, body: HTMLElement): void {
   }
   body.appendChild(field('Level', levelSelect))
 
-  if (!many && first.kind !== 'note') {
-    body.appendChild(field('Label', textInput(first.label ?? '', (v) => applyToAll((item) => {
-      if (item.kind !== 'note') item.label = v
+  if (!many && first.kind === 'room') {
+    body.appendChild(field('Name', textInput(first.name, (v) => applyToAll((item) => {
+      if (item.kind === 'room') item.name = v.trim() || item.name
     }))))
+    const useSelect = el('select', {
+      onchange: (e: Event) => {
+        const value = (e.target as HTMLSelectElement).value as RoomUse
+        applyToAll((item) => { if (item.kind === 'room') item.use = value })
+      },
+    }) as HTMLSelectElement
+    for (const use of ROOM_USES) {
+      useSelect.appendChild(el('option', { value: use, selected: first.use === use }, ROOM_USE_LABELS[use]))
+    }
+    body.appendChild(field('Used as', useSelect, 'What a room is for is what lets rules act on it — sockets, switches, detectors.'))
+    body.appendChild(field('Plan ref', textInput(first.ref ?? '', (v) => applyToAll((item) => {
+      if (item.kind === 'room') item.ref = v.trim() || undefined
+    }), 'e.g. 0.04')))
+    const mmPerPoint = sheet.mmPerPoint
+    if (mmPerPoint) {
+      const m2 = Math.abs(polygonArea(first.points)) * (mmPerPoint / 1000) ** 2
+      body.appendChild(field('Floor area', el('div', {}, `${m2.toFixed(1)} m²`)))
+    }
+  } else if (!many && first.kind !== 'note') {
+    const labelled = first as Exclude<Item, { kind: 'note' } | { kind: 'room' }>
+    body.appendChild(field('Label', textInput(labelled.label ?? '', (v) => applyToAll((item) => {
+      if (item.kind !== 'note' && item.kind !== 'room') item.label = v
+    }))))
+  }
+
+  if (!many && first.kind === 'door') {
+    body.appendChild(field('Hinge', el('div', { style: { display: 'flex', gap: '6px' } },
+      el('button', {
+        onclick: () => applyToAll((item) => {
+          if (item.kind === 'door') item.points = [...item.points].reverse()
+        }),
+      }, 'Swap jambs'),
+      el('button', {
+        onclick: () => applyToAll((item) => {
+          if (item.kind === 'door') item.swing = item.swing === 1 ? -1 : 1
+        }),
+      }, 'Flip swing'),
+    ), 'The hinge is the first jamb. A light switch belongs by the other one, not behind the door.'))
   }
 
   if (first.kind === 'run' && !many) {
@@ -353,6 +392,8 @@ function labelForKind(item: Item): string {
     case 'box': return 'Equipment box'
     case 'marker': return 'Marker'
     case 'note': return 'Note'
+    case 'room': return 'Room'
+    case 'door': return 'Door'
   }
 }
 

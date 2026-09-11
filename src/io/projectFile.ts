@@ -4,7 +4,9 @@ import { NOTE_DEFAULT_WIDTH, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
-  type Item, type Level, type MarkerSymbol, type Project, type RunItem, type Sheet, type System,
+  ROOM_USES,
+  type DoorItem, type Item, type Level, type MarkerSymbol, type Project, type RoomItem,
+  type RoomUse, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
 export const FILE_EXTENSION = '.warren.json'
@@ -101,6 +103,37 @@ function asItem(raw: unknown, index: number): Item | null {
   if (raw.kind === 'marker') {
     const symbol = MARKER_SYMBOLS.includes(raw.symbol as MarkerSymbol) ? (raw.symbol as MarkerSymbol) : 'note'
     return { ...common, kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }
+  }
+  if (raw.kind === 'room') {
+    const pts = Array.isArray(raw.points)
+      ? raw.points.filter(isObj).map((p) => ({ x: num(p.x), y: num(p.y) }))
+      : []
+    if (pts.length < 3) return null
+    const room: RoomItem = {
+      ...base,
+      ...shared,
+      kind: 'room',
+      name: str(raw.name, 'Room'),
+      use: ROOM_USES.includes(raw.use as RoomUse) ? (raw.use as RoomUse) : 'other',
+      points: pts,
+    }
+    if (typeof raw.ref === 'string') room.ref = raw.ref
+    if (typeof raw.note === 'string') room.note = raw.note
+    return room
+  }
+  if (raw.kind === 'door') {
+    const pts = Array.isArray(raw.points)
+      ? raw.points.filter(isObj).map((p) => ({ x: num(p.x), y: num(p.y) }))
+      : []
+    if (pts.length < 2) return null
+    const door: DoorItem = {
+      ...common,
+      kind: 'door',
+      points: [pts[0], pts[1]],
+      swing: raw.swing === -1 ? -1 : 1,
+    }
+    if (typeof raw.ref === 'string') door.ref = raw.ref
+    return door
   }
   if (raw.kind === 'note') {
     // Notes carry `text`, not `label`/`note` - a sticky whose content lived in a side field

@@ -1,5 +1,5 @@
 import type { Store } from './model/doc.ts'
-import { LEVELS, type Item, type Project, type Sheet } from './model/types.ts'
+import { coordsOf, LEVELS, type Item, type Project, type Sheet } from './model/types.ts'
 import { buildGraph, connectionsOf, type Graph } from './topology.ts'
 import type { Pt } from './geom.ts'
 
@@ -95,7 +95,7 @@ function checkSheet(
       add('error', 'unknown-level', at(item), `level "${item.level}" is not a level`, [item.id], sheet.id)
     }
 
-    const coords: Pt[] = item.kind === 'run' ? item.points : [{ x: item.x, y: item.y }]
+    const coords: Pt[] = coordsOf(item)
     if (item.kind === 'run' && item.points.length < 2) {
       add('error', 'run-too-short', at(item),
         `a run needs two points, this has ${item.points.length}`, [item.id], sheet.id)
