@@ -74,11 +74,15 @@ try {
 
   // --- import a PDF page --------------------------------------------------------------
   await page.evaluate(async (b64) => {
+    // Mirrors what File > Import PDF does: cache the bytes by hash, reference them in the
+    // project. The bytes never go into the project file.
+    const { cacheAsset } = await import('/src/io/assetCache.ts')
     const app = window.warren
     const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
     const digest = await crypto.subtle.digest('SHA-256', bytes.buffer)
     const id = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
-    app.store.project.assets[id] = b64
+    await cacheAsset(id, b64)
+    app.store.project.assets[id] = { name: 'sample-floorplan.pdf', bytes: bytes.length }
     await app.attachPage(id, 1, 'current', 'sample-floorplan.pdf')
   }, PDF)
   await page.waitForFunction(() => window.warren.store.sheet.pdf?.widthPt > 100, { timeout: 15_000 })
@@ -508,8 +512,32 @@ try {
       sheets: back.sheets.length,
     }
   })
-  check('project file round trips with the PDF embedded',
+  check('project file round trips, without the PDF in it',
     roundTrip.same && roundTrip.sheets === 2 && roundTrip.bytes > 1000, `${roundTrip.bytes} bytes`)
+
+  // The whole point of the reference format: the file is the drawing, not the plan.
+  const sizes = await page.evaluate(async () => {
+    const { serialize } = await import('/src/io/projectFile.ts')
+    const app = window.warren
+    const refs = serialize(app.store.project).length
+    const bundled = serialize(app.store.project, { bundle: true }).length
+    const assets = JSON.parse(serialize(app.store.project)).assets
+    const bundledAssets = JSON.parse(serialize(app.store.project, { bundle: true })).assets
+    return {
+      refs,
+      bundled,
+      hasData: Object.values(assets).some((a) => 'data' in a),
+      bundleHasData: Object.values(bundledAssets).every((a) => typeof a.data === 'string'),
+      name: Object.values(assets)[0]?.name,
+      bytes: Object.values(assets)[0]?.bytes,
+    }
+  })
+  // The sample plan is barely a kilobyte, so sizes prove little here — what matters is that
+  // the bytes are absent by default, present on request, and the reference is descriptive
+  // enough to go and find the file again.
+  check('a saved project references the plan instead of carrying it',
+    !sizes.hasData && sizes.bundleHasData && sizes.name === 'sample-floorplan.pdf' && sizes.bytes > 0 && sizes.bundled > sizes.refs,
+    `${sizes.name}, ${sizes.bytes} bytes, ${sizes.bundled - sizes.refs} bytes larger when bundled`)
 
   // --- PNG export through the File menu ---------------------------------------------------------------------
   const clickMenu = async (label) => {

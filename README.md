@@ -139,17 +139,67 @@ column.
 project…). That name is the print heading and the suggested file name, and Save as… on a still
 -untitled project adopts whatever file name you type.
 
-Your project is a single `*.warren.json` file with the source PDF embedded, so it is
-self-contained: back it up, mail it, put it in git. The JSON is formatted and diffs cleanly,
-which makes `git log` a decent history of how the design changed over the build.
+Your project is a `*.warren.json` file that **references** the plan PDF rather than containing
+it, and the PDF is written out beside it. That matters more than it sounds: with the plan
+embedded, a real project was 24.4 MB of which 24.38 MB was base64 — 99.8% of the file was
+something no diff, grep, script or person could see past. By reference the same project is
+53 KB, and `git log` becomes a readable history of the design.
 
 ```bash
-git init && git add my-house.warren.json && git commit -m "services, first pass"
+git init && git add my-house.warren.json plan.pdf && git commit -m "services, first pass"
 ```
+
+The browser keeps its own copy of the plan, keyed by content hash, so opening a project on the
+machine that drew it needs nothing extra. On a different machine it asks for the PDF once and
+checks the hash, so it cannot attach the wrong plan by mistake.
+
+For mailing or archiving, `File → Export self-contained bundle…` writes one file with the plan
+inside. `warren split` and `warren bundle` convert between the two forms.
 
 There is also a 30-second autosave to IndexedDB, but that is a **crash net, not a save**.
 Browser storage gets cleared by updates and cleanup tools, and does not follow you to another
 machine. Save to a file.
+
+## The `warren` command
+
+Everything the app computes is available from a terminal, running the same modules — so a
+length reported here is the length the drawing means, not a second implementation that can
+drift.
+
+```bash
+warren summary house.warren.json            # sheets, scale, counts, total metres
+warren items   house.warren.json --system 'power.*' --level wall
+warren takeoff house.warren.json --csv
+warren check   house.warren.json --strict   # exits 1 on errors, so CI can use it
+warren split   house.warren.json            # move the PDF out beside the file
+warren bundle  house.warren.json            # one self-contained file
+warren apply   house.warren.json ops.json   # validated batch edits
+```
+
+Add `--json` to any of them for machine-readable output. **Everything speaks metres** — the
+file stores PDF points and a per-sheet scale, and converting at the boundary is the tool's job,
+not the caller's.
+
+`apply` takes a list of ops and validates all of them before writing any, so a
+half-understood instruction cannot leave the drawing half-changed:
+
+```json
+{ "ops": [
+  { "op": "add", "sheet": "Ground floor", "item": {
+      "kind": "run", "systemId": "power.smoke", "level": "ceiling",
+      "pointsM": [[3.0, 4.0], [7.5, 4.0]], "label": "detectors hall" } },
+  { "op": "set",  "id": "run_abc", "patch": { "size": "3×4mm²" } },
+  { "op": "move", "id": "run_abc", "byM": [0.5, 0] },
+  { "op": "delete", "id": "mk_xyz" }
+] }
+```
+
+`check` exists because the file parser is deliberately forgiving — it repairs damage so a file
+you wrote 18 months ago still opens. That is right for a person and dangerous for a machine: a
+run written with one vertex, or coordinates in millimetres where points belong, gets quietly
+turned into something plausible and wrong. `check` fails where the parser forgives, and
+enforces the one rule worth enforcing above all others — non-potable water may never share an
+endpoint with drinking water.
 
 ## Printing
 
@@ -168,6 +218,7 @@ drawing you can read.
 ## Layout
 
 ```
+bin/warren.ts      the command line, over the same modules the app runs on
 src/
   geom.ts          pure geometry (distances, ortho snap, polyline walking)
   takeoff.ts       metres per system

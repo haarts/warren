@@ -1,6 +1,9 @@
 import { Editor } from './interact/controller.ts'
 import { clearAutosave, readAutosave, writeAutosave } from './io/autosave.ts'
-import { bytesToBase64, sha256Hex } from './io/base64.ts'
+import { base64ToBytes, bytesToBase64, sha256Hex } from './io/base64.ts'
+import { cacheAsset, hydrateAssets } from './io/assetCache.ts'
+import { downloadBlob } from './io/exportImage.ts'
+import { assetData, describeAsset } from './model/assets.ts'
 import { forgetDocument, pageSizePt } from './io/pdf.ts'
 import {
   parseProject, pickOpenFile, pickSaveTarget, projectNameFromFileName, promptForFile,
@@ -8,7 +11,7 @@ import {
 } from './io/projectFile.ts'
 import { emptyProject, emptySheet, Store } from './model/doc.ts'
 import { newId } from './model/ids.ts'
-import type { Sheet } from './model/types.ts'
+import type { Project, Sheet } from './model/types.ts'
 import { alertDialog, askNumber, confirmDialog } from './ui/modal.ts'
 import { openPdfImportDialog } from './ui/pdfImport.ts'
 import { buildPanel } from './ui/panel.ts'
@@ -102,7 +105,13 @@ export class App {
       if (!picked) return
       const text = await picked.file.text()
       const project = parseProject(text)
+      const missing = await hydrateAssets(project)
       this.store.loadProject(project, picked.file.name)
+      // A bundled file carries its own bytes, so they are now cached and the next save is small.
+      for (const id of Object.keys(project.assets)) {
+        if (project.assets[id].data) this.exportedAssets.add(id)
+      }
+      if (missing.length) void this.locateMissingAssets(project, missing)
       this.saveTarget = picked.handle ? { handle: picked.handle, name: picked.file.name } : null
       await clearAutosave()
       this.editor.invalidateBackground()
@@ -139,9 +148,15 @@ export class App {
     this.store.mutate(() => { this.store.project.name = clean })
   }
 
+  /**
+   * Writes the project without the PDF inside it. The plan is 99.8% of a bundled file's bytes
+   * and none of its meaning, so keeping it out is what makes the file diffable, greppable and
+   * readable by anything that is not this app.
+   */
   private async writeProject(target: SaveTarget): Promise<void> {
     try {
       await writeTo(target, serialize(this.store.project))
+      await this.ensurePlanPdfOnDisk()
       this.store.dirty = false
       this.store.fileName = target.name
       await clearAutosave()
@@ -151,6 +166,48 @@ export class App {
       this.refresh()
     } catch (err) {
       alertDialog('Save failed', String(err instanceof Error ? err.message : err))
+    }
+  }
+
+  /** Assets already written out this session, so a repeated save does not re-download them. */
+  private exportedAssets = new Set<string>()
+
+  /**
+   * The project file now points at the PDF instead of containing it, so the PDF has to exist
+   * beside it. Written once per asset per session rather than on every save.
+   */
+  private async ensurePlanPdfOnDisk(): Promise<void> {
+    for (const id of Object.keys(this.store.project.assets)) {
+      if (this.exportedAssets.has(id)) continue
+      if (!this.store.project.sheets.some((s) => s.pdf?.assetId === id)) continue
+      if (this.exportPlanPdf(id)) this.exportedAssets.add(id)
+    }
+  }
+
+  /** Writes one plan PDF out. Returns false when its bytes are not available. */
+  exportPlanPdf(assetId?: string): boolean {
+    const id = assetId ?? this.store.sheet.pdf?.assetId
+    if (!id) return false
+    const data = assetData(id)
+    if (!data) return false
+    const ref = this.store.project.assets[id]
+    const bytes = base64ToBytes(data)
+    const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: 'application/pdf' })
+    downloadBlob(ref?.name || `${id.slice(0, 12)}.pdf`, blob)
+    this.exportedAssets.add(id)
+    return true
+  }
+
+  /** One self-contained file, PDF included - for mailing or archiving, not for everyday saving. */
+  async exportBundle(): Promise<void> {
+    const name = suggestedFileName(this.store.project.name).replace(/\.json$/, '.bundle.json')
+    const target = await pickSaveTarget(name)
+    if (!target) return
+    try {
+      await writeTo(target, serialize(this.store.project, { bundle: true }))
+      this.editor.onStatus?.(`Wrote ${target.name} with the plan PDF inside it`)
+    } catch (err) {
+      alertDialog('Export failed', String(err instanceof Error ? err.message : err))
     }
   }
 
@@ -179,6 +236,7 @@ export class App {
       'Restore',
     )
     if (restore) {
+      await hydrateAssets(found.project)
       this.store.loadProject(found.project, found.fileName)
       this.store.dirty = true
       this.editor.invalidateBackground()
@@ -203,9 +261,8 @@ export class App {
     try {
       const bytes = new Uint8Array(await file.arrayBuffer())
       const assetId = await sha256Hex(bytes)
-      if (!this.store.project.assets[assetId]) {
-        this.store.project.assets[assetId] = bytesToBase64(bytes)
-      }
+      await cacheAsset(assetId, bytesToBase64(bytes))
+      this.store.project.assets[assetId] = { name: file.name, bytes: bytes.length }
       await openPdfImportDialog(this, assetId, file.name, target)
     } catch (err) {
       alertDialog('Could not read that PDF', String(err instanceof Error ? err.message : err))
@@ -213,7 +270,7 @@ export class App {
   }
 
   async attachPage(assetId: string, page: number, target: 'current' | 'new', sourceName: string): Promise<void> {
-    const base64 = this.store.project.assets[assetId]
+    const base64 = assetData(assetId)
     if (!base64) return
     const size = await pageSizePt(assetId, base64, page, 0)
     this.store.mutate(() => {
@@ -233,10 +290,38 @@ export class App {
     this.editor.zoomToFit()
   }
 
+  /**
+   * The project points at a plan this browser has never seen. Ask for it by name and check the
+   * hash, so there is no way to attach the wrong file by accident.
+   */
+  private async locateMissingAssets(project: Project, missing: string[]): Promise<void> {
+    const names = missing.map((id) => describeAsset(project.assets, id)).join(', ')
+    const ok = await confirmDialog(
+      'The plan PDF is stored separately',
+      `This project refers to ${names}, which this browser does not have a copy of. ` +
+      'Locate it now? The drawing opens either way — only the plan underneath is missing.',
+      'Locate…',
+    )
+    if (!ok) return
+    const file = await promptForFile('application/pdf,.pdf')
+    if (!file) return
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const id = await sha256Hex(bytes)
+    if (!missing.includes(id)) {
+      alertDialog('That is a different PDF', `"${file.name}" does not match the plan this project was drawn on.`)
+      return
+    }
+    await cacheAsset(id, bytesToBase64(bytes))
+    this.exportedAssets.add(id)
+    this.editor.invalidateBackground()
+    this.editor.zoomToFit()
+    this.editor.onStatus?.(`Found ${file.name}`)
+  }
+
   rotateSheet(delta: 90 | -90): void {
     const sheet = this.store.sheet
     if (!sheet.pdf) return
-    const base64 = this.store.project.assets[sheet.pdf.assetId]
+    const base64 = assetData(sheet.pdf.assetId)
     if (!base64) return
     const next = ((sheet.pdf.rotation + delta + 360) % 360) as 0 | 90 | 180 | 270
     void pageSizePt(sheet.pdf.assetId, base64, sheet.pdf.page, next).then((size) => {

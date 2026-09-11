@@ -1,3 +1,4 @@
+import { assetData } from '../model/assets.ts'
 import type { Store } from '../model/doc.ts'
 import { Camera } from '../render/camera.ts'
 import { drawScene } from '../render/scene.ts'
@@ -23,7 +24,7 @@ export async function renderSheetImage(store: Store, opts: ExportOptions): Promi
   let heightPt = sheet.pdf?.heightPt ?? 842
 
   if (opts.includeBackground && sheet.pdf) {
-    const base64 = store.project.assets[sheet.pdf.assetId]
+    const base64 = assetData(sheet.pdf.assetId)
     if (base64) {
       const rendered = await renderPage(sheet.pdf.assetId, base64, sheet.pdf, scale)
       bg = rendered.canvas

@@ -9,7 +9,7 @@ function sampleProject() {
   const sheet = project.sheets[0]
   sheet.mmPerPoint = 3.527
   sheet.pdf = { assetId: 'abc123', page: 4, rotation: 90, widthPt: 842, heightPt: 595 }
-  project.assets.abc123 = 'JVBERi0=' // pretend PDF bytes
+  project.assets.abc123 = { name: 'ground-floor.pdf', bytes: 5 }
   const run: RunItem = {
     kind: 'run', id: 'r1', systemId: 'air.supply', level: 'ceiling',
     points: [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }],
@@ -39,7 +39,7 @@ test('a project survives a save/load round trip', () => {
 
 test('unreferenced PDF assets are dropped on save', () => {
   const project = sampleProject()
-  project.assets.orphan = 'AAAA'
+  project.assets.orphan = { name: 'stale.pdf', bytes: 3 }
   const restored = parseProject(serialize(project))
   assert.deepEqual(Object.keys(restored.assets), ['abc123'])
 })

@@ -103,7 +103,7 @@ export class Editor {
 
   render(): void {
     const dpr = window.devicePixelRatio || 1
-    this.bg.sync(this.store.project, this.store.sheet, this.cam.zoom, dpr)
+    this.bg.sync(this.store.sheet, this.cam.zoom, dpr)
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     drawScene({
       ctx: this.ctx,

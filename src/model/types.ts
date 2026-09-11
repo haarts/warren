@@ -1,4 +1,5 @@
 import type { Pt } from '../geom.ts'
+import type { AssetRef } from './assets.ts'
 
 export const CATEGORIES = ['water', 'reuse', 'drain', 'heat', 'air', 'power', 'data', 'struct'] as const
 export type Category = (typeof CATEGORIES)[number]
@@ -190,8 +191,11 @@ export interface Project {
   name: string
   systems: System[]
   sheets: Sheet[]
-  /** sha-256 hex -> base64 PDF bytes. Keeps the source PDF inside the project file. */
-  assets: Record<string, string>
+  /**
+   * sha-256 hex -> a reference to the source PDF. The bytes are held outside the project file
+   * unless it was written as a bundle; see model/assets.ts.
+   */
+  assets: Record<string, AssetRef>
   settings: Settings
   activeSheetId: string
 }

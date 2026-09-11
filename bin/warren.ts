@@ -1,0 +1,605 @@
+#!/usr/bin/env node
+/**
+ * Warren command line. Reads and edits a project file using the same modules the app runs on,
+ * so a length reported here is the length the drawing means - there is no second
+ * implementation of the geometry to drift out of step.
+ *
+ * Everything speaks metres. The file stores PDF points and a per-sheet scale; converting at
+ * the boundary is this tool's job, not the caller's.
+ */
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { basename, dirname, join, resolve } from 'node:path'
+import { polylineLength, type Pt } from '../src/geom.ts'
+import { bytesToBase64, base64ToBytes, sha256Hex } from '../src/io/base64.ts'
+import { parseProject, serialize } from '../src/io/projectFile.ts'
+import { assetData, registerAsset } from '../src/model/assets.ts'
+import { Store } from '../src/model/doc.ts'
+import { newId } from '../src/model/ids.ts'
+import { LEVELS, type Item, type Level, type Project, type Sheet } from '../src/model/types.ts'
+import { computeTakeoff } from '../src/takeoff.ts'
+
+// ---------------------------------------------------------------------------- arguments
+
+interface Args {
+  command: string
+  positional: string[]
+  flags: Record<string, string | true>
+}
+
+function parseArgs(argv: string[]): Args {
+  const [command = 'help', ...rest] = argv
+  const positional: string[] = []
+  const flags: Record<string, string | true> = {}
+  for (let i = 0; i < rest.length; i++) {
+    const token = rest[i]
+    if (token.startsWith('--')) {
+      const [name, inline] = token.slice(2).split('=')
+      if (inline !== undefined) flags[name] = inline
+      else if (rest[i + 1] && !rest[i + 1].startsWith('--')) flags[name] = rest[++i]
+      else flags[name] = true
+    } else {
+      positional.push(token)
+    }
+  }
+  return { command, positional, flags }
+}
+
+function fail(message: string): never {
+  process.stderr.write(`warren: ${message}\n`)
+  process.exit(2)
+}
+
+// ------------------------------------------------------------------------------- loading
+
+interface Loaded {
+  path: string
+  project: Project
+  store: Store
+  /** Asset ids whose bytes could not be found on disk. */
+  missingAssets: string[]
+}
+
+/**
+ * Finds the bytes for each referenced asset next to the project file: by its recorded name,
+ * by `<hash>.pdf`, or under `assets/`. The hash is always verified, so a name collision
+ * cannot silently attach the wrong plan.
+ */
+async function resolveAssets(project: Project, projectPath: string, assetDir?: string): Promise<string[]> {
+  const here = assetDir ? resolve(assetDir) : dirname(resolve(projectPath))
+  const missing: string[] = []
+  for (const [id, ref] of Object.entries(project.assets)) {
+    if (ref.data) {
+      registerAsset(id, ref.data)
+      continue
+    }
+    const candidates = [join(here, ref.name), join(here, `${id}.pdf`), join(here, 'assets', `${id}.pdf`)]
+    let found = false
+    for (const candidate of candidates) {
+      if (!existsSync(candidate)) continue
+      const bytes = new Uint8Array(readFileSync(candidate))
+      if (await sha256Hex(bytes) !== id) continue
+      registerAsset(id, bytesToBase64(bytes))
+      found = true
+      break
+    }
+    if (!found) missing.push(id)
+  }
+  return missing
+}
+
+async function load(args: Args): Promise<Loaded> {
+  const path = args.positional[0]
+  if (!path) fail('which project file? usage: warren <command> <file.warren.json>')
+  if (!existsSync(path)) fail(`no such file: ${path}`)
+  let project: Project
+  try {
+    project = parseProject(readFileSync(path, 'utf8'))
+  } catch (err) {
+    fail(`could not read ${path}: ${err instanceof Error ? err.message : err}`)
+  }
+  const assetDir = typeof args.flags.assets === 'string' ? args.flags.assets : undefined
+  const missingAssets = await resolveAssets(project, path, assetDir)
+  const store = new Store()
+  store.loadProject(project, basename(path))
+  return { path, project, store, missingAssets }
+}
+
+// -------------------------------------------------------------------------------- units
+
+const metres = (sheet: Sheet, points: number): number | null =>
+  sheet.mmPerPoint === null ? null : (points * sheet.mmPerPoint) / 1000
+
+const pointsFromMetres = (sheet: Sheet, m: number): number | null =>
+  sheet.mmPerPoint === null ? null : (m * 1000) / sheet.mmPerPoint
+
+const round = (n: number, places = 2): number => Number(n.toFixed(places))
+
+function sheetOf(project: Project, selector: string | true | undefined): Sheet[] {
+  if (selector === undefined || selector === true) return project.sheets
+  const index = Number(selector)
+  if (Number.isInteger(index) && index >= 1 && index <= project.sheets.length) return [project.sheets[index - 1]]
+  const byName = project.sheets.filter((s) => s.name.toLowerCase().includes(String(selector).toLowerCase()))
+  if (byName.length === 0) fail(`no sheet matching "${selector}". Sheets: ${project.sheets.map((s) => s.name).join(', ')}`)
+  return byName
+}
+
+const globToRegExp = (pattern: string): RegExp =>
+  new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`, 'i')
+
+// ------------------------------------------------------------------------ item reporting
+
+interface ItemReport {
+  id: string
+  kind: Item['kind']
+  sheet: string
+  system: string
+  systemId: string
+  level: Level
+  label?: string
+  size?: string
+  flow?: string
+  lengthM?: number | null
+  atM?: [number, number] | null
+  text?: string
+}
+
+function reportItem(store: Store, sheet: Sheet, item: Item): ItemReport {
+  const system = store.system(item.systemId)
+  const report: ItemReport = {
+    id: item.id,
+    kind: item.kind,
+    sheet: sheet.name,
+    system: system.name,
+    systemId: item.systemId,
+    level: item.level,
+  }
+  if (item.kind !== 'note' && item.label) report.label = item.label
+  if (item.kind === 'run') {
+    if (item.size) report.size = item.size
+    if (item.flow !== 'none') report.flow = item.flow
+    const len = metres(sheet, polylineLength(item.points))
+    report.lengthM = len === null ? null : round(len)
+    const first = item.points[0]
+    report.atM = pointAtM(sheet, first)
+  } else {
+    report.atM = pointAtM(sheet, { x: item.x, y: item.y })
+    if (item.kind === 'note') report.text = item.text
+  }
+  return report
+}
+
+function pointAtM(sheet: Sheet, p: Pt): [number, number] | null {
+  const x = metres(sheet, p.x)
+  const y = metres(sheet, p.y)
+  return x === null || y === null ? null : [round(x), round(y)]
+}
+
+// ----------------------------------------------------------------------------- commands
+
+async function cmdSummary(args: Args): Promise<void> {
+  const { project, store, missingAssets } = await load(args)
+  const takeoff = computeTakeoff(store, 'project')
+  const used = takeoff.rows.filter((r) => r.runs + r.boxes + r.markers + r.notes > 0)
+
+  const data = {
+    name: project.name,
+    sheets: project.sheets.map((sheet) => ({
+      name: sheet.name,
+      items: sheet.items.length,
+      calibrated: sheet.mmPerPoint !== null,
+      mmPerPoint: sheet.mmPerPoint === null ? null : round(sheet.mmPerPoint, 4),
+      pageMm: sheet.pdf && sheet.mmPerPoint
+        ? [round(sheet.pdf.widthPt * sheet.mmPerPoint), round(sheet.pdf.heightPt * sheet.mmPerPoint)]
+        : null,
+      plan: sheet.pdf ? { page: sheet.pdf.page, rotation: sheet.pdf.rotation } : null,
+    })),
+    systems: { total: project.systems.length, inUse: used.length },
+    items: project.sheets.flatMap((s) => s.items).reduce<Record<string, number>>((acc, i) => {
+      acc[i.kind] = (acc[i.kind] ?? 0) + 1
+      return acc
+    }, {}),
+    totalPlanM: round(takeoff.rows.reduce((n, r) => n + r.lengthMm, 0) / 1000, 1),
+    totalOrderM: round(takeoff.rows.reduce((n, r) => n + r.orderMm, 0) / 1000, 1),
+    missingAssets,
+  }
+
+  if (args.flags.json) return void console.log(JSON.stringify(data, null, 2))
+
+  console.log(`${data.name}`)
+  for (const sheet of data.sheets) {
+    const scale = sheet.calibrated ? `1 pt = ${sheet.mmPerPoint} mm` : 'NOT CALIBRATED'
+    const size = sheet.pageMm ? `, ${(sheet.pageMm[0] / 1000).toFixed(2)} × ${(sheet.pageMm[1] / 1000).toFixed(2)} m` : ''
+    console.log(`  ${sheet.name.padEnd(24)} ${String(sheet.items).padStart(4)} items   ${scale}${size}`)
+  }
+  const plural = (kind: string, n: number): string => (n === 1 ? kind : kind === 'box' ? 'boxes' : `${kind}s`)
+  console.log(`  ${Object.entries(data.items).map(([k, n]) => `${n} ${plural(k, n)}`).join(', ')}`)
+  console.log(`  ${data.systems.inUse} of ${data.systems.total} systems in use`)
+  console.log(`  ${data.totalPlanM} m drawn, ${data.totalOrderM} m to order`)
+  if (missingAssets.length) console.log(`  plan PDF not found beside this file (${missingAssets.length})`)
+}
+
+async function cmdItems(args: Args): Promise<void> {
+  const { store, project } = await load(args)
+  const sheets = sheetOf(project, args.flags.sheet)
+  const systemPattern = typeof args.flags.system === 'string' ? globToRegExp(args.flags.system) : null
+  const level = typeof args.flags.level === 'string' ? args.flags.level : null
+  const kind = typeof args.flags.kind === 'string' ? args.flags.kind : null
+
+  const rows: ItemReport[] = []
+  for (const sheet of sheets) {
+    store.setActiveSheet(sheet.id)
+    for (const item of sheet.items) {
+      if (systemPattern && !systemPattern.test(item.systemId)) continue
+      if (level && item.level !== level) continue
+      if (kind && item.kind !== kind) continue
+      rows.push(reportItem(store, sheet, item))
+    }
+  }
+
+  if (args.flags.json) return void console.log(JSON.stringify(rows, null, 2))
+  if (rows.length === 0) return void console.log('nothing matched')
+  for (const r of rows) {
+    const where = r.atM ? `@ ${r.atM[0]},${r.atM[1]} m` : '@ uncalibrated'
+    const extra = [r.size, r.label, r.text, r.lengthM != null ? `${r.lengthM} m` : null, r.flow]
+      .filter(Boolean).join(' · ')
+    console.log(`${r.id.padEnd(22)} ${r.kind.padEnd(7)} ${r.system.padEnd(28)} ${r.level.padEnd(9)} ${where.padEnd(22)} ${extra}`)
+  }
+  console.log(`${rows.length} item${rows.length === 1 ? '' : 's'}`)
+}
+
+async function cmdTakeoff(args: Args): Promise<void> {
+  const { store } = await load(args)
+  const scope = args.flags.scope === 'sheet' ? 'sheet' : 'project'
+  const result = computeTakeoff(store, scope)
+  const rows = result.rows
+    .filter((r) => r.runs + r.boxes + r.markers > 0)
+    .map((r) => ({
+      systemId: r.system.id,
+      system: r.system.name,
+      category: r.system.category,
+      runs: r.runs,
+      planM: round(r.lengthMm / 1000, 1),
+      orderM: round(r.orderMm / 1000, 1),
+      boxes: r.boxes,
+      markers: r.markers,
+    }))
+
+  if (args.flags.json) return void console.log(JSON.stringify({ slackPct: result.slackPct, uncalibrated: result.uncalibrated, rows }, null, 2))
+  if (args.flags.csv) {
+    console.log('system_id,system,category,runs,plan_m,order_m,boxes,markers')
+    for (const r of rows) {
+      console.log([r.systemId, JSON.stringify(r.system), r.category, r.runs, r.planM, r.orderM, r.boxes, r.markers].join(','))
+    }
+    return
+  }
+  for (const r of rows) {
+    console.log(`${r.system.padEnd(30)} ${String(r.planM).padStart(7)} m  →  ${String(r.orderM).padStart(7)} m to order   ${r.runs} run(s)`)
+  }
+  if (result.uncalibrated.length) console.log(`uncalibrated, no lengths: ${result.uncalibrated.join(', ')}`)
+}
+
+// ------------------------------------------------------------------------------- check
+
+interface Finding { level: 'error' | 'warning'; rule: string; where: string; message: string }
+
+/**
+ * The parser is deliberately forgiving so an old file still opens. That is right for a person
+ * and dangerous for a machine: a run written with one vertex, or coordinates in millimetres,
+ * gets quietly repaired into something plausible and wrong. This fails where the parser
+ * forgives.
+ */
+async function cmdCheck(args: Args): Promise<void> {
+  const { project, store, missingAssets, path } = await load(args)
+  const findings: Finding[] = []
+  const add = (level: Finding['level'], rule: string, where: string, message: string): void => {
+    findings.push({ level, rule, where, message })
+  }
+
+  const systemIds = new Set(project.systems.map((s) => s.id))
+  const seenIds = new Set<string>()
+
+  for (const id of missingAssets) {
+    add('warning', 'asset-missing', basename(path),
+      `the plan PDF "${project.assets[id]?.name}" is not beside this file; drawings render without it`)
+  }
+
+  for (const sheet of project.sheets) {
+    if (sheet.mmPerPoint === null && sheet.items.some((i) => i.kind === 'run')) {
+      add('warning', 'uncalibrated', sheet.name, 'runs are drawn but the sheet has no scale, so no length is knowable')
+    }
+    if (sheet.pdf && !project.assets[sheet.pdf.assetId]) {
+      add('error', 'asset-dangling', sheet.name, `refers to asset ${sheet.pdf.assetId.slice(0, 8)} which the file does not list`)
+    }
+
+    const page = sheet.pdf
+    for (const item of sheet.items) {
+      const where = `${sheet.name}/${item.id}`
+      if (seenIds.has(item.id)) add('error', 'duplicate-id', where, 'two items share this id')
+      seenIds.add(item.id)
+      if (!systemIds.has(item.systemId)) {
+        add('error', 'unknown-system', where, `systemId "${item.systemId}" is not in this project's catalogue`)
+      }
+      if (!LEVELS.includes(item.level)) add('error', 'unknown-level', where, `level "${item.level}" is not a level`)
+
+      const coords: Pt[] = item.kind === 'run' ? item.points : [{ x: item.x, y: item.y }]
+      if (item.kind === 'run' && item.points.length < 2) {
+        add('error', 'run-too-short', where, `a run needs two points, this has ${item.points.length}`)
+      }
+      if (coords.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y))) {
+        add('error', 'bad-coordinate', where, 'has a coordinate that is not a finite number')
+      }
+      if (page) {
+        // Coordinates are PDF points. A value far off the page usually means metres or
+        // millimetres were written where points were expected.
+        const margin = Math.max(page.widthPt, page.heightPt)
+        const off = coords.some((p) => p.x < -margin || p.y < -margin || p.x > page.widthPt + margin || p.y > page.heightPt + margin)
+        if (off) {
+          add('warning', 'off-page', where,
+            `sits far outside the ${Math.round(page.widthPt)}×${Math.round(page.heightPt)} pt page — are these points, or did millimetres get written here?`)
+        }
+      }
+      if (item.kind === 'run' && !item.size && args.flags.strict) {
+        add('warning', 'no-size', where, 'no size or spec, so it cannot be ordered from')
+      }
+      if (item.kind === 'run' && store.system(item.systemId).category === 'drain' && item.flow === 'none') {
+        add('warning', 'drain-no-fall', where, 'a drainage run with no flow direction: which way does it fall?')
+      }
+    }
+
+    // The one rule worth enforcing before anything else: potable and non-potable water must
+    // never be able to meet.
+    const endpoints = (i: Item): Pt[] => (i.kind === 'run' ? [i.points[0], i.points[i.points.length - 1]] : [{ x: i.x, y: i.y }])
+    const potable = sheet.items.filter((i) => store.system(i.systemId).category === 'water')
+    const nonPotable = sheet.items.filter((i) => store.system(i.systemId).tag === 'NON-POTABLE')
+    for (const a of nonPotable) {
+      for (const b of potable) {
+        for (const pa of endpoints(a)) {
+          for (const pb of endpoints(b)) {
+            if (Math.hypot(pa.x - pb.x, pa.y - pb.y) < 0.5) {
+              add('error', 'cross-connection', `${sheet.name}/${a.id}`,
+                `touches drinking water (${b.id}, ${store.system(b.systemId).name}) — non-potable must never cross-connect`)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (args.flags.json) {
+    console.log(JSON.stringify({ findings, errors: findings.filter((f) => f.level === 'error').length }, null, 2))
+  } else if (findings.length === 0) {
+    console.log('no findings')
+  } else {
+    for (const f of findings) {
+      console.log(`${f.level === 'error' ? 'error  ' : 'warning'} ${f.rule.padEnd(18)} ${f.where.padEnd(34)} ${f.message}`)
+    }
+    const errors = findings.filter((f) => f.level === 'error').length
+    console.log(`${findings.length} finding${findings.length === 1 ? '' : 's'}, ${errors} error${errors === 1 ? '' : 's'}`)
+  }
+  if (findings.some((f) => f.level === 'error')) process.exit(1)
+}
+
+// ----------------------------------------------------------------------- split / bundle
+
+async function cmdSplit(args: Args): Promise<void> {
+  const { project, path, missingAssets } = await load(args)
+  if (missingAssets.length && !Object.values(project.assets).some((a) => a.data)) {
+    fail('this file has no PDF inside it and none beside it, so there is nothing to split out')
+  }
+  const dir = dirname(resolve(path))
+  const written: string[] = []
+  for (const [id, ref] of Object.entries(project.assets)) {
+    const data = ref.data ?? assetData(id)
+    if (!data) continue
+    const out = join(dir, ref.name)
+    if (!existsSync(out)) {
+      writeFileSync(out, base64ToBytes(data))
+      written.push(ref.name)
+    }
+  }
+  const before = readFileSync(path).length
+  writeFileSync(path, serialize(project))
+  const after = readFileSync(path).length
+  console.log(`${basename(path)}: ${(before / 1024 / 1024).toFixed(2)} MB → ${(after / 1024).toFixed(1)} KB`)
+  for (const name of written) console.log(`wrote ${name}`)
+  if (!written.length) console.log('plan PDF was already beside it')
+}
+
+async function cmdBundle(args: Args): Promise<void> {
+  const { project, path, missingAssets } = await load(args)
+  if (missingAssets.length) {
+    fail(`cannot bundle: the plan PDF is not beside this file (${missingAssets.map((id) => project.assets[id]?.name).join(', ')})`)
+  }
+  const out = typeof args.flags.out === 'string'
+    ? args.flags.out
+    : join(dirname(resolve(path)), basename(path).replace(/\.warren\.json$/i, '') + '.bundle.warren.json')
+  writeFileSync(out, serialize(project, { bundle: true }))
+  console.log(`wrote ${basename(out)} (${(readFileSync(out).length / 1024 / 1024).toFixed(2)} MB, self-contained)`)
+}
+
+// -------------------------------------------------------------------------------- apply
+
+interface SetOp { op: 'set'; id: string; patch: Record<string, unknown> }
+interface DeleteOp { op: 'delete'; id: string }
+interface MoveOp { op: 'move'; id: string; byM?: [number, number]; byPt?: [number, number] }
+interface AddOp { op: 'add'; sheet?: string; item: Record<string, unknown> }
+type Op = SetOp | DeleteOp | MoveOp | AddOp
+
+const PATCHABLE = new Set([
+  'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride', 'locked', 'symbol',
+])
+
+/**
+ * Applies a batch of edits. Everything is validated first and written only if all of it is
+ * good, so a half-understood instruction cannot leave the drawing half-changed.
+ */
+async function cmdApply(args: Args): Promise<void> {
+  const { project, store, path } = await load(args)
+  const opsPath = args.positional[1]
+  if (!opsPath) fail('usage: warren apply <file.warren.json> <ops.json> [--dry-run]')
+  if (!existsSync(opsPath)) fail(`no such file: ${opsPath}`)
+
+  let ops: Op[]
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(opsPath, 'utf8'))
+    ops = Array.isArray(parsed) ? parsed as Op[] : (parsed as { ops: Op[] }).ops
+    if (!Array.isArray(ops)) throw new Error('expected an array of ops, or {"ops": [...]}')
+  } catch (err) {
+    fail(`could not read ${opsPath}: ${err instanceof Error ? err.message : err}`)
+  }
+
+  const index = new Map<string, { sheet: Sheet; item: Item }>()
+  for (const sheet of project.sheets) for (const item of sheet.items) index.set(item.id, { sheet, item })
+  const systemIds = new Set(project.systems.map((s) => s.id))
+
+  const problems: string[] = []
+  const describe: string[] = []
+  const planned: (() => void)[] = []
+
+  ops.forEach((op, n) => {
+    const at = `op ${n + 1} (${op?.op})`
+    const target = 'id' in op ? index.get(op.id) : undefined
+    if ('id' in op && !target) return void problems.push(`${at}: no item with id "${op.id}"`)
+
+    switch (op.op) {
+      case 'set': {
+        const bad = Object.keys(op.patch ?? {}).filter((k) => !PATCHABLE.has(k))
+        if (bad.length) return void problems.push(`${at}: cannot set ${bad.join(', ')} — patchable fields are ${[...PATCHABLE].join(', ')}`)
+        if (typeof op.patch.systemId === 'string' && !systemIds.has(op.patch.systemId)) {
+          return void problems.push(`${at}: systemId "${op.patch.systemId}" is not in this project's catalogue`)
+        }
+        if (typeof op.patch.level === 'string' && !LEVELS.includes(op.patch.level as Level)) {
+          return void problems.push(`${at}: level "${op.patch.level}" is not one of ${LEVELS.join(', ')}`)
+        }
+        describe.push(`${at}: ${Object.keys(op.patch).join(', ')} on ${op.id}`)
+        planned.push(() => Object.assign(target!.item, op.patch))
+        break
+      }
+      case 'delete': {
+        describe.push(`${at}: delete ${target!.item.kind} ${op.id}`)
+        planned.push(() => {
+          target!.sheet.items = target!.sheet.items.filter((i) => i.id !== op.id)
+        })
+        break
+      }
+      case 'move': {
+        let delta: Pt | null = null
+        if (op.byPt) delta = { x: op.byPt[0], y: op.byPt[1] }
+        else if (op.byM) {
+          const x = pointsFromMetres(target!.sheet, op.byM[0])
+          const y = pointsFromMetres(target!.sheet, op.byM[1])
+          if (x === null || y === null) return void problems.push(`${at}: sheet "${target!.sheet.name}" has no scale, so metres mean nothing here`)
+          delta = { x, y }
+        }
+        if (!delta) return void problems.push(`${at}: needs byM or byPt`)
+        describe.push(`${at}: move ${op.id}`)
+        planned.push(() => {
+          const item = target!.item
+          if (item.kind === 'run') item.points = item.points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y }))
+          else { item.x += delta.x; item.y += delta.y }
+        })
+        break
+      }
+      case 'add': {
+        const sheets = sheetOf(project, op.sheet)
+        const sheet = sheets[0]
+        const raw = op.item ?? {}
+        if (typeof raw.systemId !== 'string' || !systemIds.has(raw.systemId)) {
+          return void problems.push(`${at}: item.systemId must be one of this project's systems`)
+        }
+        const level = typeof raw.level === 'string' && LEVELS.includes(raw.level as Level) ? raw.level as Level : 'wall'
+        if (raw.kind === 'run') {
+          const source = Array.isArray(raw.pointsM) ? raw.pointsM : Array.isArray(raw.points) ? raw.points : null
+          if (!source || source.length < 2) return void problems.push(`${at}: a run needs at least two points`)
+          const inMetres = Array.isArray(raw.pointsM)
+          const points: Pt[] = []
+          for (const pair of source as [number, number][]) {
+            const x = inMetres ? pointsFromMetres(sheet, pair[0]) : pair[0]
+            const y = inMetres ? pointsFromMetres(sheet, pair[1]) : pair[1]
+            if (x === null || y === null) return void problems.push(`${at}: sheet "${sheet.name}" has no scale, so pointsM mean nothing here`)
+            points.push({ x, y })
+          }
+          describe.push(`${at}: add run of ${points.length} points to ${sheet.name}`)
+          planned.push(() => {
+            sheet.items.push({
+              kind: 'run', id: newId('run'), systemId: raw.systemId as string, level, points,
+              flow: raw.flow === 'forward' || raw.flow === 'reverse' ? raw.flow : 'none',
+              size: typeof raw.size === 'string' ? raw.size : store.system(raw.systemId as string).defaultSize,
+              ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+            })
+          })
+        } else if (raw.kind === 'marker' || raw.kind === 'note') {
+          const x = typeof raw.xM === 'number' ? pointsFromMetres(sheet, raw.xM) : typeof raw.x === 'number' ? raw.x : null
+          const y = typeof raw.yM === 'number' ? pointsFromMetres(sheet, raw.yM) : typeof raw.y === 'number' ? raw.y : null
+          if (x === null || y === null) return void problems.push(`${at}: needs x/y in points or xM/yM in metres on a calibrated sheet`)
+          describe.push(`${at}: add ${raw.kind} to ${sheet.name}`)
+          planned.push(() => {
+            if (raw.kind === 'note') {
+              sheet.items.push({ kind: 'note', id: newId('note'), systemId: raw.systemId as string, level, x, y, w: 90, text: String(raw.text ?? '') })
+            } else {
+              sheet.items.push({
+                kind: 'marker', id: newId('mk'), systemId: raw.systemId as string, level, x, y,
+                symbol: (raw.symbol as never) ?? 'note',
+                ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+              })
+            }
+          })
+        } else {
+          problems.push(`${at}: kind must be run, marker or note`)
+        }
+        break
+      }
+      default:
+        problems.push(`${at}: unknown op`)
+    }
+  })
+
+  if (problems.length) {
+    for (const p of problems) process.stderr.write(`warren: ${p}\n`)
+    process.stderr.write(`warren: nothing was written — ${problems.length} of ${ops.length} ops did not validate\n`)
+    process.exit(1)
+  }
+
+  for (const line of describe) console.log(line)
+  if (args.flags['dry-run']) return void console.log(`${planned.length} op(s) would apply; nothing written`)
+  for (const apply of planned) apply()
+  writeFileSync(path, serialize(project))
+  console.log(`applied ${planned.length} op(s) to ${basename(path)}`)
+}
+
+// ---------------------------------------------------------------------------------- main
+
+const HELP = `warren — read and edit a Warren project from the command line
+
+  warren summary <file>                      what is in this project
+  warren items   <file> [filters]            list items, with real-world positions
+  warren takeoff <file> [--scope sheet]      metres per system
+  warren check   <file> [--strict]           validate; exits 1 on errors
+  warren split   <file>                      move the PDF out beside the file
+  warren bundle  <file> [--out X]            write one self-contained file
+  warren apply   <file> <ops.json>           apply validated edits
+
+Filters for items:  --sheet <n|name>  --system <glob>  --level <level>  --kind <run|box|marker|note>
+Everywhere:         --json    machine-readable output
+                    --assets <dir>   where to look for the plan PDF
+
+Lengths and positions are metres. Sheets must be calibrated for those to exist.
+`
+
+const args = parseArgs(process.argv.slice(2))
+const commands: Record<string, (a: Args) => Promise<void>> = {
+  summary: cmdSummary,
+  items: cmdItems,
+  takeoff: cmdTakeoff,
+  check: cmdCheck,
+  split: cmdSplit,
+  bundle: cmdBundle,
+  apply: cmdApply,
+}
+
+const run = commands[args.command]
+if (!run) {
+  process.stdout.write(HELP)
+  process.exit(args.command === 'help' || args.flags.help ? 0 : 2)
+}
+await run(args).catch((err: unknown) => fail(err instanceof Error ? err.message : String(err)))

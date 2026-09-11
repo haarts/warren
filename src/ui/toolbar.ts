@@ -5,6 +5,7 @@ import {
   type Level, type MarkerSymbol,
 } from '../model/types.ts'
 import { saveCapabilityNote } from '../io/projectFile.ts'
+import { alertDialog } from './modal.ts'
 import { clear, el } from './dom.ts'
 import { openExportDialog, openPrintDialog } from './outputDialogs.ts'
 import { openSystemsEditor } from './systemsEditor.ts'
@@ -216,6 +217,11 @@ function fileMenu(app: App): HTMLElement {
       entry('Open…', 'Ctrl+O', () => void app.openProject()),
       entry('Save', 'Ctrl+S', () => void app.save()),
       entry('Save as…', 'Ctrl+Shift+S', () => void app.saveAs()),
+      el('hr'),
+      sheet.pdf ? entry('Save plan PDF beside it', '', () => {
+        if (!app.exportPlanPdf()) alertDialog('Nothing to write', 'This browser does not have the plan PDF yet.')
+      }) : null,
+      entry('Export self-contained bundle…', '', () => void app.exportBundle()),
       el('hr'),
       entry('Import PDF page → this sheet', '', () => void app.importPdf('current')),
       entry('Import PDF page → new sheet', '', () => void app.importPdf('new')),

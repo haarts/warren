@@ -1,5 +1,6 @@
 import type { App } from '../app.ts'
 import { pageCount, renderThumbnail } from '../io/pdf.ts'
+import { assetData } from '../model/assets.ts'
 import { el } from './dom.ts'
 import { openModal } from './modal.ts'
 
@@ -9,7 +10,7 @@ const MAX_THUMBS = 60
 export async function openPdfImportDialog(
   app: App, assetId: string, fileName: string, target: 'current' | 'new',
 ): Promise<void> {
-  const base64 = app.store.project.assets[assetId]
+  const base64 = assetData(assetId)
   if (!base64) return
   const total = await pageCount(assetId, base64)
   let selected = 1

@@ -1,5 +1,6 @@
 import { renderPage } from '../io/pdf.ts'
-import type { Project, Sheet } from '../model/types.ts'
+import { assetData } from '../model/assets.ts'
+import type { Sheet } from '../model/types.ts'
 
 const SCALE_STEPS = [1, 1.5, 2, 3, 4, 6, 8]
 
@@ -37,13 +38,13 @@ export class Background {
   }
 
   /** Call every frame; cheap unless the sheet or the required resolution changed. */
-  sync(project: Project, sheet: Sheet, zoom: number, dpr: number): void {
+  sync(sheet: Sheet, zoom: number, dpr: number): void {
     if (!sheet.pdf) {
       if (this.canvas) this.clear()
       return
     }
-    const base64 = project.assets[sheet.pdf.assetId]
-    if (!base64) {
+    if (!assetData(sheet.pdf.assetId)) {
+      // The plan has not been located yet; draw the overlay on its own.
       if (this.canvas) this.clear()
       return
     }
@@ -56,20 +57,20 @@ export class Background {
       // Different page: show it as soon as possible at a modest scale, sharpen later.
       this.clear()
     }
-    this.schedule(project, sheet, key, wantScale, key !== this.key ? 0 : 180)
+    this.schedule(sheet, key, wantScale, key !== this.key ? 0 : 180)
   }
 
-  private schedule(project: Project, sheet: Sheet, key: string, scale: number, delay: number): void {
+  private schedule(sheet: Sheet, key: string, scale: number, delay: number): void {
     if (this.timer !== null) clearTimeout(this.timer)
     this.timer = window.setTimeout(() => {
       this.timer = null
-      void this.run(project, sheet, key, scale)
+      void this.run(sheet, key, scale)
     }, delay)
   }
 
-  private async run(project: Project, sheet: Sheet, key: string, scale: number): Promise<void> {
+  private async run(sheet: Sheet, key: string, scale: number): Promise<void> {
     if (!sheet.pdf) return
-    const base64 = project.assets[sheet.pdf.assetId]
+    const base64 = assetData(sheet.pdf.assetId)
     if (!base64) return
     this.pending = `${key}@${scale}`
     try {

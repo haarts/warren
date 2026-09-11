@@ -1,3 +1,4 @@
+import { assetData, type AssetRef } from '../model/assets.ts'
 import { emptyProject } from '../model/doc.ts'
 import { NOTE_DEFAULT_WIDTH, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { defaultSystems } from '../model/systems.ts'
@@ -8,16 +9,33 @@ import {
 
 export const FILE_EXTENSION = '.warren.json'
 
+export interface SerializeOptions {
+  /**
+   * Write the PDF bytes into the file. Off by default: a bundled project is 99.8% base64,
+   * which no diff, grep or reader can see past. Turn it on to produce one self-contained file
+   * for mailing or archiving.
+   */
+  bundle?: boolean
+}
+
 /** Drop assets no sheet references, so the file does not grow forever. */
-function gcAssets(project: Project): Record<string, string> {
+function gcAssets(project: Project, bundle: boolean): Record<string, AssetRef> {
   const used = new Set(project.sheets.map((s) => s.pdf?.assetId).filter(Boolean) as string[])
-  const out: Record<string, string> = {}
-  for (const [id, data] of Object.entries(project.assets)) if (used.has(id)) out[id] = data
+  const out: Record<string, AssetRef> = {}
+  for (const [id, ref] of Object.entries(project.assets)) {
+    if (!used.has(id)) continue
+    const clean: AssetRef = { name: ref.name, bytes: ref.bytes }
+    if (bundle) {
+      const data = ref.data ?? assetData(id)
+      if (data) clean.data = data
+    }
+    out[id] = clean
+  }
   return out
 }
 
-export function serialize(project: Project): string {
-  const clean: Project = { ...project, assets: gcAssets(project) }
+export function serialize(project: Project, opts: SerializeOptions = {}): string {
+  const clean: Project = { ...project, assets: gcAssets(project, opts.bundle ?? false) }
   return JSON.stringify(clean, null, 2)
 }
 
@@ -174,9 +192,21 @@ export function parseProject(text: string): Project {
     ? raw.sheets.map(asSheet)
     : base.sheets
 
-  const assets: Record<string, string> = {}
+  const assets: Record<string, AssetRef> = {}
   if (isObj(raw.assets)) {
-    for (const [k, v] of Object.entries(raw.assets)) if (typeof v === 'string') assets[k] = v
+    for (const [k, v] of Object.entries(raw.assets)) {
+      // Files written before assets were references stored the base64 string directly.
+      if (typeof v === 'string') {
+        assets[k] = { name: 'plan.pdf', bytes: Math.round(v.length * 0.75), data: v }
+      } else if (isObj(v)) {
+        const ref: AssetRef = { name: str(v.name, 'plan.pdf'), bytes: num(v.bytes, 0) }
+        if (typeof v.data === 'string') {
+          ref.data = v.data
+          if (!ref.bytes) ref.bytes = Math.round(v.data.length * 0.75)
+        }
+        assets[k] = ref
+      }
+    }
   }
 
   const settingsRaw = isObj(raw.settings) ? raw.settings : {}
