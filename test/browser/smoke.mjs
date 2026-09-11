@@ -420,6 +420,77 @@ try {
   }, savedCam)
   await new Promise((r) => setTimeout(r, 120))
 
+  // --- a room corner drags like any other corner ------------------------------------------------
+  const roomCam = await page.evaluate(() => ({ x: window.warren.editor.cam.x, y: window.warren.editor.cam.y, zoom: window.warren.editor.cam.zoom }))
+  const roomHandle = await page.evaluate(async () => {
+    const app = window.warren
+    app.store.sheet.items.push({
+      kind: 'room', id: 'resize-me', systemId: 'struct.room', level: 'floor',
+      name: 'Test', use: 'bedroom',
+      points: [{ x: 500, y: 500 }, { x: 700, y: 500 }, { x: 700, y: 640 }, { x: 500, y: 640 }],
+    })
+    app.store.selection.clear()
+    app.store.selection.add('resize-me')
+    app.editor.zoomToSelection()
+    app.store.touch(false)
+    await new Promise((r) => setTimeout(r, 150))
+    const corner = app.store.item('resize-me').points[1]
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    return { x: r.x + app.editor.cam.toScreenX(corner.x), y: r.y + app.editor.cam.toScreenY(corner.y) }
+  })
+  await page.mouse.move(roomHandle.x, roomHandle.y)
+  await page.mouse.down()
+  await page.mouse.move(roomHandle.x + 55, roomHandle.y + 35, { steps: 6 })
+  await page.mouse.up()
+  const resized = await page.evaluate(() => {
+    const p = window.warren.store.item('resize-me').points
+    return { n: p.length, moved: p.filter((q, i) => (i === 1 ? Math.hypot(q.x - 700, q.y - 500) > 2 : false)).length,
+             others: p.filter((q, i) => i !== 1).map((q) => `${Math.round(q.x)},${Math.round(q.y)}`).join(' ') }
+  })
+  check('dragging a room corner moves that corner',
+    resized.moved === 1 && resized.others === '500,500 700,640 500,640', resized.others)
+
+  // A room is closed, so the edge back to the first corner takes a new corner too.
+  const grew = await page.evaluate(async () => {
+    const app = window.warren
+    const pts = app.store.item('resize-me').points
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    const mid = { x: (pts[3].x + pts[0].x) / 2, y: (pts[3].y + pts[0].y) / 2 }
+    return { x: r.x + app.editor.cam.toScreenX(mid.x), y: r.y + app.editor.cam.toScreenY(mid.y) }
+  })
+  await page.keyboard.down('Alt')
+  await page.mouse.click(grew.x, grew.y)
+  await page.keyboard.up('Alt')
+  check('Alt+click on the closing edge adds a corner there',
+    (await page.evaluate(() => window.warren.store.item('resize-me').points.length)) === 5)
+
+  // But a room never shrinks below a triangle.
+  const floor = await page.evaluate(async () => {
+    const app = window.warren
+    while (app.store.item('resize-me').points.length > 3) {
+      app.store.activeVertex = { itemId: 'resize-me', index: 0 }
+      app.editor.deleteSelectionOrVertex()
+    }
+    // One more: aiming at a corner must not take the whole room with it.
+    app.store.activeVertex = { itemId: 'resize-me', index: 0 }
+    app.editor.deleteSelectionOrVertex()
+    await new Promise((r) => setTimeout(r, 60))
+    const still = app.store.item('resize-me')
+    return { corners: still ? still.points.length : 0, said: document.getElementById('status-text').textContent }
+  })
+  check('a room will not be whittled below three corners', floor.corners === 3, `${floor.corners} corners`)
+  check('and it says why instead of deleting the room', /three corners/.test(floor.said || ''), floor.said)
+
+  await page.evaluate((cam) => {
+    const app = window.warren
+    app.store.sheet.items = app.store.sheet.items.filter((i) => i.id !== 'resize-me')
+    app.store.selection.clear()
+    app.store.activeVertex = null
+    Object.assign(app.editor.cam, cam)
+    app.store.touch(false)
+  }, roomCam)
+  await new Promise((r) => setTimeout(r, 120))
+
   // --- naming the project -------------------------------------------------------------------
   const projectName = () => page.evaluate(() => window.warren.store.project.name)
   check('a new project starts as Untitled', (await projectName()) === 'Untitled')

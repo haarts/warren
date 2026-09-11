@@ -28,7 +28,7 @@ export function emptyProject(): Project {
   }
 }
 
-export interface VertexRef { runId: string; index: number }
+export interface VertexRef { itemId: string; index: number }
 
 type Listener = () => void
 

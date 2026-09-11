@@ -693,7 +693,7 @@ function drawHandles(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, u
     if (handlePoints) {
       handlePoints.forEach((wp, i) => {
         const p = cam.toScreen(wp)
-        const active = store.activeVertex?.runId === item.id && store.activeVertex.index === i
+        const active = store.activeVertex?.itemId === item.id && store.activeVertex.index === i
         ctx.fillStyle = active ? ACCENT : HANDLE_FILL
         ctx.strokeStyle = ACCENT
         ctx.beginPath()

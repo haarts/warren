@@ -160,7 +160,7 @@ export class App {
       this.store.dirty = false
       this.store.fileName = target.name
       await clearAutosave()
-      this.editor.onStatus?.(target.handle
+      this.editor.flash(target.handle
         ? `Saved ${target.name}`
         : `Downloaded ${target.name} — this browser cannot write over an existing file`)
       this.refresh()
@@ -205,7 +205,7 @@ export class App {
     if (!target) return
     try {
       await writeTo(target, serialize(this.store.project, { bundle: true }))
-      this.editor.onStatus?.(`Wrote ${target.name} with the plan PDF inside it`)
+      this.editor.flash(`Wrote ${target.name} with the plan PDF inside it`)
     } catch (err) {
       alertDialog('Export failed', String(err instanceof Error ? err.message : err))
     }
@@ -315,7 +315,7 @@ export class App {
     this.exportedAssets.add(id)
     this.editor.invalidateBackground()
     this.editor.zoomToFit()
-    this.editor.onStatus?.(`Found ${file.name}`)
+    this.editor.flash(`Found ${file.name}`)
   }
 
   rotateSheet(delta: 90 | -90): void {
@@ -395,7 +395,7 @@ export class App {
         target.items.push(copy)
       }
     })
-    this.editor.onStatus?.(`Copied ${items.length} item(s) to ${target.name} at the same position`)
+    this.editor.flash(`Copied ${items.length} item(s) to ${target.name} at the same position`)
   }
 
   // --- calibration -------------------------------------------------------------------------

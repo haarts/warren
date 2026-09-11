@@ -669,7 +669,7 @@ function copyTakeoffCsv(app: App, rows: ReturnType<typeof computeTakeoff>['rows'
     ].join(','))
   }
   void navigator.clipboard.writeText(lines.join('\n')).then(
-    () => app.editor.onStatus?.('Takeoff copied to the clipboard as CSV'),
-    () => app.editor.onStatus?.('Clipboard blocked by the browser'),
+    () => app.editor.flash('Takeoff copied to the clipboard as CSV'),
+    () => app.editor.flash('Clipboard blocked by the browser'),
   )
 }

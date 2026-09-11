@@ -69,7 +69,7 @@ export function hitVertex(store: Store, p: Pt, tol: number): VertexRef | null {
     const points = pointsOf(item)
     if (!points) continue
     for (let i = 0; i < points.length; i++) {
-      if (dist(points[i], p) <= tol) return { runId: item.id, index: i }
+      if (dist(points[i], p) <= tol) return { itemId: item.id, index: i }
     }
   }
   return null
@@ -92,7 +92,10 @@ export function hitBoxCorner(store: Store, p: Pt, tol: number): BoxCornerRef | n
 export function hitSegment(item: Item, p: Pt, tol: number): { index: number; point: Pt } | null {
   const points = pointsOf(item)
   if (!points || points.length < 2) return null
-  const r = closestOnPolyline(p, points)
+  // A room is closed, so the edge from the last corner back to the first is a real edge and
+  // you should be able to add a corner on it like any other.
+  const path = item.kind === 'room' ? [...points, points[0]] : points
+  const r = closestOnPolyline(p, path)
   if (r.dist > tol) return null
   return { index: r.index, point: r.point }
 }

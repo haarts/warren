@@ -56,7 +56,7 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 | **Draw a run** | `L`, then click each corner. `Enter` or double-click finishes, `Backspace` removes the last corner, `Esc` cancels. Hold `Shift` for 45° lock |
 | **Select** | `V`. Click a run to select all of it. Shift-click to add. Drag on empty space for a rubber band |
 | **Move** | Drag the selection. Arrow keys nudge (`Shift` = 10×) |
-| **Edit corners** | Drag a corner handle to move it. `Alt`+click a segment to insert a corner, `Alt`+click a corner to remove it. Double-click a segment also inserts |
+| **Edit corners** | Drag a corner handle to move it. `Alt`+click a segment to insert a corner, `Alt`+click a corner to remove it. Double-click a segment also inserts. Works the same on a room outline — a room is closed, so the edge back to the first corner takes a corner too |
 | **Equipment** | `R` draws a box — HRV unit, manifold, distribution board |
 | **Markers** | `M` places a riser, drain, cleanout or penetration |
 | **Notes** | `N` drops a sticky note. Type into Properties; drag the bottom-right handle for width, the height follows the text |
@@ -182,6 +182,9 @@ A room is an outline with a **name** and a **use** — kitchen, bedroom, hall. A
 two jambs, **hinge first**, and which way it swings. Both are architecture rather than services,
 so they sit under everything else and a level filter never hides them: they are the context you
 read the rest against.
+
+Reshape one the way you reshape a run: click its outline to select it, then drag a corner. Add
+a corner with `Alt`+click to turn a rectangle into the L-shape most rooms actually are.
 
 This is not drawing for its own sake. What a room is *for* is what lets rules act on it: a
 bedroom wants sockets and a smoke detector, a toilet wants neither, and a light switch belongs

@@ -6,6 +6,20 @@ import {
   type BoxItem, type Item, type MarkerItem, type MarkerSymbol, type NoteItem, type RunItem,
 } from '../model/types.ts'
 
+/** The fewest points a shape can have and still be that shape. */
+function minPointsFor(item: Item): number {
+  return item.kind === 'room' ? 3 : 2
+}
+
+/** The corner next door, for ortho lock. A room wraps around; a run stops at its ends. */
+function neighbourOf(item: Item, points: Pt[], index: number): Pt | null {
+  if (item.kind === 'room') {
+    const n = points.length
+    return points[(index - 1 + n) % n] ?? null
+  }
+  return points[index - 1] ?? points[index + 1] ?? null
+}
+
 /** Move any item by a delta, whatever shape it is made of. */
 function shiftItem(item: Item, dx: number, dy: number): void {
   adopt(item)
@@ -62,6 +76,9 @@ export class Editor {
   private shiftHeld = false
   private cursorWorld: Pt | null = null
   private frameQueued = false
+  private flashText: string | null = null
+  private flashUntil = 0
+  private flashHold = 0
   private cssWidth = 0
   private cssHeight = 0
 
@@ -157,8 +174,31 @@ export class Editor {
     return 'crosshair'
   }
 
+  /**
+   * Says something and makes it stay said. The status line is rebuilt from the cursor on every
+   * frame, so a message posted straight into it is gone before it can be read.
+   */
+  flash(text: string): void {
+    this.flashText = text
+    // Long enough to read, but it steps aside the moment you carry on working - a message
+    // that outstays its welcome starts hiding live feedback, which is worse than not saying it.
+    this.flashHold = Date.now() + 1200
+    this.flashUntil = Date.now() + 6000
+    this.onStatus?.(text)
+    this.requestRender()
+  }
+
+  private clearFlashIfStale(): void {
+    if (this.flashText && Date.now() > this.flashHold) this.flashText = null
+  }
+
   private publishStatus(): void {
     if (!this.onStatus) return
+    if (this.flashText && Date.now() < this.flashUntil) {
+      this.onStatus(this.flashText)
+      return
+    }
+    this.flashText = null
     const mmPerPoint = this.store.sheet.mmPerPoint
     const parts: string[] = []
     if (this.cursorWorld) {
@@ -210,6 +250,7 @@ export class Editor {
   // --- pointer ------------------------------------------------------------------------
 
   private onPointerDown = (e: PointerEvent): void => {
+    this.clearFlashIfStale()
     this.canvas.setPointerCapture(e.pointerId)
     this.shiftHeld = e.shiftKey
     const world = this.eventPoint(e)
@@ -276,7 +317,7 @@ export class Editor {
 
     const hit = hitTest(store, world, this.tol(HIT_TOL_PX))
     if (hit) {
-      if (e.altKey && hit.kind === 'run') {
+      if (e.altKey && pointsOf(hit) && hit.kind !== 'door') {
         this.insertVertex(hit, world)
         return
       }
@@ -329,6 +370,7 @@ export class Editor {
   }
 
   private onPointerMove = (e: PointerEvent): void => {
+    this.clearFlashIfStale()
     this.shiftHeld = e.shiftKey
     const world = this.eventPoint(e)
     this.cursorWorld = world
@@ -363,11 +405,13 @@ export class Editor {
         break
       }
       case 'vertex': {
-        const run = this.store.item(this.drag.ref.runId)
-        if (run && run.kind === 'run') {
+        const item = this.store.item(this.drag.ref.itemId)
+        const points = item ? pointsOf(item) : null
+        if (item && points) {
           const i = this.drag.ref.index
-          const anchor = run.points[i - 1] ?? run.points[i + 1] ?? null
-          run.points[i] = this.resolve(world, { anchor, excludeRunId: run.id, excludeIndex: i })
+          const anchor = neighbourOf(item, points, i)
+          points[i] = this.resolve(world, { anchor, excludeRunId: item.id, excludeIndex: i })
+          adopt(item)
         }
         break
       }
@@ -466,7 +510,7 @@ export class Editor {
     }
     if (this.tool !== 'select') return
     const hit = hitTest(this.store, world, this.tol(HIT_TOL_PX))
-    if (hit && hit.kind === 'run') this.insertVertex(hit, world)
+    if (hit && pointsOf(hit) && hit.kind !== 'door') this.insertVertex(hit, world)
   }
 
   private onWheel = (e: WheelEvent): void => {
@@ -553,26 +597,36 @@ export class Editor {
     this.requestRender()
   }
 
-  private insertVertex(run: Item, world: Pt): void {
-    if (run.kind !== 'run') return
-    const hit = hitSegment(run, world, this.tol(HIT_TOL_PX * 1.5))
+  private insertVertex(item: Item, world: Pt): void {
+    // A door is two jambs and stays two jambs; everything else made of points can grow a corner.
+    if (item.kind === 'door' || !pointsOf(item)) return
+    const hit = hitSegment(item, world, this.tol(HIT_TOL_PX * 1.5))
     if (!hit) return
     this.store.mutate(() => {
-      const live = this.store.item(run.id)
-      if (live && live.kind === 'run') live.points.splice(hit.index + 1, 0, hit.point)
+      const live = this.store.item(item.id)
+      const points = live ? pointsOf(live) : null
+      if (live && points) {
+        points.splice(hit.index + 1, 0, hit.point)
+        adopt(live)
+      }
       this.store.selection.clear()
-      this.store.selection.add(run.id)
-      this.store.activeVertex = { runId: run.id, index: hit.index + 1 }
+      this.store.selection.add(item.id)
+      this.store.activeVertex = { itemId: item.id, index: hit.index + 1 }
     })
     this.onChange?.()
   }
 
   private deleteVertex(ref: VertexRef): void {
-    const run = this.store.item(ref.runId)
-    if (!run || run.kind !== 'run' || run.points.length <= 2) return
+    const item = this.store.item(ref.itemId)
+    const points = item ? pointsOf(item) : null
+    if (!item || !points || points.length <= minPointsFor(item)) return
     this.store.mutate(() => {
-      const live = this.store.item(ref.runId)
-      if (live && live.kind === 'run') live.points.splice(ref.index, 1)
+      const live = this.store.item(ref.itemId)
+      const livePoints = live ? pointsOf(live) : null
+      if (live && livePoints) {
+        livePoints.splice(ref.index, 1)
+        adopt(live)
+      }
       this.store.activeVertex = null
     })
     this.onChange?.()
@@ -581,6 +635,7 @@ export class Editor {
   // --- public commands ------------------------------------------------------------------
 
   setTool(tool: ToolId): void {
+    this.flashText = null
     if (this.tool === 'run' && tool !== 'run') this.cancelDraft()
     this.hoverId = null
     this.hoverLockedId = null
@@ -598,7 +653,7 @@ export class Editor {
       this.store.sheet.mmPerPoint = realMm / lengthPt
     })
     this.measurePts = []
-    this.onStatus?.(`Calibrated: 1 pt = ${(realMm / lengthPt).toFixed(3)} mm`)
+    this.flash(`Calibrated: 1 pt = ${(realMm / lengthPt).toFixed(3)} mm`)
     this.requestRender()
     this.onChange?.()
   }
@@ -630,9 +685,17 @@ export class Editor {
   deleteSelectionOrVertex(): void {
     const av = this.store.activeVertex
     if (av) {
-      const run = this.store.item(av.runId)
-      if (run && run.kind === 'run' && run.points.length > 2) {
-        this.deleteVertex(av)
+      const item = this.store.item(av.itemId)
+      const points = item ? pointsOf(item) : null
+      if (item && points) {
+        if (points.length > minPointsFor(item)) {
+          this.deleteVertex(av)
+          return
+        }
+        // Refuse rather than fall through: you aimed at a corner, and quietly deleting the
+        // whole shape instead would be a shock. Esc clears the corner, then Delete removes it.
+        const what = item.kind === 'room' ? 'A room needs three corners' : 'A run needs two ends'
+        this.flash(`${what} — press Esc, then Delete, to remove the whole thing`)
         return
       }
     }

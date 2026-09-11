@@ -41,7 +41,7 @@ export function openExportDialog(app: App): void {
         const blob = await canvasToBlob(canvas)
         const name = `${app.store.project.name}-${app.store.sheet.name}.png`.replace(/[^\w\-. ]+/g, '_')
         downloadBlob(name, blob)
-        app.editor.onStatus?.(`Exported ${canvas.width}×${canvas.height} px`)
+        app.editor.flash(`Exported ${canvas.width}×${canvas.height} px`)
       } catch (err) {
         alertDialog('Export failed', String(err instanceof Error ? err.message : err))
       }
@@ -96,7 +96,7 @@ export function openGenerateDialog(app: App): void {
       store.mutate(() => {
         for (const { rule } of preview) applyGenerated(store.sheet, generate(store.sheet, rule))
       })
-      app.editor.onStatus?.(`Placed ${total} item(s) from ${preview.length} rule(s)`)
+      app.editor.flash(`Placed ${total} item(s) from ${preview.length} rule(s)`)
     }
 
     return {
