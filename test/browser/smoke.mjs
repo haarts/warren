@@ -763,6 +763,17 @@ try {
     return { count: placed.length, idempotent: before === after, id: first.id, x: first.x }
   })
   check('a rule places two sockets on each wall of the room', generated.count === 8, `${generated.count} placed`)
+
+  // Fifty unlabelled markers must not each sprout a pill saying only which level they are on.
+  const quiet = await page.evaluate(async () => {
+    const { labelTextFor } = await import('/src/render/scene.ts')
+    const app = window.warren
+    const socket = app.store.items().find((i) => i.generated?.rule === 'sockets')
+    const labelled = app.store.items().find((i) => i.kind === 'run' && i.size)
+    return { bare: labelTextFor(app.store, socket), withLabel: labelTextFor(app.store, labelled) }
+  })
+  check('an unlabelled marker draws no pill at all', quiet.bare === '', JSON.stringify(quiet.bare))
+  check('but a level still annotates a real label', /·/.test(quiet.withLabel), quiet.withLabel)
   check('running the same rule again changes nothing', generated.idempotent)
 
   const protectedEdit = await page.evaluate(async (id) => {

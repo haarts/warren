@@ -37,7 +37,9 @@ export interface GenerateRule {
 export const DEFAULT_RULES: GenerateRule[] = [
   {
     id: 'sockets', enabled: true, place: 'along-walls',
-    systemId: 'power.socket', level: 'on-wall', symbol: 'outlet', label: 'socket',
+    // No label: fifty-six identical "socket" pills drown the drawing, and the symbol and the
+    // system colour already say what it is. Rarer things keep their label.
+    systemId: 'power.socket', level: 'on-wall', symbol: 'outlet',
     uses: ['living', 'kitchen', 'dining', 'bedroom', 'workshop', 'utility'],
     perWall: 2, insetMm: 400, minWallMm: 1200, offWallMm: 120,
   },

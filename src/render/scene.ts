@@ -532,7 +532,9 @@ export function labelTextFor(store: Store, item: RunItem | BoxItem | MarkerItem)
     if (size && size !== main) parts.push(size)
   }
   if (sys.tag) parts.push(sys.tag)
-  if (store.project.settings.showLevels) parts.push(LEVEL_SHORT[item.level])
+  // The level badge annotates a label; it is not a label on its own. Without this, anything
+  // unlabelled still gets a pill saying "ON WAL", and fifty of those bury the drawing.
+  if (parts.length && store.project.settings.showLevels) parts.push(LEVEL_SHORT[item.level])
   return parts.join(' · ')
 }
 
