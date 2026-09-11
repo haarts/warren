@@ -210,6 +210,76 @@ try {
     (await page.evaluate(() => window.warren.store.selection.size)) === 3)
   await page.keyboard.press('Escape')
 
+  // --- the size field is a dropdown that still takes anything ---------------------------------
+  const runId = (await items()).find((i) => i.kind === 'run').id
+  const selectRun = async () => {
+    await page.evaluate((id) => {
+      const app = window.warren
+      app.store.selection.clear()
+      app.store.selection.add(id)
+      app.store.touch(false)
+      app.refresh()
+    }, runId)
+    await new Promise((r) => setTimeout(r, 120))
+  }
+  const sizeField = async () => page.evaluate(() => {
+    const input = [...document.querySelectorAll('.tab-body input[type=text]')]
+      .find((i) => i.getAttribute('list')?.startsWith('sizes-'))
+    if (!input) return null
+    const list = document.getElementById(input.getAttribute('list'))
+    return { value: input.value, options: [...(list?.options ?? [])].map((o) => o.value) }
+  })
+  await selectRun()
+  let sz = await sizeField()
+  check('the size field offers the system\'s common sizes',
+    !!sz && sz.options[0] === 'Ø16' && sz.options.includes('Ø25') && sz.value === 'Ø16',
+    sz ? sz.options.join(' ') : 'no datalist')
+
+  // Switch the run to a power system and the suggestions follow it.
+  await page.evaluate((id) => {
+    const app = window.warren
+    app.store.mutate(() => {
+      const run = app.store.item(id)
+      run.systemId = 'power.socket'
+      run.size = app.store.system('power.socket').defaultSize
+    })
+  }, runId)
+  await selectRun()
+  sz = await sizeField()
+  check('a socket group defaults to 3×2.5mm² with the other gauges listed',
+    sz?.value === '3×2.5mm²' && sz.options[0] === '3×2.5mm²' && sz.options.includes('3×4mm²'),
+    sz ? sz.options.join(' ') : 'no datalist')
+
+  await page.evaluate((id) => {
+    const app = window.warren
+    app.store.mutate(() => { app.store.item(id).systemId = 'power.3ph' })
+  }, runId)
+  await selectRun()
+  sz = await sizeField()
+  check('three-phase offers 5×2.5 through 5×16',
+    sz?.options[0] === '5×2.5mm²' && sz.options.includes('5×6mm²') && sz.options.includes('5×16mm²'),
+    sz ? sz.options.join(' ') : 'no datalist')
+
+  // Free text still wins: the list is a suggestion, not a constraint.
+  await page.evaluate(() => {
+    const input = [...document.querySelectorAll('.tab-body input[type=text]')]
+      .find((i) => i.getAttribute('list')?.startsWith('sizes-'))
+    input.value = '5×35mm² Al'
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  check('a size that is not on the list is still accepted',
+    await page.evaluate((id) => window.warren.store.item(id).size === '5×35mm² Al', runId))
+
+  await page.evaluate((id) => {
+    const app = window.warren
+    app.store.mutate(() => {
+      const run = app.store.item(id)
+      run.systemId = 'water.cold'
+      run.size = 'Ø16'
+    })
+  }, runId)
+  await page.keyboard.press('Escape')
+
   // --- naming the project -------------------------------------------------------------------
   const projectName = () => page.evaluate(() => window.warren.store.project.name)
   check('a new project starts as Untitled', (await projectName()) === 'Untitled')

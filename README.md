@@ -98,6 +98,19 @@ The `in` / `on` pairs carry two different facts. Runs are buried *in* something;
 mounted *on* something — the board hangs on a wall, the cylinder and the rainwater pump stand
 on the floor. Surface-run conduit in a garage uses "on wall" too.
 
+## Sizes
+
+The **Size / spec** field is a combo box: click it for the sizes that system normally uses, or
+just type. The list is a suggestion, never a constraint — the one spec you need is always the
+one nobody thought to list.
+
+Electrical defaults follow NEN 1010 practice: `3×1.5mm²` for lighting, `3×2.5mm²` for socket
+and dedicated-appliance groups on a 16 A group, `5×2.5mm²` for a 3×16 A hob or an 11 kW charge
+point, `5×6mm²` for 3×32 A (22 kW). Pipe and duct systems carry their own lists the same way.
+
+Edit any of them in **Systems…** — the Sizes column is comma-separated, and the first entry is
+what new runs get.
+
 ## Notes
 
 `N` drops a yellow sticky anywhere on the plan — "air gap on the mains top-up, confirm before

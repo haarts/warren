@@ -70,6 +70,30 @@ test('interlinked smoke detectors are a power circuit, not low-voltage wiring', 
   assert.equal(others.some((o) => signature(o) === signature(smoke)), false)
 })
 
+test('every seeded size list starts with that system\'s default', () => {
+  for (const sys of defaultSystems()) {
+    if (!sys.sizes) {
+      assert.equal(sys.defaultSize, undefined, `${sys.id} has a default with no list to pick it from`)
+      continue
+    }
+    assert.equal(sys.defaultSize, sys.sizes[0], `${sys.id}: default must be the first suggestion`)
+    assert.equal(new Set(sys.sizes).size, sys.sizes.length, `${sys.id} lists a size twice`)
+    assert.equal(sys.sizes.every((v) => v.trim() !== ''), true, `${sys.id} has a blank size`)
+  }
+})
+
+test('the common electrical specs are the ones an electrician expects', () => {
+  const by = (id: string) => defaultSystems().find((s) => s.id === id)
+  // NEN 1010 practice: 3x1.5 lighting, 3x2.5 sockets and dedicated appliances on a 16 A group,
+  // 5x2.5 for a 3x16 A hob or an 11 kW charge point, 5x6 for 3x32 A.
+  assert.equal(by('power.light')?.defaultSize, '3×1.5mm²')
+  assert.equal(by('power.socket')?.defaultSize, '3×2.5mm²')
+  assert.equal(by('power.appliance')?.defaultSize, '3×2.5mm²')
+  assert.equal(by('power.3ph')?.defaultSize, '5×2.5mm²')
+  assert.ok(by('power.3ph')?.sizes?.includes('5×6mm²'), '3x32 A / 22 kW must be offered')
+  assert.ok(by('power.earth')?.sizes?.includes('16mm²'), 'main earthing conductor')
+})
+
 test('missingDefaults reports the gap without resurrecting deletions', () => {
   const full = defaultSystems()
   assert.deepEqual(missingDefaults(full), [], 'a complete catalogue has no gap')

@@ -137,9 +137,9 @@ function buildProperties(app: App, body: HTMLElement): void {
   }
 
   if (first.kind === 'run' && !many) {
-    body.appendChild(field('Size / spec', textInput(first.size ?? '', (v) => applyToAll((item) => {
-      if (item.kind === 'run') item.size = v
-    }), store.system(first.systemId).defaultSize)))
+    const sys = store.system(first.systemId)
+    body.appendChild(field('Size / spec', sizeInput(first.size ?? '', sys.sizes ?? [], sys.defaultSize, sys.id, (v) =>
+      applyToAll((item) => { if (item.kind === 'run') item.size = v }))))
   }
 
   if (items.every((i) => i.kind === 'run')) {
@@ -285,6 +285,31 @@ function labelForKind(item: Item): string {
     case 'marker': return 'Marker'
     case 'note': return 'Note'
   }
+}
+
+/**
+ * A combo box: the system's suggested sizes in a dropdown, but still an ordinary text field
+ * underneath. A closed list would be wrong - the one spec you need is always the one nobody
+ * thought to list.
+ */
+function sizeInput(
+  value: string, sizes: string[], placeholder: string | undefined, key: string,
+  onChange: (v: string) => void,
+): HTMLElement {
+  const input = el('input', {
+    type: 'text',
+    value,
+    placeholder: placeholder ?? '',
+    title: sizes.length ? 'Pick a common size from the list, or type anything you like' : '',
+  }) as HTMLInputElement
+  input.addEventListener('change', () => onChange(input.value.trim()))
+  if (sizes.length === 0) return input
+
+  const listId = `sizes-${key.replace(/\W+/g, '-')}`
+  input.setAttribute('list', listId)
+  const datalist = el('datalist', { id: listId })
+  for (const size of sizes) datalist.appendChild(el('option', { value: size }))
+  return el('div', { style: { display: 'contents' } }, input, datalist)
 }
 
 function textInput(value: string, onChange: (v: string) => void, placeholder?: string): HTMLElement {

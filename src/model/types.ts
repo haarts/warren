@@ -74,7 +74,10 @@ export interface System {
   dash: number[]
   /** Stroke width in world units (points). */
   width: number
+  /** What a new run of this system gets. Always sizes[0] when a list is present. */
   defaultSize?: string
+  /** Suggested sizes offered in the size field. Suggestions only - the field stays free text. */
+  sizes?: string[]
   /** Appended to the auto-label, e.g. "NON-POTABLE". */
   tag?: string
   visible: boolean

@@ -53,7 +53,7 @@ export function openSystemsEditor(app: App): void {
           el('th', {}, 'Name'),
           el('th', { style: { width: '110px' } }, 'Line'),
           el('th', { style: { width: '58px' } }, 'Width'),
-          el('th', { style: { width: '110px' } }, 'Default size'),
+          el('th', { style: { width: '150px' } }, 'Sizes (first is default)'),
           el('th', { style: { width: '92px' } }, 'Tag'),
           el('th', { style: { width: '28px' } }, ''),
         ))
@@ -141,9 +141,24 @@ function systemRow(app: App, sys: System, rebuild: () => void, rerender: () => v
     refreshPreview()
   })
 
-  const sizeInput = el('input', { type: 'text', value: sys.defaultSize ?? '', placeholder: 'Ø16' }) as HTMLInputElement
+  const sizeInput = el('input', {
+    type: 'text',
+    value: (sys.sizes ?? (sys.defaultSize ? [sys.defaultSize] : [])).join(', '),
+    placeholder: 'Ø16, Ø20, Ø25',
+    title: 'Comma-separated. These appear in the size dropdown; the first is what new runs get.',
+  }) as HTMLInputElement
   sizeInput.addEventListener('change', () => {
-    store.mutate(() => { sys.defaultSize = sizeInput.value.trim() || undefined })
+    const sizes = sizeInput.value.split(',').map((v) => v.trim()).filter(Boolean)
+    store.mutate(() => {
+      if (sizes.length) {
+        sys.sizes = sizes
+        sys.defaultSize = sizes[0]
+      } else {
+        delete sys.sizes
+        delete sys.defaultSize
+      }
+    })
+    sizeInput.value = sizes.join(', ')
   })
 
   const tagInput = el('input', { type: 'text', value: sys.tag ?? '', placeholder: '—', title: 'Always shown on the label, e.g. NON-POTABLE' }) as HTMLInputElement

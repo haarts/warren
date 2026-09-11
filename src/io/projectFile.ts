@@ -108,6 +108,10 @@ function asSystem(raw: unknown, index: number): System | null {
     locked: bool(raw.locked, false),
   }
   if (typeof raw.defaultSize === 'string') system.defaultSize = raw.defaultSize
+  if (Array.isArray(raw.sizes)) {
+    const sizes = raw.sizes.filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+    if (sizes.length) system.sizes = sizes
+  }
   if (typeof raw.tag === 'string') system.tag = raw.tag
   return system
 }
