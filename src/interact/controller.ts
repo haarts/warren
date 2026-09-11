@@ -81,6 +81,7 @@ export class Editor {
   private flashHold = 0
   /** Set the first time a wheel event looks like a trackpad rather than a wheel mouse. */
   private trackpadSeen = false
+  private lastMiddleDown = 0
   private cssWidth = 0
   private cssHeight = 0
 
@@ -241,7 +242,9 @@ export class Editor {
     if (!itemSnap) settings.snapToItems = false
     const res = resolvePoint(this.store, raw, this.tol(SNAP_TOL_PX), {
       anchor: opts.anchor ?? null,
-      ortho: this.shiftHeld,
+      // Latched ortho with Shift as a temporary override, which is how a CAD user expects
+      // F8 and Shift to interact.
+      ortho: this.store.project.settings.orthoLock !== this.shiftHeld,
       excludeRunId: opts.excludeRunId,
       excludeIndex: opts.excludeIndex,
     })
@@ -260,6 +263,14 @@ export class Editor {
     this.cursorWorld = world
 
     if (e.button === 1 || this.spaceHeld) {
+      // Middle double-click is Zoom Extents in AutoCAD, and costs nothing to honour.
+      const now = Date.now()
+      if (e.button === 1 && now - this.lastMiddleDown < 400) {
+        this.lastMiddleDown = 0
+        this.zoomToFit()
+        return
+      }
+      if (e.button === 1) this.lastMiddleDown = now
       this.drag = { mode: 'pan', lastX: e.clientX, lastY: e.clientY }
       this.requestRender()
       return
@@ -733,6 +744,25 @@ export class Editor {
 
   get isDrafting(): boolean {
     return this.draft.length > 0
+  }
+
+  /** The latched modes, in the order a CAD status bar shows them. */
+  modes(): { id: 'ortho' | 'snap' | 'grid'; label: string; key: string; on: boolean; title: string }[] {
+    const s = this.store.project.settings
+    return [
+      { id: 'ortho', label: 'ORTHO', key: 'F8', on: s.orthoLock, title: 'Constrain to 45° steps (F8). Shift flips it while held.' },
+      { id: 'snap', label: 'SNAP', key: 'F3', on: s.snapToItems, title: 'Snap to the ends and corners of what is already drawn (F3)' },
+      { id: 'grid', label: 'GRID', key: 'F7', on: s.showGrid, title: 'Show the grid (F7)' },
+    ]
+  }
+
+  toggleMode(id: 'ortho' | 'snap' | 'grid'): void {
+    const s = this.store.project.settings
+    if (id === 'ortho') s.orthoLock = !s.orthoLock
+    if (id === 'snap') s.snapToItems = !s.snapToItems
+    if (id === 'grid') s.showGrid = !s.showGrid
+    this.store.touch()
+    this.requestRender()
   }
 
   setSpaceHeld(v: boolean): void {

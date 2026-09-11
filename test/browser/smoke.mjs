@@ -420,6 +420,62 @@ try {
   }, savedCam)
   await new Promise((r) => setTimeout(r, 120))
 
+  // --- the CAD habits an architect arrives with ---------------------------------------------------
+  const cad = await page.evaluate(async () => {
+    const app = window.warren
+    const buttons = () => [...document.querySelectorAll('#modes button')]
+    const modes = () => buttons().map((b) => `${b.textContent}:${b.classList.contains('on') ? 'on' : 'off'}`).join(' ')
+    const before = modes()
+    for (const key of ['F8', 'F3', 'F7']) {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+    }
+    await new Promise((r) => setTimeout(r, 120))
+    const after = modes()
+    // And the buttons are toggles too, not just readouts.
+    buttons()[0].click()
+    await new Promise((r) => setTimeout(r, 120))
+    return { before, after, clicked: modes(), ortho: app.store.project.settings.orthoLock }
+  })
+  check('F8, F3 and F7 flip ortho, snap and grid', cad.before === 'ORTHO:off SNAP:on GRID:off'
+    && cad.after === 'ORTHO:on SNAP:off GRID:on', `${cad.before}  ->  ${cad.after}`)
+  check('and the status bar toggles are clickable', /ORTHO:off/.test(cad.clicked) && cad.ortho === false)
+
+  // Ortho latched means a run snaps to 45 degrees without holding Shift.
+  const latched = await page.evaluate(async () => {
+    const { resolvePoint } = await import('/src/interact/snap.ts')
+    const app = window.warren
+    app.store.project.settings.snapToItems = false
+    app.store.project.settings.orthoLock = true
+    const free = resolvePoint(app.store, { x: 200, y: 13 }, 5, { anchor: { x: 0, y: 0 }, ortho: true })
+    app.store.project.settings.orthoLock = false
+    app.store.project.settings.snapToItems = true
+    return free.point
+  })
+  check('latched ortho constrains without a modifier held', Math.abs(latched.y) < 0.001,
+    `y ${latched.y.toFixed(3)}`)
+
+  // Middle double-click is Zoom Extents. Driven through the real mouse, because a synthetic
+  // pointer event has no pointer id for setPointerCapture to find.
+  const cadCam = await page.evaluate(() => ({ x: window.warren.editor.cam.x, y: window.warren.editor.cam.y, zoom: window.warren.editor.cam.zoom }))
+  await page.evaluate(() => {
+    window.warren.editor.cam.zoom = 12
+    window.warren.editor.cam.x = -500
+    window.warren.editor.requestRender()
+  })
+  await page.mouse.move(400, 300)
+  await page.mouse.down({ button: 'middle' })
+  await page.mouse.up({ button: 'middle' })
+  await page.mouse.down({ button: 'middle' })
+  await page.mouse.up({ button: 'middle' })
+  await new Promise((r) => setTimeout(r, 200))
+  const extents = await page.evaluate(() => window.warren.editor.cam.zoom)
+  check('middle double-click zooms to extents', extents < 5, `zoom ${extents.toFixed(2)}`)
+  await page.evaluate((cam) => {
+    Object.assign(window.warren.editor.cam, cam)
+    window.warren.editor.requestRender()
+  }, cadCam)
+  await new Promise((r) => setTimeout(r, 120))
+
   // --- a wheel zooms, two fingers pan ------------------------------------------------------------
   // Scrolling moves the view, and later checks click fixed screen positions, so put it back.
   const wheelCam = await page.evaluate(() => ({ x: window.warren.editor.cam.x, y: window.warren.editor.cam.y, zoom: window.warren.editor.cam.zoom }))

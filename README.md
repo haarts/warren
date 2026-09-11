@@ -62,10 +62,22 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 | **Notes** | `N` drops a sticky note. Type into Properties; drag the bottom-right handle for width, the height follows the text |
 | **Measure** | `D` |
 | **Calibrate** | `K`, then click the two ends of a dimension printed on the plan and type its real length in mm |
-| **Pan / zoom** | **Trackpad:** two fingers pan, pinch zooms. **Mouse:** wheel zooms, middle-drag pans. Either way space-drag pans and `F` fits |
+| **Pan / zoom** | **Mouse:** wheel zooms toward the cursor, middle-drag pans, middle double-click zooms to extents — AutoCAD's controls, unchanged. **Trackpad:** two fingers pan, pinch zooms. Either way space-drag pans and `F` fits |
+| **Drawing modes** | `F8` ortho, `F3` snap, `F7` grid — latched, and shown as clickable toggles in the status bar. Shift flips ortho while held, whichever way it is latched |
 | **Undo** | `Ctrl+Z` / `Ctrl+Shift+Z`, 100 deep |
 | **Save** | `Ctrl+S`, or `Ctrl+Shift+S` for Save as… |
 | **Rename** | Click the project title in the toolbar |
+
+### If you already use CAD
+
+The mouse controls are AutoCAD's, not by imitation so much as common ancestry: **wheel zooms
+toward the cursor, middle-drag pans, middle double-click is zoom extents.** `F8`, `F3` and `F7`
+latch ortho, snap and grid, and Shift is a temporary override of ortho either way — all as you
+would expect.
+
+Two differences worth knowing before you reach for them. **Space pans** here (held down, like
+Photoshop or Figma) rather than repeating the last command, and there is **no command line** —
+tools are single letters, listed above.
 
 ## Calibrate first
 

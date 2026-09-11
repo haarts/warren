@@ -208,6 +208,18 @@ table.data tr.cat td { background: #f7f8fa; font-weight: 650; padding-top: 6px; 
 }
 #status-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #selection-text { white-space: nowrap; }
+#modes { display: flex; gap: 3px; }
+#modes button {
+  padding: 1px 7px;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: #97a0ad;
+  background: none;
+  border: 1px solid transparent;
+}
+#modes button:hover { border-color: var(--line); background: #fafbfc; }
+#modes button.on { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
 #sheet-tabs { display: flex; gap: 4px; align-items: center; }
 #sheet-tabs button { padding: 2px 8px; font-size: 11.5px; }
 #sheet-tabs button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }

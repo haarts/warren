@@ -270,6 +270,8 @@ export interface Settings {
   showGrid: boolean
   snapToGrid: boolean
   snapToItems: boolean
+  /** Ortho latched on, as AutoCAD's F8. Shift is then a temporary override either way. */
+  orthoLock: boolean
   backgroundOpacity: number
   showLabels: boolean
   showFlow: boolean
@@ -301,6 +303,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showGrid: false,
   snapToGrid: false,
   snapToItems: true,
+  orthoLock: false,
   backgroundOpacity: 0.55,
   showLabels: true,
   showFlow: true,

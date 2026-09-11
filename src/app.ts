@@ -29,6 +29,7 @@ export class App {
   private statusText = document.getElementById('status-text') as HTMLElement
   private selectionText = document.getElementById('selection-text') as HTMLElement
   private sheetTabs = document.getElementById('sheet-tabs') as HTMLElement
+  private modesHost = document.getElementById('modes') as HTMLElement
   private refreshQueued = false
 
   constructor(canvas: HTMLCanvasElement) {
@@ -61,9 +62,23 @@ export class App {
       buildToolbar(this, this.toolbarHost)
       buildPanel(this, this.panelHost)
       this.renderSheetTabs()
+      this.renderModes()
       this.selectionText.textContent = this.editor.selectionSummary()
       document.title = `${this.store.dirty ? '• ' : ''}${this.store.project.name} — Warren`
     })
+  }
+
+  /** The latched drawing modes, shown and clickable the way a CAD status bar shows them. */
+  private renderModes(): void {
+    this.modesHost.replaceChildren()
+    for (const mode of this.editor.modes()) {
+      const btn = document.createElement('button')
+      btn.textContent = mode.label
+      btn.className = mode.on ? 'on' : ''
+      btn.title = mode.title
+      btn.addEventListener('click', () => this.editor.toggleMode(mode.id))
+      this.modesHost.appendChild(btn)
+    }
   }
 
   private renderSheetTabs(): void {
@@ -444,6 +459,10 @@ export class App {
       if (mod) return
 
       switch (e.key) {
+        // The CAD function keys. An architect reaches for these without thinking.
+        case 'F8': e.preventDefault(); this.editor.toggleMode('ortho'); return
+        case 'F3': e.preventDefault(); this.editor.toggleMode('snap'); return
+        case 'F7': e.preventDefault(); this.editor.toggleMode('grid'); return
         case ' ':
           if (!e.repeat) this.editor.setSpaceHeld(true)
           e.preventDefault()
