@@ -280,3 +280,22 @@ test('a nonsense --set is refused with the fields that do exist', async () => {
   assert.match(notNumber.out, /wants a number/)
   assert.equal(warren(['generate', file, '--rule', 'nope'], dir).code, 2, 'and an unknown rule')
 })
+
+test('--as marks what a batch places as unreviewed', async () => {
+  const { dir, file } = await fixture()
+  writeFileSync(join(dir, 'ops.json'), JSON.stringify({
+    ops: [{ op: 'add', item: { kind: 'marker', systemId: 'power.230v', level: 'on-wall', x: 200, y: 200, symbol: 'socket-3' } }],
+  }))
+  warren(['apply', file, 'ops.json', '--as', 'ai:keuken'], dir)
+  const marker = JSON.parse(readFileSync(join(dir, file), 'utf8')).sheets[0].items
+    .find((i: { kind: string }) => i.kind === 'marker')
+  // Whoever placed it, it arrives with the standing of machine output: faint until reviewed.
+  assert.deepEqual(marker.generated, { rule: 'ai:keuken', from: 'apply' })
+
+  // Without --as it is indistinguishable from something you drew, which is the right default
+  // for an edit you made yourself.
+  warren(['apply', file, 'ops.json'], dir)
+  const plain = JSON.parse(readFileSync(join(dir, file), 'utf8')).sheets[0].items
+    .filter((i: { kind: string }) => i.kind === 'marker')
+  assert.equal(plain.filter((i: { generated?: unknown }) => !i.generated).length, 1)
+})

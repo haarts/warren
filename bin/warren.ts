@@ -646,6 +646,10 @@ async function cmdApply(args: Args): Promise<void> {
     fail(`could not read ${opsPath}: ${err instanceof Error ? err.message : err}`)
   }
 
+  // `--as <who>` marks everything this batch adds as placed-but-unreviewed, the same standing
+  // a generated item has. Without it a model's suggestions would arrive looking like your work.
+  const stamp = typeof args.flags.as === 'string' ? { rule: args.flags.as, from: 'apply' } : null
+
   const index = new Map<string, { sheet: Sheet; item: Item }>()
   for (const sheet of project.sheets) for (const item of sheet.items) index.set(item.id, { sheet, item })
   const systemIds = new Set(project.systems.map((s) => s.id))
@@ -776,6 +780,9 @@ async function cmdApply(args: Args): Promise<void> {
                 kind: 'marker', id: newId('mk'), systemId: raw.systemId as string, level, x, y,
                 symbol: (raw.symbol as never) ?? 'note',
                 ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+                // Whatever placed this - a rule, a person, a model - it arrives unreviewed and
+                // is drawn faintly until somebody looks at it and touches it.
+                ...(stamp ? { generated: stamp } : {}),
               })
             }
           })
@@ -820,7 +827,8 @@ const HELP = `warren — read and edit a Warren project from the command line
                                              --save to keep a --set change
   warren split   <file>                      move the PDF out beside the file
   warren bundle  <file> [--out X]            write one self-contained file
-  warren apply   <file> <ops.json>           apply validated edits
+  warren apply   <file> <ops.json> [--as who] apply validated edits; --as marks what it adds
+                                             as placed-but-unreviewed
 
 Filters for items:  --sheet <n|name>  --system <glob>  --level <level>  --kind <run|box|marker|note>
 Everywhere:         --json    machine-readable output
