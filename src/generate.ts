@@ -11,7 +11,8 @@ import type { GeneratedBy, Item, Level, MarkerItem, MarkerSymbol, RoomItem, Room
  * imported intelligence, and it arrives as a room with a use on it.
  */
 
-export type Placement = 'along-walls' | 'at-door-strike' | 'centre'
+export const PLACEMENTS = ['along-walls', 'at-door-strike', 'centre'] as const
+export type Placement = (typeof PLACEMENTS)[number]
 
 export interface GenerateRule {
   id: string

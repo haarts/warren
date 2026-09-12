@@ -13,11 +13,11 @@ import { polygonArea, polygonCentroid, polylineLength, type Pt } from '../src/ge
 import { bytesToBase64, base64ToBytes, sha256Hex } from '../src/io/base64.ts'
 import { parseProject, serialize } from '../src/io/projectFile.ts'
 import { missingDefaults } from '../src/model/systems.ts'
-import { adopt, applyGenerated, generate, rulesOf, type GenerateRule } from '../src/generate.ts'
+import { adopt, applyGenerated, generate, PLACEMENTS, rulesOf, type GenerateRule } from '../src/generate.ts'
 import { assetData, registerAsset } from '../src/model/assets.ts'
 import { Store } from '../src/model/doc.ts'
 import { newId } from '../src/model/ids.ts'
-import { isPositioned, pointsOf, ROOM_USES, LEVELS, type Item, type Level, type Project, type RoomUse, type Sheet } from '../src/model/types.ts'
+import { CATEGORIES, isPositioned, ITEM_KINDS, MARKER_SYMBOLS, pointsOf, ROOM_USES, LEVELS, type Item, type Level, type Project, type RoomUse, type Sheet } from '../src/model/types.ts'
 import { computeTakeoff } from '../src/takeoff.ts'
 import { countBySeverity, runChecks } from '../src/check.ts'
 import { buildGraph, connectionsOf, networkOf } from '../src/topology.ts'
@@ -31,12 +31,18 @@ interface Args {
 }
 
 function parseArgs(argv: string[]): Args {
-  const [command = 'help', ...rest] = argv
+  // A leading flag is not a command: `warren --help` and `warren -h` are asking for help, and
+  // being told "no such command: --help" would be a poor first impression.
+  const leads = argv[0] !== undefined && !argv[0].startsWith('-')
+  const command = leads ? argv[0] : 'help'
+  const rest = leads ? argv.slice(1) : argv
   const positional: string[] = []
   const flags: Record<string, string | true> = {}
   for (let i = 0; i < rest.length; i++) {
     const token = rest[i]
-    if (token.startsWith('--')) {
+    if (token === '-h') {
+      flags.help = true
+    } else if (token.startsWith('--')) {
       const [name, inline] = token.slice(2).split('=')
       if (inline !== undefined) flags[name] = inline
       else if (rest[i + 1] && !rest[i + 1].startsWith('--')) flags[name] = rest[++i]
@@ -622,6 +628,9 @@ interface MoveOp { op: 'move'; id: string; byM?: [number, number]; byPt?: [numbe
 interface AddOp { op: 'add'; sheet?: string; item: Record<string, unknown> }
 type Op = SetOp | DeleteOp | MoveOp | AddOp
 
+/** The kinds `add` knows how to build. Named once, so the manifest cannot promise more. */
+const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'marker', 'note']
+
 const PATCHABLE = new Set([
   'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride',
   'locked', 'symbol', 'name', 'use', 'ref', 'swing',
@@ -780,7 +789,7 @@ async function cmdApply(args: Args): Promise<void> {
             }
           })
         } else {
-          problems.push(`${at}: kind must be run, room, door, marker or note`)
+          problems.push(`${at}: kind must be one of ${ADDABLE_KINDS.join(', ')}`)
         }
         break
       }
@@ -802,35 +811,390 @@ async function cmdApply(args: Args): Promise<void> {
   console.log(`applied ${planned.length} op(s) to ${basename(path)}`)
 }
 
+// -------------------------------------------------------------------------------- manual
+
+/**
+ * One entry per command, and the only description of this command line there is: the overview,
+ * the per-command help and the `--json` manifest are all printed from here. Something reading
+ * the manifest gets the same facts as someone reading the prose, and the two cannot drift.
+ */
+interface Entry {
+  /** One line, for the overview listing. */
+  summary: string
+  usage: string[]
+  flags?: [flag: string, does: string][]
+  examples?: string[]
+  /** What a caller has to know before the command is useful rather than merely runnable. */
+  notes?: string[]
+  /** Does it write to the project file? */
+  writes?: boolean
+}
+
+const EVERYWHERE: [string, string][] = [
+  ['--json', 'machine-readable output instead of prose'],
+  ['--assets <dir>', 'where to look for the plan PDF (default: beside the project file)'],
+]
+
+const SHEET_FLAG: [string, string] = ['--sheet <n|name>', 'one sheet, by 1-based number or by name substring']
+
+const FILTERS: [string, string][] = [
+  SHEET_FLAG,
+  ['--system <glob>', "system ids, `*` allowed — e.g. 'power.*'"],
+  ['--level <level>', `one of ${LEVELS.join(', ')}`],
+  ['--kind <kind>', `one of ${ITEM_KINDS.join(', ')}`],
+]
+
+const MANUAL = {
+  summary: {
+    summary: 'what is in this project',
+    usage: ['warren summary <file>'],
+    examples: ['warren summary house.warren.json --json'],
+    notes: [
+      'Read this first. It says whether each sheet is calibrated, and nothing that reports metres means anything until one is.',
+    ],
+  },
+  items: {
+    summary: 'list items, with real-world positions',
+    usage: ['warren items <file> [filters]'],
+    flags: FILTERS,
+    examples: [
+      "warren items house.warren.json --system 'power.*' --level wall",
+      'warren items house.warren.json --kind room --json',
+    ],
+    notes: ['The id on each row is what `trace` and `apply` address items by.'],
+  },
+  takeoff: {
+    summary: 'metres per system — the thing you order from',
+    usage: ['warren takeoff <file> [--scope sheet] [--csv]'],
+    flags: [
+      ['--scope sheet', 'break the totals down per sheet instead of per project'],
+      ['--csv', 'comma-separated instead of a table'],
+    ],
+    examples: ['warren takeoff house.warren.json --csv'],
+  },
+  check: {
+    summary: 'a second pair of eyes; exits 1 on errors',
+    usage: ['warren check <file> [--strict]'],
+    flags: [['--strict', 'exit 1 on suggestions too, not only errors']],
+    examples: ['warren check house.warren.json --strict'],
+    notes: [
+      'Run this after every write. The file parser is forgiving on purpose — it repairs damage so a file written 18 months ago still opens — and that is right for a person and dangerous for a machine. `check` fails where the parser forgives: a run with one vertex, coordinates in millimetres where points belong, a system id that does not exist.',
+      'One finding is an error rather than an opinion: non-potable water may never reach drinking water. It is derived from the geometry, so it holds whether or not anything is labelled.',
+    ],
+  },
+  graph: {
+    summary: 'derived connections: networks, junctions, free ends',
+    usage: ['warren graph <file> [--sheet <n|name>]'],
+    flags: [SHEET_FLAG],
+    notes: [
+      'Nothing records what is joined to what — it is read back from the coordinates, within 5 mm of real world. Two things that look joined but are not show up as loose ends, which is the honest answer: they are not joined.',
+    ],
+  },
+  trace: {
+    summary: 'what one item is joined to, and what it reaches',
+    usage: ['warren trace <file> --id <item-id>', 'warren trace <file> <item-id>'],
+    flags: [['--id <item-id>', 'the item to trace, as printed by `items`']],
+    examples: ['warren trace house.warren.json --id run_x'],
+  },
+  systems: {
+    summary: 'the catalogue: list it, extend it, fold parts of it together',
+    usage: [
+      'warren systems <file>',
+      'warren systems <file> --add-missing',
+      'warren systems <file> --merge <a,b> --into <c>',
+    ],
+    flags: [
+      ['--add-missing', 'add built-in systems this project predates'],
+      ['--merge <a,b,...>', 'system ids to fold away'],
+      ['--into <id>', 'the system their items move to'],
+    ],
+    examples: ['warren systems house.warren.json --merge power.light,power.socket --into power.230v'],
+    notes: [
+      'Style belongs to the system, not to the shape: colour, dash, width and default size all come from here. That is why a drawing made over two years still agrees with itself, and why the takeoff can add anything up.',
+      'Every item must name a system that exists. `--add-missing` is the usual first move on an older project.',
+    ],
+    writes: true,
+  },
+  rules: {
+    summary: 'the placement rules (data, so they are yours)',
+    usage: ['warren rules <file>', 'warren rules <file> --set <rules.json>'],
+    flags: [['--set <rules.json>', 'replace the whole rule set with this file']],
+    notes: [
+      `A rule set is an array of rules. Placements are ${PLACEMENTS.join(', ')}; each rule says which room uses it applies to, which system and level its output belongs to, and the distances involved.`,
+      'Warren executes a rule set rather than believing one, so `--set` replaces them wholesale. There is no merge.',
+    ],
+    writes: true,
+  },
+  generate: {
+    summary: 'run the rules over the rooms and doors',
+    usage: ['warren generate <file> [--rule <name>] [--room <a,b>] [--set <k=v>] [--dry-run|--where|--clear|--save]'],
+    flags: [
+      ['--rule <name>', 'just this rule, instead of all of them'],
+      ['--room <a,b,...>', 'just these rooms, by name substring'],
+      ['--set <k=v,...>', 'override rule parameters for this run'],
+      ['--dry-run', 'report what would happen; write nothing'],
+      ['--where', 'with --dry-run, print the position of every placement'],
+      ['--clear', 'remove what the rule generated, and stop'],
+      ['--save', 'keep a --set override in the project as the new rule'],
+      SHEET_FLAG,
+    ],
+    examples: [
+      'warren generate house.warren.json --rule sockets --room Keuken --dry-run --where',
+      'warren generate house.warren.json --rule sockets --room Keuken --set perWall=3 --save',
+    ],
+    notes: [
+      'This is the repetitive half of an electrical layout — two sockets per wall, a switch by each door, a detector in the halls. It needs rooms and doors to exist first; `apply` is how they get there.',
+      'Generated items are stamped with the rule that made them, and their ids are derived from rule and room rather than random, so re-running produces the same file instead of a diff full of new identifiers.',
+      'Move or change one and it becomes yours: the stamp comes off and re-running leaves it exactly where you put it. That holds whoever did the editing, `apply` included.',
+      'Scoping with --room limits what gets replaced, so regenerating one room never disturbs another. Whatever the name matched is printed, so a mis-scope is visible rather than silent.',
+    ],
+    writes: true,
+  },
+  split: {
+    summary: 'move the PDF out beside the file',
+    usage: ['warren split <file>'],
+    notes: [
+      'A project that references its plan is tens of KB instead of tens of MB, and `git log` becomes a readable history of the design rather than a wall of base64.',
+    ],
+    writes: true,
+  },
+  bundle: {
+    summary: 'write one self-contained file, for mailing or archiving',
+    usage: ['warren bundle <file> [--out <path>]'],
+    flags: [['--out <path>', 'where to write it (default: <name>.bundle.warren.json)']],
+    writes: true,
+  },
+  apply: {
+    summary: 'apply validated edits from an ops file',
+    usage: ['warren apply <file> <ops.json> [--dry-run]'],
+    flags: [['--dry-run', 'validate and describe; write nothing']],
+    examples: ['warren apply house.warren.json rooms.json --dry-run'],
+    notes: [
+      'This is the write path, and the only one that should be used: editing the JSON directly skips every check below.',
+      'The ops file is an array of ops, or {"ops": [...]}. All of it is validated before any of it is applied, so a half-understood instruction cannot leave the drawing half-changed. If one op fails, nothing is written.',
+      'Coordinates: pointsM / xM / yM are metres and need a calibrated sheet; points / x / y are raw PDF points. Prefer metres — converting at the boundary is this tool’s job, not the caller’s.',
+      'A room op may carry expectM2. Dutch architect’s plans print the area of every room, so a traced outline can check itself: the batch is refused if the polygon disagrees by more than 8%.',
+    ],
+    writes: true,
+  },
+} satisfies Record<string, Entry>
+
+type Command = keyof typeof MANUAL
+
+const isCommand = (word: string): word is Command => Object.hasOwn(MANUAL, word)
+
+/** The op shapes `apply` accepts, written down once so the manifest and the prose agree. */
+const OPS: Record<string, { does: string; fields: Record<string, string> }> = {
+  set: {
+    does: 'change fields on an existing item',
+    fields: {
+      id: 'the item to change, as printed by `items`',
+      patch: `object — any of: ${[...PATCHABLE].join(', ')}`,
+    },
+  },
+  delete: {
+    does: 'remove an item',
+    fields: { id: 'the item to remove' },
+  },
+  move: {
+    does: 'shift an item by a delta',
+    fields: {
+      id: 'the item to move',
+      byM: '[dx, dy] in metres (needs a calibrated sheet)',
+      byPt: '[dx, dy] in raw PDF points — instead of byM, not as well as',
+    },
+  },
+  add: {
+    does: 'add a new item',
+    fields: {
+      sheet: 'optional — 1-based number or name substring; defaults to the first sheet',
+      'item.kind': `one of ${ADDABLE_KINDS.join(', ')}`,
+      'item.systemId': 'required — must already be in this project’s catalogue (see `systems`)',
+      'item.level': `optional — one of ${LEVELS.join(', ')} (default: wall)`,
+      'item.pointsM': 'run/room/door — [[x, y], ...] in metres. A run takes 2+, a room 3+, a door exactly 2 with the hinge jamb first',
+      'item.xM, item.yM': 'marker/note — position in metres',
+      'item.name, item.ref': 'room — its name, and the number printed on the plan',
+      'item.use': `room — one of ${ROOM_USES.join(', ')}`,
+      'item.expectM2': 'room — the area printed on the plan; the batch is refused if the outline is more than 8% out',
+      'item.swing': 'door — 1 or -1',
+      'item.label': 'run/door/marker — the text drawn beside it',
+      'item.size, item.flow': `run — size defaults to the system’s; flow is none, forward or reverse`,
+      'item.symbol': `marker — one of ${MARKER_SYMBOLS.join(', ')}`,
+      'item.text': 'note — its contents',
+    },
+  },
+}
+
+const EXIT: Record<string, string> = {
+  '0': 'it worked',
+  '1': 'the project was read, but the answer is bad news — `check` found errors, or an ops file did not validate and nothing was written',
+  '2': 'the command line itself was wrong — unknown command, or a missing or unreadable file',
+}
+
+const UNITS = 'Every length and position in and out of this tool is metres. The file stores PDF '
+  + 'points and a per-sheet scale; converting is this tool’s job, not the caller’s. An '
+  + 'uncalibrated sheet reports null rather than a guess.'
+
+const pad = (s: string, n: number): string => s + ' '.repeat(Math.max(0, n - s.length))
+
+/** Soft-wraps prose, so the per-command help stays readable in a terminal. */
+function wrapWords(text: string, width: number): string[] {
+  const lines: string[] = []
+  let line = ''
+  for (const word of text.split(' ')) {
+    if (line && line.length + word.length + 1 > width) { lines.push(line); line = word }
+    else line = line ? `${line} ${word}` : word
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
+const wrap = (text: string, width = 92): string => wrapWords(text, width).join('\n')
+
+/** A `name  description` row whose wrapped description stays under its own first line. */
+function row(name: string, means: string, at: number, lead = '      '): string {
+  const indent = ' '.repeat(lead.length + at + 2)
+  const [first, ...rest] = wrapWords(means, 96 - indent.length)
+  return [`${lead}${pad(name, at)}  ${first}`, ...rest.map((l) => indent + l)].join('\n')
+}
+
+function overview(): string {
+  const asking: [string, string][] = [
+    ['help <cmd>', 'usage, flags, examples and the rules of one command'],
+    ['help --json', 'every command, flag, op shape and enum, machine-readable'],
+  ]
+  const entries = Object.entries(MANUAL)
+  const width = Math.max(...entries.map(([n]) => n.length), ...asking.map(([n]) => n.length))
+  const line = ([n, s]: [string, string]): string => `  warren ${pad(n, width)}  ${s}`
+  const listing = entries.map(([n, entry]) => line([n, entry.summary])).join('\n')
+  const everywhere = EVERYWHERE.map(([f, d]) => `  ${pad(f, width + 7)}  ${d}`).join('\n')
+  return `warren — read and edit a Warren project from the command line
+
+${listing}
+
+${asking.map(line).join('\n')}
+
+Everywhere:
+${everywhere}
+
+Lengths and positions are metres; a sheet must be calibrated for those to exist.
+Writing to a project? Use \`warren apply\`, then \`warren check\`. See AGENTS.md.
+`
+}
+
+function commandHelp(name: Command): string {
+  const entry: Entry = MANUAL[name]
+  const out: string[] = [`warren ${name} — ${entry.summary}`, '']
+  for (const line of entry.usage) out.push(`  ${line}`)
+
+  const flags = [...(entry.flags ?? []), ...EVERYWHERE]
+  const width = Math.max(...flags.map(([f]) => f.length))
+  out.push('', 'Flags:')
+  for (const [flag, does] of flags) out.push(`  ${pad(flag, width)}  ${does}`)
+
+  if (name === 'apply') {
+    out.push('', 'Ops:')
+    for (const [op, { does, fields }] of Object.entries(OPS)) {
+      out.push('', `  {"op": "${op}", ...} — ${does}`)
+      const at = Math.max(...Object.keys(fields).map((f) => f.length))
+      for (const [field, means] of Object.entries(fields)) out.push(row(field, means, at))
+    }
+  }
+
+  for (const note of entry.notes ?? []) out.push('', wrap(note))
+
+  if (entry.examples?.length) {
+    out.push('', 'Examples:')
+    for (const example of entry.examples) out.push(`  ${example}`)
+  }
+  if (entry.writes) out.push('', 'Writes to the project file. Run `warren check` afterwards.')
+  return `${out.join('\n')}\n`
+}
+
+/**
+ * Everything a caller needs to drive this tool without reading prose: the commands, their
+ * flags, the op shapes and the enumerations they have to choose from. The enums come from the
+ * same constants the validators use, so a value listed here is a value that will be accepted.
+ */
+function manifest() {
+  return {
+    tool: 'warren',
+    version: version(),
+    describes: 'Draw and measure the services in a house — pipes, ducts and circuits over an architect’s floor plan PDF.',
+    invoke: { installed: 'warren <command> <file.warren.json>', inRepo: 'node bin/warren.ts <command> <file.warren.json>' },
+    guide: 'AGENTS.md',
+    units: UNITS,
+    knows: 'Warren holds a drawing, places things by arithmetic and checks claims rigorously. It cannot read a floor plan — deciding which rectangle is the kitchen is the caller’s job, and arrives as ops.',
+    commands: Object.entries(MANUAL as Record<string, Entry>).map(([name, entry]) => ({
+      name,
+      summary: entry.summary,
+      usage: entry.usage,
+      writes: entry.writes === true,
+      flags: [...(entry.flags ?? []), ...EVERYWHERE].map(([flag, does]) => ({ flag, does })),
+      examples: entry.examples ?? [],
+      notes: entry.notes ?? [],
+    })),
+    apply: {
+      file: 'an array of ops, or {"ops": [...]}',
+      atomic: 'every op is validated before any is applied; if one fails, nothing is written and the exit code is 1',
+      ops: Object.entries(OPS).map(([op, { does, fields }]) => ({ op, does, fields })),
+      patchable: [...PATCHABLE],
+    },
+    enums: {
+      level: [...LEVELS],
+      itemKind: [...ITEM_KINDS],
+      addableKind: [...ADDABLE_KINDS],
+      roomUse: [...ROOM_USES],
+      markerSymbol: [...MARKER_SYMBOLS],
+      category: [...CATEGORIES],
+      flow: ['none', 'forward', 'reverse'],
+      placement: [...PLACEMENTS],
+    },
+    exitCodes: EXIT,
+  }
+}
+
+function version(): string {
+  try {
+    const raw: unknown = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+    const found = (raw as { version?: unknown }).version
+    return typeof found === 'string' ? found : 'unknown'
+  } catch {
+    return 'unknown'
+  }
+}
+
+function distance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i]
+    for (let j = 1; j <= b.length; j++) {
+      next[j] = Math.min(next[j - 1] + 1, row[j] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    }
+    row = next
+  }
+  return row[b.length]
+}
+
+/** A wrong command is usually a near miss — `takoff`, `sytems` — so say what was probably meant. */
+function nearest(word: string): string | null {
+  const names = Object.keys(MANUAL)
+  const prefix = names.find((n) => n.startsWith(word) || word.startsWith(n))
+  if (prefix) return prefix
+  const [best] = names
+    .map((n) => ({ n, d: distance(word.toLowerCase(), n) }))
+    .filter(({ d, n }) => d <= Math.max(2, Math.floor(n.length / 3)))
+    .sort((x, y) => x.d - y.d)
+  return best?.n ?? null
+}
+
 // ---------------------------------------------------------------------------------- main
 
-const HELP = `warren — read and edit a Warren project from the command line
-
-  warren summary <file>                      what is in this project
-  warren items   <file> [filters]            list items, with real-world positions
-  warren takeoff <file> [--scope sheet]      metres per system
-  warren check   <file> [--strict]           a second pair of eyes; exits 1 on errors
-  warren graph   <file>                      derived connections: networks, junctions, free ends
-  warren trace   <file> --id <item>          what one item is joined to, and what it reaches
-  warren systems <file> [--add-missing]      list the catalogue, or fill in newer defaults
-         systems <file> --merge a,b --into c  fold systems together, moving their items
-  warren rules   <file> [--set rules.json]   the placement rules (data, so they are yours)
-  warren generate <file> [--rule sockets] [--room Keuken] [--set perWall=3] [--clear]
-                                             run the rules; --dry-run --where to look first,
-                                             --save to keep a --set change
-  warren split   <file>                      move the PDF out beside the file
-  warren bundle  <file> [--out X]            write one self-contained file
-  warren apply   <file> <ops.json>           apply validated edits
-
-Filters for items:  --sheet <n|name>  --system <glob>  --level <level>  --kind <run|box|marker|note>
-Everywhere:         --json    machine-readable output
-                    --assets <dir>   where to look for the plan PDF
-
-Lengths and positions are metres. Sheets must be calibrated for those to exist.
-`
-
 const args = parseArgs(process.argv.slice(2))
-const commands: Record<string, (a: Args) => Promise<void>> = {
+
+// Typed by the manual, so a command that gains an implementation without gaining an entry — or
+// the other way round — does not compile. Self-description is not a thing to remember to do.
+const commands: Record<Command, (a: Args) => Promise<void>> = {
   summary: cmdSummary,
   items: cmdItems,
   takeoff: cmdTakeoff,
@@ -845,9 +1209,28 @@ const commands: Record<string, (a: Args) => Promise<void>> = {
   apply: cmdApply,
 }
 
-const run = commands[args.command]
+// Help is answered before anything is loaded, so `warren help apply` works with no file, no
+// plan PDF and nothing drawn yet — which is the state whoever is asking is usually in.
+if (args.command === 'help' || args.flags.help === true) {
+  const topic = args.command === 'help' ? args.positional[0] : args.command
+  if (topic !== undefined && !isCommand(topic)) {
+    const guess = nearest(topic)
+    fail(`no such command: ${topic}${guess ? `. Did you mean "${guess}"?` : ''}. Try: warren help`)
+  }
+  if (args.flags.json) {
+    const all = manifest()
+    console.log(JSON.stringify(topic === undefined ? all : all.commands.find((c) => c.name === topic), null, 2))
+  } else {
+    process.stdout.write(topic === undefined ? overview() : commandHelp(topic))
+  }
+  process.exit(0)
+}
+
+const run = isCommand(args.command) ? commands[args.command] : undefined
 if (!run) {
-  process.stdout.write(HELP)
-  process.exit(args.command === 'help' || args.flags.help ? 0 : 2)
+  const guess = nearest(args.command)
+  process.stderr.write(`warren: no such command: ${args.command}${guess ? `. Did you mean "${guess}"?` : ''}\n`)
+  process.stdout.write(overview())
+  process.exit(2)
 }
 await run(args).catch((err: unknown) => fail(err instanceof Error ? err.message : String(err)))
