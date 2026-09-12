@@ -135,10 +135,10 @@ test('apply validates the whole batch before writing any of it', async () => {
 test('apply accepts metres and converts them to the sheet scale', async () => {
   const { dir, file } = await fixture()
   writeFileSync(join(dir, 'ops.json'), JSON.stringify({
-    ops: [{ op: 'add', item: { kind: 'run', systemId: 'power.socket', level: 'wall', pointsM: [[1, 1], [6, 1]] } }],
+    ops: [{ op: 'add', item: { kind: 'run', systemId: 'power.230v', level: 'wall', pointsM: [[1, 1], [6, 1]] } }],
   }))
   assert.equal(warren(['apply', file, 'ops.json'], dir).code, 0)
-  const rows = JSON.parse(warren(['items', file, '--system', 'power.socket', '--json'], dir).out)
+  const rows = JSON.parse(warren(['items', file, '--system', 'power.230v', '--json'], dir).out)
   assert.equal(rows.length, 1)
   assert.equal(rows[0].lengthM, 5, '5 m asked for, 5 m measured back')
   assert.deepEqual(rows[0].atM, [1, 1])
@@ -168,4 +168,44 @@ test('a project whose plan is not beside it still reads, and says so', async () 
   const { out, code } = warren(['summary', file, '--json', '--assets', join(dir, 'elsewhere')], dir)
   assert.equal(code, 0, 'a missing plan is not a fatal error')
   assert.equal(JSON.parse(out).missingAssets.length, 1)
+})
+
+test('systems can be merged, taking their items with them', async () => {
+  const { dir, file } = await fixture()
+  const project = JSON.parse(readFileSync(join(dir, file), 'utf8'))
+  project.systems = [
+    { id: 'power.light', category: 'power', name: 'Lighting', color: '#ca8a04', dash: [], width: 1.4 },
+    { id: 'power.socket', category: 'power', name: 'Sockets', color: '#ea580c', dash: [], width: 1.7 },
+    { id: 'water.cold', category: 'water', name: 'Cold', color: '#2563eb', dash: [], width: 1.8 },
+  ]
+  project.sheets[0].items.push(
+    { kind: 'run', id: 'l1', systemId: 'power.light', level: 'wall', points: [{ x: 0, y: 0 }, { x: 10, y: 0 }], flow: 'none' },
+    { kind: 'run', id: 's1', systemId: 'power.socket', level: 'wall', points: [{ x: 0, y: 5 }, { x: 10, y: 5 }], flow: 'none' },
+  )
+  writeFileSync(join(dir, file), JSON.stringify(project))
+
+  const { out, code } = warren(['systems', file, '--merge', 'power.light,power.socket', '--into', 'power.230v'], dir)
+  assert.equal(code, 0, out)
+  assert.match(out, /moved 2 item/)
+
+  const after = JSON.parse(readFileSync(join(dir, file), 'utf8'))
+  assert.deepEqual(after.systems.map((s: { id: string }) => s.id).sort(), ['power.230v', 'water.cold'])
+  const items = after.sheets[0].items.filter((i: { id: string }) => i.id === 'l1' || i.id === 's1')
+  assert.deepEqual(items.map((i: { systemId: string }) => i.systemId), ['power.230v', 'power.230v'])
+  // The cold water run is none of its business.
+  assert.ok(after.sheets[0].items.some((i: { systemId: string }) => i.systemId === 'water.cold'))
+})
+
+test('a merge that makes no sense is refused before anything is written', async () => {
+  const { dir, file } = await fixture()
+  const before = readFileSync(join(dir, file), 'utf8')
+  for (const args of [
+    ['systems', file, '--merge', 'power.nope', '--into', 'power.230v'],
+    ['systems', file, '--merge', 'water.cold', '--into', 'water.cold'],
+    ['systems', file, '--merge', 'water.cold'],
+  ]) {
+    const { code } = warren(args, dir)
+    assert.equal(code, 2, args.join(' '))
+  }
+  assert.equal(readFileSync(join(dir, file), 'utf8'), before)
 })

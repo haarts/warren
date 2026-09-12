@@ -2,6 +2,16 @@ import { polylineLength } from './geom.ts'
 import type { Store } from './model/doc.ts'
 import type { Category, Sheet, System } from './model/types.ts'
 
+export interface SizeTally {
+  /** The run's size field, or a placeholder when it has none. */
+  size: string
+  runs: number
+  lengthMm: number
+  orderMm: number
+}
+
+export const NO_SIZE = '(no size)'
+
 export interface TakeoffRow {
   system: System
   runs: number
@@ -13,6 +23,11 @@ export interface TakeoffRow {
   lengthMm: number
   /** With the global slack percentage and any per-run extra applied. */
   orderMm: number
+  /**
+   * The same lengths split by size. What you order is a gauge, not a system: one 230V group
+   * holds 1.5 for the lighting and 2.5 for the sockets, and they are bought separately.
+   */
+  bySize: SizeTally[]
 }
 
 export interface TakeoffResult {
@@ -39,15 +54,25 @@ export function computeTakeoff(store: Store, scope: 'sheet' | 'project'): Takeof
       const system = store.system(item.systemId)
       let row = map.get(system.id)
       if (!row) {
-        row = { system, runs: 0, boxes: 0, markers: 0, notes: 0, lengthMm: 0, orderMm: 0 }
+        row = { system, runs: 0, boxes: 0, markers: 0, notes: 0, lengthMm: 0, orderMm: 0, bySize: [] }
         map.set(system.id, row)
       }
       if (item.kind === 'run') {
         row.runs += 1
+        const size = (item.size ?? '').trim() || NO_SIZE
+        let tally = row.bySize.find((t) => t.size === size)
+        if (!tally) {
+          tally = { size, runs: 0, lengthMm: 0, orderMm: 0 }
+          row.bySize.push(tally)
+        }
+        tally.runs += 1
         if (sheet.mmPerPoint) {
           const mm = polylineLength(item.points) * sheet.mmPerPoint
+          const order = mm * (1 + slackPct / 100) + (item.extraM ?? 0) * 1000
           row.lengthMm += mm
-          row.orderMm += mm * (1 + slackPct / 100) + (item.extraM ?? 0) * 1000
+          row.orderMm += order
+          tally.lengthMm += mm
+          tally.orderMm += order
         }
       } else if (item.kind === 'box') {
         row.boxes += 1
@@ -58,6 +83,8 @@ export function computeTakeoff(store: Store, scope: 'sheet' | 'project'): Takeof
       }
     }
   }
+
+  for (const row of map.values()) row.bySize.sort((a, b) => b.lengthMm - a.lengthMm || a.size.localeCompare(b.size))
 
   const rows = [...map.values()].sort((a, b) => {
     if (a.system.category !== b.system.category) return a.system.category.localeCompare(b.system.category)

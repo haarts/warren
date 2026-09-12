@@ -582,6 +582,17 @@ function buildTakeoff(app: App, body: HTMLElement): void {
         el('td', { class: 'num' }, row.orderMm ? el('b', {}, formatMetres(row.orderMm)) : '—'),
         el('td', { class: 'num' }, String(row.runs + row.boxes + row.markers)),
       ))
+      // What you order is a gauge, not a system, so split it once there is more than one.
+      if (row.bySize.length > 1) {
+        for (const tally of row.bySize) {
+          table.appendChild(el('tr', { style: { color: 'var(--ink-soft)' } },
+            el('td', { style: { paddingLeft: '34px' } }, tally.size),
+            el('td', { class: 'num' }, tally.lengthMm ? formatMetres(tally.lengthMm) : '—'),
+            el('td', { class: 'num' }, tally.orderMm ? formatMetres(tally.orderMm) : '—'),
+            el('td', { class: 'num' }, String(tally.runs)),
+          ))
+        }
+      }
     }
   }
   body.appendChild(table)
@@ -662,12 +673,14 @@ function findingRow(app: App, finding: Finding): HTMLElement {
 }
 
 function copyTakeoffCsv(app: App, rows: ReturnType<typeof computeTakeoff>['rows']): void {
-  const lines = ['system,category,runs,plan_m,order_m,boxes,markers']
+  const lines = ['system,category,size,runs,plan_m,order_m']
   for (const r of rows) {
-    lines.push([
-      JSON.stringify(r.system.name), r.system.category, r.runs,
-      (r.lengthMm / 1000).toFixed(2), (r.orderMm / 1000).toFixed(2), r.boxes, r.markers,
-    ].join(','))
+    for (const t of r.bySize) {
+      lines.push([
+        JSON.stringify(r.system.name), r.system.category, JSON.stringify(t.size), t.runs,
+        (t.lengthMm / 1000).toFixed(2), (t.orderMm / 1000).toFixed(2),
+      ].join(','))
+    }
   }
   void navigator.clipboard.writeText(lines.join('\n')).then(
     () => app.editor.flash('Takeoff copied to the clipboard as CSV'),

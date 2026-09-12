@@ -110,7 +110,7 @@ test('a catalogue written before size lists existed gains them on load', () => {
     sheets: [{ id: 's', name: 'S', items: [] }],
     systems: [
       // Exactly how these were written before the field existed: a default, no list.
-      { id: 'power.socket', category: 'power', name: '230V socket group', color: '#ea580c', dash: [], width: 1.7, defaultSize: '3×2.5mm²' },
+      { id: 'power.230v', category: 'power', name: '230V group', color: '#ea580c', dash: [], width: 1.7, defaultSize: '3×2.5mm²' },
       // A default the user edited away from the seed's first entry.
       { id: 'power.outdoor', category: 'power', name: 'Outdoor feed', color: '#4d7c0f', dash: [7, 4], width: 2, defaultSize: 'XMvK 4×6' },
       // A system that has no size list to inherit.
@@ -122,8 +122,8 @@ test('a catalogue written before size lists existed gains them on load', () => {
   const systems = parseProject(older).systems
   const get = (id: string) => systems.find((s) => s.id === id)
 
-  assert.deepEqual(get('power.socket')?.sizes, ['3×2.5mm²', '3×1.5mm²', '3×4mm²'])
-  assert.equal(get('power.socket')?.defaultSize, '3×2.5mm²')
+  assert.deepEqual(get('power.230v')?.sizes, ['3×2.5mm²', '3×1.5mm²', '3×4mm²', '3×6mm²'])
+  assert.equal(get('power.230v')?.defaultSize, '3×2.5mm²')
 
   const outdoor = get('power.outdoor')
   assert.equal(outdoor?.defaultSize, 'XMvK 4×6', 'an edited default is never overwritten')
@@ -140,7 +140,7 @@ test('a catalogue written before direction guessing gains it too', () => {
     sheets: [{ id: 's', name: 'S', items: [] }],
     systems: [
       { id: 'drain.soil', category: 'drain', name: 'Soil', color: '#b45309', dash: [], width: 3 },
-      { id: 'power.socket', category: 'power', name: 'Sockets', color: '#ea580c', dash: [], width: 1.7 },
+      { id: 'power.230v', category: 'power', name: 'Sockets', color: '#ea580c', dash: [], width: 1.7 },
       // Somebody turned it off on purpose; that must survive.
       { id: 'air.supply', category: 'air', name: 'Supply air', color: '#0891b2', dash: [], width: 3.4, assumeFlow: false },
       { id: 'mine.custom', category: 'water', name: 'Mine', color: '#123456', dash: [], width: 1 },
@@ -149,7 +149,7 @@ test('a catalogue written before direction guessing gains it too', () => {
   const systems = parseProject(older).systems
   const get = (id: string) => systems.find((s) => s.id === id)
   assert.equal(get('drain.soil')?.assumeFlow, true, 'a drain falls, so it guesses')
-  assert.equal(get('power.socket')?.assumeFlow, undefined, 'a socket circuit does not')
+  assert.equal(get('power.230v')?.assumeFlow, undefined, 'a 230V circuit does not')
   assert.equal(get('air.supply')?.assumeFlow, false, 'an explicit false is a decision, not an absence')
   assert.equal(get('mine.custom')?.assumeFlow, undefined)
 })

@@ -55,13 +55,16 @@ export type Flow = 'none' | 'forward' | 'reverse'
  * catalogue nobody can find their way around.
  */
 export const MARKER_SYMBOLS = [
-  'socket', 'switch', 'light', 'detector', 'data-outlet', 'air-valve',
+  'socket', 'socket-2', 'socket-3', 'socket-4', 'switch', 'light', 'detector', 'data-outlet', 'air-valve',
   'riser-up', 'riser-down', 'penetration', 'drain', 'cleanout', 'valve', 'outlet', 'sensor', 'note',
 ] as const
 export type MarkerSymbol = (typeof MARKER_SYMBOLS)[number]
 
 export const MARKER_LABELS: Record<MarkerSymbol, string> = {
-  socket: 'Wandcontactdoos (socket)',
+  socket: 'Wandcontactdoos',
+  'socket-2': 'Dubbele wandcontactdoos',
+  'socket-3': 'Drievoudige wandcontactdoos',
+  'socket-4': 'Viervoudige wandcontactdoos',
   switch: 'Schakelaar (switch)',
   light: 'Lichtpunt (light point)',
   detector: 'Rookmelder (detector)',

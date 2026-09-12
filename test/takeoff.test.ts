@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { Store } from '../src/model/doc.ts'
 import { computeTakeoff, systemsInUse } from '../src/takeoff.ts'
 import { defaultSystems, missingDefaults } from '../src/model/systems.ts'
+import { MARKER_SYMBOLS } from '../src/model/types.ts'
 import type { RunItem } from '../src/model/types.ts'
 
 function run(id: string, systemId: string, points: { x: number; y: number }[], extraM?: number): RunItem {
@@ -86,9 +87,13 @@ test('the common electrical specs are the ones an electrician expects', () => {
   const by = (id: string) => defaultSystems().find((s) => s.id === id)
   // NEN 1010 practice: 3x1.5 lighting, 3x2.5 sockets and dedicated appliances on a 16 A group,
   // 5x2.5 for a 3x16 A hob or an 11 kW charge point, 5x6 for 3x32 A.
-  assert.equal(by('power.light')?.defaultSize, '3×1.5mm²')
-  assert.equal(by('power.socket')?.defaultSize, '3×2.5mm²')
-  assert.equal(by('power.appliance')?.defaultSize, '3×2.5mm²')
+  // Lighting, sockets and dedicated appliances are one 230V group; what a circuit feeds is
+  // said by the symbol at its end, and the gauge by the size on the run.
+  assert.equal(by('power.230v')?.defaultSize, '3×2.5mm²')
+  assert.ok(by('power.230v')?.sizes?.includes('3×1.5mm²'), 'lighting gauge still on offer')
+  assert.equal(by('power.socket'), undefined)
+  assert.equal(by('power.light'), undefined)
+  assert.equal(by('power.appliance'), undefined)
   assert.equal(by('power.3ph')?.defaultSize, '5×2.5mm²')
   assert.ok(by('power.3ph')?.sizes?.includes('5×6mm²'), '3x32 A / 22 kW must be offered')
   assert.ok(by('power.earth')?.sizes?.includes('16mm²'), 'main earthing conductor')
@@ -102,7 +107,7 @@ test('only systems with a physical direction guess one', () => {
     assert.equal(assumes(id), true, `${id} should guess a direction`)
   }
   // Things where an arrow would be noise.
-  for (const id of ['power.socket', 'power.3ph', 'data.cat6', 'water.cold', 'heat.ufh', 'struct.shaft']) {
+  for (const id of ['power.230v', 'power.3ph', 'data.cat6', 'water.cold', 'heat.ufh', 'struct.shaft']) {
     assert.equal(assumes(id), false, `${id} should not sprout arrows`)
   }
 })
@@ -131,10 +136,11 @@ test('symbols are scoped to the system, and never silently changed', async () =>
   const { symbolsFor } = await import('../src/model/systems.ts')
   const by = (id: string) => defaultSystems().find((s) => s.id === id)!
 
-  const lighting = symbolsFor(by('power.light'))
-  assert.ok(lighting.includes('light') && lighting.includes('switch'))
-  assert.equal(lighting.includes('drain'), false, 'a gully under a lighting group is nonsense')
-  assert.equal(lighting.includes('cleanout'), false)
+  const mains = symbolsFor(by('power.230v'))
+  assert.ok(mains.includes('light') && mains.includes('switch') && mains.includes('socket'))
+  assert.ok(mains.includes('socket-2') && mains.includes('socket-4'), 'gangs are pickable')
+  assert.equal(mains.includes('drain'), false, 'a gully under a 230V group is nonsense')
+  assert.equal(mains.includes('cleanout'), false)
 
   const soil = symbolsFor(by('drain.soil'))
   assert.ok(soil.includes('drain') && soil.includes('cleanout'))
@@ -148,13 +154,16 @@ test('symbols are scoped to the system, and never silently changed', async () =>
   // making has no opinion recorded and is offered everything, which is the right default.
   for (const sys of defaultSystems()) {
     assert.ok(sys.symbols?.length, `${sys.id} has no symbol list, so it would offer all of them`)
-    assert.ok(symbolsFor(sys).length <= 6, `${sys.id} offers too many symbols`)
+    // Short enough to read without hunting. The 230V group is the widest, because a socket
+    // comes in four gang counts.
+    assert.ok(symbolsFor(sys).length <= 8, `${sys.id} offers too many symbols`)
   }
-  assert.equal(symbolsFor({ ...by('power.light'), symbols: undefined }).length, 15, 'no opinion means all of them')
+  assert.equal(symbolsFor({ ...by('power.230v'), symbols: undefined }).length, MARKER_SYMBOLS.length,
+    'no opinion means all of them')
 
   // Moving a marker to a system that does not list its symbol keeps the symbol on offer,
   // so changing the system cannot quietly redraw the item as something else.
-  const moved = symbolsFor(by('power.light'), 'drain')
+  const moved = symbolsFor(by('power.230v'), 'drain')
   assert.equal(moved[0], 'drain')
 })
 
@@ -164,4 +173,26 @@ test('the rules place the symbols a Dutch drawing expects', async () => {
   assert.equal(symbolOf('sockets'), 'socket')
   assert.equal(symbolOf('switches'), 'switch')
   assert.equal(symbolOf('detectors'), 'detector')
+})
+
+test('the takeoff splits a system by cable size, because that is what you order', () => {
+  const store = new Store()
+  store.sheet.mmPerPoint = 10
+  store.project.settings.takeoffSlackPct = 0
+  // One 230V group holding lighting on 1.5 and sockets on 2.5, which are bought separately.
+  store.sheet.items.push(
+    { ...run('a', 'power.230v', [{ x: 0, y: 0 }, { x: 100, y: 0 }]), size: '3×1.5mm²' },
+    { ...run('b', 'power.230v', [{ x: 0, y: 0 }, { x: 300, y: 0 }]), size: '3×2.5mm²' },
+    { ...run('c', 'power.230v', [{ x: 0, y: 0 }, { x: 200, y: 0 }]), size: '3×2.5mm²' },
+    run('d', 'power.230v', [{ x: 0, y: 0 }, { x: 50, y: 0 }]),
+  )
+  const row = computeTakeoff(store, 'sheet').rows[0]
+  assert.equal(row.lengthMm, 6500, 'the system total is unchanged')
+  // Sorted longest first, so the thing you order most of leads.
+  assert.deepEqual(row.bySize.map((t) => [t.size, t.runs, t.lengthMm]), [
+    ['3×2.5mm²', 2, 5000],
+    ['3×1.5mm²', 1, 1000],
+    ['(no size)', 1, 500],
+  ])
+  assert.equal(row.bySize.reduce((n, t) => n + t.lengthMm, 0), row.lengthMm, 'the parts add up')
 })

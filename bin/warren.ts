@@ -281,18 +281,29 @@ async function cmdTakeoff(args: Args): Promise<void> {
       orderM: round(r.orderMm / 1000, 1),
       boxes: r.boxes,
       markers: r.markers,
+      bySize: r.bySize.map((t) => ({
+        size: t.size, runs: t.runs, planM: round(t.lengthMm / 1000, 1), orderM: round(t.orderMm / 1000, 1),
+      })),
     }))
 
   if (args.flags.json) return void console.log(JSON.stringify({ slackPct: result.slackPct, uncalibrated: result.uncalibrated, rows }, null, 2))
   if (args.flags.csv) {
-    console.log('system_id,system,category,runs,plan_m,order_m,boxes,markers')
+    // A row per gauge: what you order is a size, not a system.
+    console.log('system_id,system,category,size,runs,plan_m,order_m')
     for (const r of rows) {
-      console.log([r.systemId, JSON.stringify(r.system), r.category, r.runs, r.planM, r.orderM, r.boxes, r.markers].join(','))
+      for (const t of r.bySize) {
+        console.log([r.systemId, JSON.stringify(r.system), r.category, JSON.stringify(t.size), t.runs, t.planM, t.orderM].join(','))
+      }
     }
     return
   }
   for (const r of rows) {
     console.log(`${r.system.padEnd(30)} ${String(r.planM).padStart(7)} m  →  ${String(r.orderM).padStart(7)} m to order   ${r.runs} run(s)`)
+    if (r.bySize.length > 1) {
+      for (const t of r.bySize) {
+        console.log(`  ${t.size.padEnd(28)} ${String(t.planM).padStart(7)} m  →  ${String(t.orderM).padStart(7)} m`)
+      }
+    }
   }
   if (result.uncalibrated.length) console.log(`uncalibrated, no lengths: ${result.uncalibrated.join(', ')}`)
 }
@@ -403,6 +414,37 @@ async function cmdSystems(args: Args): Promise<void> {
     project.systems.push(...missing)
     writeFileSync(path, serialize(project))
     console.log(`added ${missing.length}: ${missing.map((s) => s.id).join(', ')}`)
+    return
+  }
+
+  if (typeof args.flags.merge === 'string') {
+    const into = typeof args.flags.into === 'string' ? args.flags.into : null
+    if (!into) fail('usage: warren systems <file> --merge a,b --into c')
+    const sources = args.flags.merge.split(',').map((v) => v.trim()).filter(Boolean)
+    if (sources.includes(into)) fail(`--into ${into} cannot also be in --merge`)
+
+    const have = new Set(project.systems.map((s) => s.id))
+    const unknown = sources.filter((id) => !have.has(id))
+    if (unknown.length) fail(`this project has no system called ${unknown.join(', ')}`)
+
+    if (!have.has(into)) {
+      const seed = missingDefaults(project.systems).find((s) => s.id === into)
+      if (!seed) fail(`no system called ${into}, and it is not one of the built-in defaults either`)
+      project.systems.push(seed)
+      console.log(`added ${into} from the defaults`)
+    }
+
+    let moved = 0
+    for (const sheet of project.sheets) {
+      for (const item of sheet.items) {
+        if (!sources.includes(item.systemId)) continue
+        item.systemId = into
+        moved += 1
+      }
+    }
+    project.systems = project.systems.filter((s) => !sources.includes(s.id))
+    writeFileSync(path, serialize(project))
+    console.log(`moved ${moved} item(s) to ${into}, removed ${sources.join(', ')}`)
     return
   }
 
@@ -714,6 +756,7 @@ const HELP = `warren — read and edit a Warren project from the command line
   warren graph   <file>                      derived connections: networks, junctions, free ends
   warren trace   <file> --id <item>          what one item is joined to, and what it reaches
   warren systems <file> [--add-missing]      list the catalogue, or fill in newer defaults
+         systems <file> --merge a,b --into c  fold systems together, moving their items
   warren rules   <file> [--set rules.json]   the placement rules (data, so they are yours)
   warren generate <file> [--rule sockets]    run the rules over the rooms and doors
   warren split   <file>                      move the PDF out beside the file

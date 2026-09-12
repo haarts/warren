@@ -22,7 +22,7 @@ test('two sockets per wall, inside the room and clear of the corners', () => {
   assert.equal(result.create.length, 8, 'four walls, two each')
   for (const socket of result.create) {
     assert.equal(pointInPolygon({ x: socket.x, y: socket.y }, room.points), true, 'placed inside the room')
-    assert.equal(socket.systemId, 'power.socket')
+    assert.equal(socket.systemId, 'power.230v')
     assert.equal(socket.generated?.rule, 'sockets')
     assert.equal(socket.generated?.from, 'kitchen')
   }

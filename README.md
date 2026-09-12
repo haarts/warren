@@ -132,22 +132,34 @@ The **Size / spec** field is a combo box: click it for the sizes that system nor
 just type. The list is a suggestion, never a constraint — the one spec you need is always the
 one nobody thought to list.
 
-Electrical defaults follow NEN 1010 practice: `3×1.5mm²` for lighting, `3×2.5mm²` for socket
-and dedicated-appliance groups on a 16 A group, `5×2.5mm²` for a 3×16 A hob or an 11 kW charge
-point, `5×6mm²` for 3×32 A (22 kW). Pipe and duct systems carry their own lists the same way.
+Electrical defaults follow NEN 1010 practice: `3×2.5mm²` for a 230V group, with `3×1.5mm²` for
+lighting on the same list, `5×2.5mm²` for a 3×16 A hob or an 11 kW charge point, `5×6mm²` for
+3×32 A (22 kW). Pipe and duct systems carry their own lists the same way.
+
+Lighting, sockets and dedicated appliances are **one 230V group**, not three systems. A group in
+a groepenkast is a group, and often feeds both the lights and the sockets in a room; what a
+circuit feeds is said by the symbol at its end, and the gauge by the size on the run. The
+takeoff splits each system by size, so 1.5 and 2.5 are still ordered separately.
+
+`warren systems <file> --merge power.light,power.socket,power.appliance --into power.230v`
+folds an older project's catalogue together, moving its items with it.
 
 Edit any of them in **Systems…** — the Sizes column is comma-separated, and the first entry is
 what new runs get.
 
 ## Symbols
 
-Markers use the symbols a Dutch installatietekening uses — wandcontactdoos, schakelaar,
-lichtpunt, rookmelder, data-aansluitpunt, ventiel, standleiding, afvoerput, ontstoppingsstuk,
-afsluiter, sparing. Fifteen in all, which is deliberately few: anything rarer is better served
-by the nearest symbol plus a note than by a catalogue nobody can navigate.
+Markers use the symbols a Dutch installatietekening uses — wandcontactdoos (single through
+quadruple), schakelaar, lichtpunt, rookmelder, data-aansluitpunt, ventiel, standleiding,
+afvoerput, ontstoppingsstuk, afsluiter, sparing. Deliberately few: anything rarer is better
+served by the nearest symbol plus a note than by a catalogue nobody can navigate.
 
-**The list follows the system.** Pick a lighting group and you are offered a light point and a
-switch, not a gully. Each system names three to six symbols in the catalogue; a system of your
+The wandcontactdoos follows IEC 60617 / NEN 5152 — a half-round on its diameter line, joined to
+the circuit by a stem. Extra gangs repeat the half-round along the same line rather than
+shrinking it, so a quadruple still counts at a glance when zoomed out.
+
+**The list follows the system.** Pick the 230V group and you are offered sockets, a switch and a
+light point, not a gully. Each system names three to six symbols in the catalogue; a system of your
 own making has no opinion recorded and is offered all of them. A symbol already in use is
 always still listed, so moving an item to another system never silently redraws it.
 
@@ -167,6 +179,9 @@ in the takeoff — they are annotations, not material.
 ## The takeoff
 
 The Takeoff tab totals metres per system, for the sheet or the whole project.
+
+Each system is split by size, because what you order is a gauge rather than a system — one 230V
+group holds 1.5 for the lighting and 2.5 for the sockets, bought separately.
 
 A plan length is not a material length: drops down walls, rises into ceilings, bends and service
 loops are all invisible from above. The **slack %** (default 10) covers that globally; the

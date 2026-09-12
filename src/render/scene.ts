@@ -442,18 +442,30 @@ export function drawMarkerGlyph(ctx: CanvasRenderingContext2D, symbol: MarkerSym
   ctx.fillStyle = '#ffffff'
   ctx.strokeStyle = color
   switch (symbol) {
-    case 'socket': {
-      // Wandcontactdoos: a half-round sitting on a base line wider than itself, as drawn on
-      // any Dutch elektratekening. The base line has to overhang, or it reads as an umbrella.
-      const base = r * 0.4
+    case 'socket':
+    case 'socket-2':
+    case 'socket-3':
+    case 'socket-4': {
+      // Wandcontactdoos, IEC 60617 / NEN 5152: a half-round on its diameter line, joined to
+      // the circuit by a stem at right angles. The stem is what makes it read as mounted on
+      // something rather than floating. Extra gangs repeat the half-round along the same line
+      // rather than shrinking it, so a quadruple stays legible when zoomed out.
+      const gangs = symbol === 'socket' ? 1 : Number(symbol.slice(-1))
+      const a = r * 0.62
+      const span = gangs * 2 * a
       ctx.beginPath()
-      ctx.arc(0, base, r * 0.82, Math.PI, 0)
-      ctx.closePath()
+      for (let i = 0; i < gangs; i++) {
+        const cx = -span / 2 + a + i * 2 * a
+        ctx.moveTo(cx - a, 0)
+        ctx.arc(cx, 0, a, Math.PI, 0)
+      }
       ctx.fill()
       ctx.stroke()
       ctx.beginPath()
-      ctx.moveTo(-r * 1.15, base)
-      ctx.lineTo(r * 1.15, base)
+      ctx.moveTo(-span / 2 - r * 0.32, 0)
+      ctx.lineTo(span / 2 + r * 0.32, 0)
+      ctx.moveTo(0, 0)
+      ctx.lineTo(0, r * 1.05)
       ctx.stroke()
       break
     }

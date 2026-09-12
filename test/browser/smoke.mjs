@@ -250,7 +250,7 @@ try {
     JSON.stringify(confirmed))
 
   // A power circuit gets no arrow at all - an arrow there would be noise.
-  await page.evaluate(() => { window.warren.editor.activeSystemId = 'power.socket' })
+  await page.evaluate(() => { window.warren.editor.activeSystemId = 'power.230v' })
   await page.keyboard.press('l')
   for (const [fx, fy] of [[0.30, 0.80], [0.62, 0.80]]) {
     const p = at(fx, fy)
@@ -258,8 +258,8 @@ try {
     await page.mouse.click(p.x, p.y)
   }
   await page.keyboard.press('Enter')
-  check('a socket circuit does not sprout an arrow', await page.evaluate(() => {
-    const r = window.warren.store.items().filter((i) => i.systemId === 'power.socket').pop()
+  check('a 230V circuit does not sprout an arrow', await page.evaluate(() => {
+    const r = window.warren.store.items().filter((i) => i.systemId === 'power.230v').pop()
     return r?.flow === 'none' && r?.flowAssumed === undefined
   }))
   await page.keyboard.press('v')
@@ -296,13 +296,13 @@ try {
     const app = window.warren
     app.store.mutate(() => {
       const run = app.store.item(id)
-      run.systemId = 'power.socket'
-      run.size = app.store.system('power.socket').defaultSize
+      run.systemId = 'power.230v'
+      run.size = app.store.system('power.230v').defaultSize
     })
   }, runId)
   await selectRun()
   sz = await sizeField()
-  check('a socket group defaults to 3×2.5mm² with the other gauges listed',
+  check('the 230V group defaults to 3×2.5mm² with the other gauges listed',
     sz?.value === '3×2.5mm²' && sz.options[0] === '3×2.5mm²' && sz.options.includes('3×4mm²'),
     sz ? sz.options.join(' ') : 'no datalist')
 
@@ -431,7 +431,7 @@ try {
         .find((s) => [...s.options].some((o) => /Wandcontactdoos|Afvoerput|Rookmelder|Ventiel|Sparing|Lichtpunt/.test(o.textContent)))
       return { options: [...(sel?.options ?? [])].map((o) => o.value), active: app.editor.activeMarkerSymbol }
     }
-    const light = await read('power.light')
+    const light = await read('power.230v')
     const soil = await read('drain.soil')
     const smoke = await read('power.smoke')
     // Put the toolbar back where the rest of the suite expects to find it.
@@ -439,9 +439,9 @@ try {
     app.editor.setTool('select')
     return { light, soil, smoke }
   })
-  check('a lighting group is not offered a gully',
-    symbolPicker.light.options.includes('light') && !symbolPicker.light.options.includes('drain'),
-    symbolPicker.light.options.join(' '))
+  check('a 230V group is offered sockets and light points, not a gully',
+    symbolPicker.light.options.includes('light') && symbolPicker.light.options.includes('socket-3')
+    && !symbolPicker.light.options.includes('drain'), symbolPicker.light.options.join(' '))
   check('a soil pipe is offered a gully and a cleanout',
     symbolPicker.soil.options.includes('drain') && symbolPicker.soil.options.includes('cleanout')
     && !symbolPicker.soil.options.includes('socket'), symbolPicker.soil.options.join(' '))

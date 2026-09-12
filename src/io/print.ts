@@ -74,7 +74,14 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
             <td class="num">${r.runs}</td>
             <td class="num">${r.lengthMm ? formatMetres(r.lengthMm) : '—'}</td>
             <td class="num"><b>${r.orderMm ? formatMetres(r.orderMm) : '—'}</b></td>
-            <td class="num">${r.boxes + r.markers || ''}</td></tr>`).join('')}
+            <td class="num">${r.boxes + r.markers || ''}</td></tr>${
+              r.bySize.length > 1
+                ? r.bySize.map((t) => `<tr class="muted"><td style="padding-left:52px">${escapeHtml(t.size)}</td>
+                    <td class="num">${t.runs}</td>
+                    <td class="num">${t.lengthMm ? formatMetres(t.lengthMm) : '—'}</td>
+                    <td class="num">${t.orderMm ? formatMetres(t.orderMm) : '—'}</td><td></td></tr>`).join('')
+                : ''
+            }`).join('')}
        </table>
        ${takeoff.uncalibrated.length ? `<p class="warn">Not calibrated: ${takeoff.uncalibrated.map(escapeHtml).join(', ')} — lengths unavailable.</p>` : ''}
        </section>`

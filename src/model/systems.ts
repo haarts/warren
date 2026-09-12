@@ -91,9 +91,7 @@ const SEEDS: Seed[] = [
   { id: 'air.dryer', category: 'air', name: 'Tumble dryer exhaust', color: '#475569', dash: D.dash, width: 2.8, sizes: ['Ø100', 'Ø125', 'Ø150'], assumeFlow: true, symbols: ['air-valve', 'riser-up', 'riser-down', 'penetration', 'note'] },
 
   // --- Power --------------------------------------------------------------------------
-  { id: 'power.light', category: 'power', name: '230V lighting group', color: '#ca8a04', dash: D.solid, width: 1.4, sizes: ['3×1.5mm²', '4×1.5mm²', '5×1.5mm²', '3×2.5mm²'], symbols: ['light', 'switch', 'socket', 'penetration', 'note'] },
-  { id: 'power.socket', category: 'power', name: '230V socket group', color: '#ea580c', dash: D.solid, width: 1.7, sizes: ['3×2.5mm²', '3×1.5mm²', '3×4mm²'], symbols: ['socket', 'switch', 'penetration', 'note'] },
-  { id: 'power.appliance', category: 'power', name: '230V dedicated appliance', color: '#ea580c', dash: D.dash, width: 2.0, sizes: ['3×2.5mm²', '3×4mm²', '3×6mm²'], symbols: ['socket', 'switch', 'penetration', 'note'] },
+  { id: 'power.230v', category: 'power', name: '230V group', color: '#ea580c', dash: D.solid, width: 1.7, sizes: ['3×2.5mm²', '3×1.5mm²', '3×4mm²', '3×6mm²'], symbols: ['socket', 'socket-2', 'socket-3', 'socket-4', 'switch', 'light', 'penetration', 'note'] },
   { id: 'power.3ph', category: 'power', name: '400V 3-phase', color: '#dc2626', dash: D.dashdot, width: 2.4, sizes: ['5×2.5mm²', '5×4mm²', '5×6mm²', '5×10mm²', '5×16mm²'], symbols: ['socket', 'switch', 'penetration', 'note'] },
   { id: 'power.earth', category: 'power', name: 'Earthing / bonding', color: '#16a34a', dash: D.solid, width: 1.9, sizes: ['6mm²', '4mm²', '10mm²', '16mm²'], symbols: ['outlet', 'penetration', 'note'] },
   { id: 'power.pv', category: 'power', name: 'PV DC string', color: '#dc2626', dash: D.dot, width: 1.5, sizes: ['2×6mm²', '2×4mm²', '2×10mm²'], symbols: ['outlet', 'penetration', 'note'] },
