@@ -241,7 +241,25 @@ in the halls. That is not design work, it is typing — and it is why the electr
 as a blank page you do not want to look at.
 
 `File → Generate from rooms…`, or `warren generate`, runs a set of placement rules over the
-rooms and doors and puts them all down at once. It shows you what it will do first.
+rooms and doors. It shows you what it will do first.
+
+**Do one room at a time.** Placing a hundred markers in one go only moves the problem: instead
+of a blank page you have a hundred things to check, and you are really only checking one
+decision — does this rule give sensible results in this house? So check it hard in one room,
+then trust it in the others:
+
+```bash
+warren generate house.warren.json --rule sockets --room Keuken --dry-run --where
+warren generate house.warren.json --rule sockets --room Keuken --set perWall=3,insetMm=600
+warren generate house.warren.json --rule sockets --room Keuken --clear     # start over
+warren generate house.warren.json --rule sockets --room Keuken --set perWall=3 --save
+```
+
+`--set` changes a rule for that run only; `--save` keeps the change. `--room` takes a name or a
+plan ref, and an exact match always wins over a partial one — asking for `Keuken` must never
+quietly take the *Bij*keuken with it. Whatever it matched is printed, so a mis-scope is visible
+rather than silent. Scoping also limits what gets replaced, so regenerating one room never
+disturbs another's.
 
 **The rules are data, not code.** "Two sockets per wall" is an opinion about one house, so
 Warren executes a rule set rather than believing one — `warren rules --set mine.json` replaces

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { adopt, applyGenerated, DEFAULT_RULES, generate, generatedBy } from '../src/generate.ts'
+import { adopt, applyGenerated, DEFAULT_RULES, generate, generatedBy, selectRooms } from '../src/generate.ts'
 import { pointInPolygon } from '../src/geom.ts'
 import type { DoorItem, MarkerItem, RoomItem, Sheet } from '../src/model/types.ts'
 
@@ -11,7 +11,7 @@ const room: RoomItem = {
   points: [{ x: 0, y: 0 }, { x: 300, y: 0 }, { x: 300, y: 200 }, { x: 0, y: 200 }],
 }
 
-function sheet(items = [room as RoomItem | DoorItem | MarkerItem]): Sheet {
+function sheet(items: (RoomItem | DoorItem | MarkerItem)[] = [room]): Sheet {
   return { id: 's', name: 'S', pdf: null, mmPerPoint: 20, items: [...items] }
 }
 
@@ -99,4 +99,53 @@ test('rules are data with no opinions baked into the code', () => {
   assert.equal(result.create.length, 12, 'three per wall because the rule said so')
   const custom = generate(sheet([{ ...room, use: 'toilet' }]), mine)
   assert.equal(custom.create.length, 12, 'an empty use list means every room')
+})
+
+const roomNamed = (id: string, name: string, use: RoomItem['use'], x: number, ref?: string): RoomItem => ({
+  kind: 'room', id, systemId: 'struct.room', level: 'floor', name, use, ref,
+  points: [{ x, y: 0 }, { x: x + 300, y: 0 }, { x: x + 300, y: 200 }, { x, y: 200 }],
+})
+
+test('an exact room name wins, so Keuken never drags in the Bijkeuken', () => {
+  const rooms = [
+    roomNamed('k', 'Keuken', 'kitchen', 0, '0.04'),
+    roomNamed('b', 'Bijkeuken', 'utility', 400, '0.09'),
+  ]
+  assert.deepEqual(selectRooms(rooms, ['Keuken']).map((r) => r.id), ['k'])
+  assert.deepEqual(selectRooms(rooms, ['keuken']).map((r) => r.id), ['k'], 'case does not matter')
+  assert.deepEqual(selectRooms(rooms, ['0.09']).map((r) => r.id), ['b'], 'a plan ref works too')
+  // Nothing matches exactly, so substring is a convenience rather than a trap.
+  assert.deepEqual(selectRooms(rooms, ['keu']).map((r) => r.id), ['k', 'b'])
+  assert.deepEqual(selectRooms(rooms, []).map((r) => r.id), ['k', 'b'], 'no scope means every room')
+})
+
+test('generating for one room leaves the other rooms alone', () => {
+  const live = sheet([
+    roomNamed('k', 'Keuken', 'kitchen', 0),
+    roomNamed('b', 'Bedroom', 'bedroom', 400),
+  ])
+  const rule = DEFAULT_RULES.find((r) => r.id === 'sockets')!
+  applyGenerated(live, generate(live, rule))
+  assert.equal(live.items.filter((i) => i.kind === 'marker').length, 16, 'eight in each')
+
+  const scoped = generate(live, rule, { rooms: ['Keuken'] })
+  assert.deepEqual(scoped.rooms, ['Keuken'])
+  assert.equal(scoped.create.length, 8)
+  assert.equal(scoped.replace.length, 8, "only the kitchen's own output is up for replacement")
+  applyGenerated(live, scoped)
+  assert.equal(live.items.filter((i) => i.kind === 'marker').length, 16, 'the bedroom still has its eight')
+})
+
+test('a scoped run with nothing to place clears just that room', () => {
+  const live = sheet([
+    roomNamed('k', 'Keuken', 'kitchen', 0),
+    roomNamed('b', 'Bedroom', 'bedroom', 400),
+  ])
+  const rule = DEFAULT_RULES.find((r) => r.id === 'sockets')!
+  applyGenerated(live, generate(live, rule))
+  const scoped = generate(live, rule, { rooms: ['Keuken'] })
+  applyGenerated(live, { ...scoped, create: [] })
+  const left = live.items.filter((i) => i.kind === 'marker') as { generated?: { from: string } }[]
+  assert.equal(left.length, 8)
+  assert.ok(left.every((i) => i.generated?.from === 'b'), 'the bedroom keeps all of its own')
 })

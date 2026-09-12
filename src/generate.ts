@@ -1,6 +1,6 @@
-import { dist, inwardNormal, polygonCentroid, polygonEdges, type Pt } from './geom.ts'
+import { dist, inwardNormal, pointInPolygon, polygonCentroid, polygonEdges, type Pt } from './geom.ts'
 import type { Store } from './model/doc.ts'
-import type { GeneratedBy, Item, Level, MarkerItem, MarkerSymbol, RoomUse, Sheet } from './model/types.ts'
+import type { GeneratedBy, Item, Level, MarkerItem, MarkerSymbol, RoomItem, RoomUse, Sheet } from './model/types.ts'
 
 /**
  * Rules are data, not code. "Two sockets on every wall" is somebody's opinion about their own
@@ -55,7 +55,32 @@ export const DEFAULT_RULES: GenerateRule[] = [
   },
 ]
 
+export interface GenerateScope {
+  /**
+   * Room names or refs to limit this run to, matched case-insensitively as substrings.
+   * Empty or absent means every room.
+   */
+  rooms?: string[]
+}
+
+/**
+ * The rooms a scope names. An exact name or plan ref wins outright, and only if nothing matches
+ * exactly does it fall back to substring matching - otherwise asking for "Keuken" would quietly
+ * take the Bijkeuken with it, and you would not find out until you counted.
+ */
+export function selectRooms(rooms: RoomItem[], patterns?: string[]): RoomItem[] {
+  if (!patterns?.length) return rooms
+  const needles = patterns.map((p) => p.trim().toLowerCase()).filter(Boolean)
+  if (needles.length === 0) return rooms
+  const exact = rooms.filter((r) =>
+    needles.includes(r.name.toLowerCase()) || (r.ref !== undefined && needles.includes(r.ref.toLowerCase())))
+  if (exact.length) return exact
+  return rooms.filter((r) => needles.some((n) => r.name.toLowerCase().includes(n)))
+}
+
 export interface GenerateResult {
+  /** Rooms the scope resolved to, so a caller can show what it actually acted on. */
+  rooms: string[]
   /** Items this rule would create, in a stable order. */
   create: MarkerItem[]
   /** Ids of previous output of this rule that is still unclaimed, and so can be replaced. */
@@ -87,14 +112,18 @@ function marker(rule: GenerateRule, from: string, index: number, at: Pt): Marker
   return item
 }
 
-export function generate(sheet: Sheet, rule: GenerateRule): GenerateResult {
+export function generate(sheet: Sheet, rule: GenerateRule, scope: GenerateScope = {}): GenerateResult {
   const create: MarkerItem[] = []
-  const rooms = sheet.items.filter((i) => i.kind === 'room')
+  const allRooms = sheet.items.filter((i): i is RoomItem => i.kind === 'room')
+  const rooms = selectRooms(allRooms, scope.rooms)
   const applies = (use: RoomUse): boolean => !rule.uses?.length || rule.uses.includes(use)
+  /** Ids this run is responsible for, so scoping to one room cannot wipe another's. */
+  const touched = new Set<string>()
 
   if (rule.place === 'centre') {
     for (const room of rooms) {
-      if (room.kind !== 'room' || !applies(room.use)) continue
+      if (!applies(room.use)) continue
+      touched.add(room.id)
       create.push(marker(rule, room.id, 0, polygonCentroid(room.points)))
     }
   }
@@ -105,7 +134,8 @@ export function generate(sheet: Sheet, rule: GenerateRule): GenerateResult {
     const minWall = mmToPt(sheet, rule.minWallMm ?? 1200)
     const offWall = mmToPt(sheet, rule.offWallMm ?? 120)
     for (const room of rooms) {
-      if (room.kind !== 'room' || !applies(room.use)) continue
+      if (!applies(room.use)) continue
+      touched.add(room.id)
       let index = 0
       for (const [a, b] of polygonEdges(room.points)) {
         const length = dist(a, b)
@@ -129,6 +159,7 @@ export function generate(sheet: Sheet, rule: GenerateRule): GenerateResult {
   if (rule.place === 'at-door-strike') {
     const offset = mmToPt(sheet, rule.offsetMm ?? 200)
     const offWall = mmToPt(sheet, rule.offWallMm ?? 120)
+    const inScope = rooms
     for (const door of sheet.items) {
       if (door.kind !== 'door') continue
       const [hinge, strike] = door.points
@@ -137,15 +168,27 @@ export function generate(sheet: Sheet, rule: GenerateRule): GenerateResult {
       const n = { x: -u.y * door.swing, y: u.x * door.swing }
       // Past the strike jamb, on the side the door opens to: reachable as you walk in,
       // rather than behind the door once it is open.
-      create.push(marker(rule, door.id, 0, {
+      const at = {
         x: strike.x + u.x * offset + n.x * offWall,
         y: strike.y + u.y * offset + n.y * offWall,
-      }))
+      }
+      // A door belongs to whichever room the switch would land in, which is the only sense in
+      // which "the switches in the kitchen" means anything.
+      if (scope.rooms?.length && !inScope.some((r) => pointInPolygon(at, r.points))) continue
+      touched.add(door.id)
+      create.push(marker(rule, door.id, 0, at))
     }
   }
 
-  const previous = sheet.items.filter((i) => generatedBy(i)?.rule === rule.id)
+  // Only this run's own output is up for replacement. Without that, generating for one room
+  // would quietly delete every other room's.
+  const previous = sheet.items.filter((i) => {
+    const from = generatedBy(i)
+    if (from?.rule !== rule.id) return false
+    return scope.rooms?.length ? touched.has(from.from) : true
+  })
   return {
+    rooms: rooms.filter((r) => touched.has(r.id) || rule.place === 'at-door-strike').map((r) => r.name),
     create,
     replace: previous.map((i) => i.id),
     // Output somebody has since edited stops being the machine's and is never replaced.

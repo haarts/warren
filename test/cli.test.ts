@@ -209,3 +209,74 @@ test('a merge that makes no sense is refused before anything is written', async 
   }
   assert.equal(readFileSync(join(dir, file), 'utf8'), before)
 })
+
+/** A project with two rooms, so scoping has something to get wrong. */
+async function twoRooms(): Promise<{ dir: string; file: string }> {
+  const made = await fixture()
+  const project = JSON.parse(readFileSync(join(made.dir, made.file), 'utf8'))
+  project.sheets[0].items = [
+    { kind: 'room', id: 'k', systemId: 'struct.room', level: 'floor', name: 'Keuken', use: 'kitchen',
+      points: [{ x: 100, y: 100 }, { x: 400, y: 100 }, { x: 400, y: 300 }, { x: 100, y: 300 }] },
+    { kind: 'room', id: 'b', systemId: 'struct.room', level: 'floor', name: 'Bijkeuken', use: 'utility',
+      points: [{ x: 500, y: 100 }, { x: 800, y: 100 }, { x: 800, y: 300 }, { x: 500, y: 300 }] },
+  ]
+  writeFileSync(join(made.dir, made.file), JSON.stringify(project))
+  return made
+}
+
+const markers = (dir: string, file: string): { id: string; from: string }[] =>
+  JSON.parse(readFileSync(join(dir, file), 'utf8')).sheets[0].items
+    .filter((i: { kind: string }) => i.kind === 'marker')
+    .map((i: { id: string; generated?: { from: string } }) => ({ id: i.id, from: i.generated?.from ?? '' }))
+
+test('generate can be scoped to one room, and says which it found', async () => {
+  const { dir, file } = await twoRooms()
+  const { out } = warren(['generate', file, '--rule', 'sockets', '--room', 'Keuken'], dir)
+  assert.match(out, /in Keuken/)
+  assert.equal(markers(dir, file).length, 8, 'the Bijkeuken is not swept up by a substring')
+  assert.ok(markers(dir, file).every((m) => m.from === 'k'))
+})
+
+test('a second room can be generated without disturbing the first', async () => {
+  const { dir, file } = await twoRooms()
+  warren(['generate', file, '--rule', 'sockets', '--room', 'Keuken'], dir)
+  warren(['generate', file, '--rule', 'sockets', '--room', 'Bijkeuken'], dir)
+  const all = markers(dir, file)
+  assert.equal(all.length, 16)
+  assert.equal(all.filter((m) => m.from === 'k').length, 8)
+
+  // And clearing one leaves the other be.
+  warren(['generate', file, '--rule', 'sockets', '--room', 'Keuken', '--clear'], dir)
+  const left = markers(dir, file)
+  assert.equal(left.length, 8)
+  assert.ok(left.every((m) => m.from === 'b'))
+})
+
+test('--set tries a parameter without keeping it, --save keeps it', async () => {
+  const { dir, file } = await twoRooms()
+  const trial = warren(['generate', file, '--rule', 'sockets', '--room', 'Keuken', '--set', 'perWall=3', '--dry-run'], dir)
+  assert.match(trial.out, /12 placed/, 'three per wall on four walls')
+  assert.match(trial.out, /nothing written/)
+  assert.equal(markers(dir, file).length, 0, 'a dry run writes nothing at all')
+
+  warren(['generate', file, '--rule', 'sockets', '--room', 'Keuken', '--set', 'perWall=3,insetMm=600'], dir)
+  assert.equal(markers(dir, file).length, 12)
+  // The rule itself is untouched, so the next room gets the original two per wall.
+  warren(['generate', file, '--rule', 'sockets', '--room', 'Bijkeuken'], dir)
+  assert.equal(markers(dir, file).filter((m) => m.from === 'b').length, 8)
+
+  warren(['generate', file, '--rule', 'sockets', '--room', 'Bijkeuken', '--set', 'perWall=3', '--save'], dir)
+  const rules = JSON.parse(warren(['rules', file, '--json'], dir).out)
+  assert.equal(rules.find((r: { id: string }) => r.id === 'sockets').perWall, 3, 'saved this time')
+})
+
+test('a nonsense --set is refused with the fields that do exist', async () => {
+  const { dir, file } = await twoRooms()
+  const bad = warren(['generate', file, '--rule', 'sockets', '--set', 'perWal=3'], dir)
+  assert.equal(bad.code, 2)
+  assert.match(bad.out, /perWall/, 'names the real fields')
+  const notNumber = warren(['generate', file, '--rule', 'sockets', '--set', 'perWall=lots'], dir)
+  assert.equal(notNumber.code, 2)
+  assert.match(notNumber.out, /wants a number/)
+  assert.equal(warren(['generate', file, '--rule', 'nope'], dir).code, 2, 'and an unknown rule')
+})
