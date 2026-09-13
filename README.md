@@ -307,6 +307,13 @@ a room op takes an `expectM2` and the whole batch is refused if the polygon disa
 than 8%. Tracing three rooms off a real plan came out at 15.3/15.2, 29.3/29.2 and 10.8/10.9 m²,
 with a deliberately wrong fourth caught at 62% out.
 
+None of that helps if the agent has to read 700 lines of prose to find it, so the command line
+describes itself. `warren help --json` prints every command, flag, op shape and enum in one
+call, and the enums come from the same constants the validators use — a value it lists is a
+value that will be accepted. [AGENTS.md](AGENTS.md) is the page to start on: what Warren will
+and will not decide, the read → dry-run → apply → check loop, and the handful of rules that
+matter when nobody is looking at the drawing.
+
 ## Connections
 
 Nothing records what is joined to what — it is read from the drawing. Endpoints snap while you
@@ -366,6 +373,7 @@ warren trace   house.warren.json --id run_x # what one run is joined to, and wha
 warren split   house.warren.json            # move the PDF out beside the file
 warren bundle  house.warren.json            # one self-contained file
 warren apply   house.warren.json ops.json   # validated batch edits
+warren help    apply                        # usage, flags, ops and the rules of one command
 ```
 
 Add `--json` to any of them for machine-readable output. **Everything speaks metres** — the

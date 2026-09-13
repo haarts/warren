@@ -250,6 +250,8 @@ export interface DoorItem {
 export type Item = RunItem | BoxItem | MarkerItem | NoteItem | RoomItem | DoorItem
 
 /** Architecture, not services: exempt from the level filter and never material. */
+export const ITEM_KINDS: Item['kind'][] = ['run', 'box', 'marker', 'note', 'room', 'door']
+
 export const ARCHITECTURE_KINDS: Item['kind'][] = ['room', 'door']
 
 /** The text a label filter searches: everything the item says about itself. */
