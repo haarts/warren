@@ -92,7 +92,10 @@ tab.
 ## Layers and levels — two different things
 
 **Layers** are the systems, grouped into disciplines. Toggle a whole discipline or a single
-system; hidden systems are also unclickable and excluded from exports and prints. The padlock in
+system; hidden systems are also unclickable and excluded from exports and prints. **Only** on
+any row — or on a discipline header — hides everything else so you can look at one thing on its
+own; press it again to bring the rest back. **Show all** says how much is hidden, so a forgotten
+solo cannot masquerade as an empty drawing. The padlock in
 the Layers tab freezes a whole system: still visible and still printed, but no longer in the way
 of your cursor. The Lock button in Properties does the same for one item.
 

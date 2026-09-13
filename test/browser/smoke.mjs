@@ -420,6 +420,49 @@ try {
   }, savedCam)
   await new Promise((r) => setTimeout(r, 120))
 
+  // --- looking at one layer on its own ------------------------------------------------------------
+  const layers = await page.evaluate(async () => {
+    const app = window.warren
+    ;[...document.querySelectorAll('#panel .tabs button')].find((b) => b.textContent === 'Layers').click()
+    await new Promise((r) => setTimeout(r, 150))
+    const rowFor = (name) => [...document.querySelectorAll('.layer-row')]
+      .find((r) => r.querySelector('.name')?.textContent === name)
+    const onlyIn = (el) => [...el.querySelectorAll('button')].find((b) => b.textContent === 'only')
+
+    const row = rowFor('Cold water (KW)')
+    onlyIn(row).click()
+    await new Promise((r) => setTimeout(r, 150))
+    const visible = app.store.project.systems.filter((s) => s.visible).map((s) => s.id)
+    const showAll = [...document.querySelectorAll('.tab-body button')].find((b) => /Show all/.test(b.textContent))
+
+    // Pressing it again brings everything back.
+    onlyIn(rowFor('Cold water (KW)')).click()
+    await new Promise((r) => setTimeout(r, 150))
+    const afterToggle = app.store.project.systems.filter((s) => s.visible).length
+
+    // A whole discipline can be soloed from its header.
+    const header = [...document.querySelectorAll('.layer-cat > header')]
+      .find((h) => h.textContent.includes('Ventilation'))
+    onlyIn(header).click()
+    await new Promise((r) => setTimeout(r, 150))
+    const cats = new Set(app.store.project.systems.filter((s) => s.visible).map((s) => s.category))
+
+    const label = [...document.querySelectorAll('.tab-body button')].find((b) => /Show all/.test(b.textContent))?.textContent
+    ;[...document.querySelectorAll('.tab-body button')].find((b) => /Show all/.test(b.textContent)).click()
+    await new Promise((r) => setTimeout(r, 150))
+    const restored = app.store.project.systems.every((s) => s.visible)
+    ;[...document.querySelectorAll('#panel .tabs button')].find((b) => b.textContent === 'Properties').click()
+    return { visible, hadCount: /hidden/.test(showAll?.textContent ?? ''), afterToggle, cats: [...cats], label, restored }
+  })
+  check('Only on a row leaves exactly that layer showing',
+    layers.visible.length === 1 && layers.visible[0] === 'water.cold', layers.visible.join(' '))
+  check('pressing Only again brings the rest back', layers.afterToggle > 1, `${layers.afterToggle} visible`)
+  check('Only on a discipline header shows just that discipline',
+    layers.cats.length === 1 && layers.cats[0] === 'air', layers.cats.join(' '))
+  check('Show all says how much is hidden, so a forgotten solo is obvious',
+    /hidden/.test(layers.label ?? ''), layers.label)
+  check('and Show all restores everything', layers.restored)
+
   // --- the symbol picker follows the system ---------------------------------------------------
   const symbolPicker = await page.evaluate(async () => {
     const app = window.warren

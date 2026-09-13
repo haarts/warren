@@ -451,14 +451,20 @@ function buildLayers(app: App, body: HTMLElement): void {
   const { store, editor } = app
   const counts = new Map<string, number>()
   for (const item of store.items()) counts.set(item.systemId, (counts.get(item.systemId) ?? 0) + 1)
+  const hidden = store.project.systems.filter((s) => !s.visible).length
 
   body.appendChild(el('div', { class: 'hint' },
-    'Toggle a whole discipline or a single system. Hidden systems are also excluded from clicks, exports and prints.'))
+    'Toggle a whole discipline or a single system. ',
+    el('b', {}, 'Only'),
+    ' hides everything else, so you can look at one thing on its own; press it again to bring the '
+    + 'rest back. Hidden systems are also excluded from clicks, exports and prints.'))
 
   const buttons = el('div', { style: { display: 'flex', gap: '6px', margin: '6px 0 10px' } },
     el('button', {
-      onclick: () => { for (const s of store.project.systems) s.visible = true; store.touch(); editor.requestRender(); app.refresh() },
-    }, 'Show all'),
+      // Says how much is hidden, so a forgotten solo cannot masquerade as an empty drawing.
+      class: hidden ? 'active' : '',
+      onclick: () => { showOnly(app, null) },
+    }, hidden ? `Show all (${hidden} hidden)` : 'Show all'),
     el('button', {
       onclick: () => {
         for (const s of store.project.systems) s.visible = counts.has(s.id)
@@ -473,6 +479,7 @@ function buildLayers(app: App, body: HTMLElement): void {
     if (!systems.length) continue
     const used = systems.reduce((n, s) => n + (counts.get(s.id) ?? 0), 0)
     const allVisible = systems.every((s) => s.visible)
+    const soloed = isOnly(store, systems.map((s) => s.id))
     const group = el('div', { class: 'layer-cat' })
     group.appendChild(el('header', {
       onclick: () => {
@@ -485,6 +492,14 @@ function buildLayers(app: App, body: HTMLElement): void {
       el('span', { class: `eye ${allVisible ? 'on' : ''}` }, allVisible ? '👁' : '—'),
       el('span', {}, CATEGORY_LABELS[category]),
       el('span', { class: 'count' }, used ? `${used} item${used === 1 ? '' : 's'}` : ''),
+      el('button', {
+        class: `solo ${soloed ? 'on' : ''}`,
+        title: `Show only ${CATEGORY_LABELS[category].toLowerCase()}`,
+        onclick: (e: MouseEvent) => {
+          e.stopPropagation()
+          showOnly(app, soloed ? null : systems.map((s) => s.id))
+        },
+      }, 'only'),
     ))
     for (const sys of systems) {
       group.appendChild(systemRow(app, sys, counts.get(sys.id) ?? 0))
@@ -493,10 +508,25 @@ function buildLayers(app: App, body: HTMLElement): void {
   }
 }
 
+/** Is exactly this set visible and nothing else? */
+function isOnly(store: App['store'], ids: string[]): boolean {
+  const want = new Set(ids)
+  return store.project.systems.every((s) => s.visible === want.has(s.id))
+}
+
+/** Show only these systems, or everything when given null. */
+function showOnly(app: App, ids: string[] | null): void {
+  const want = ids === null ? null : new Set(ids)
+  for (const s of app.store.project.systems) s.visible = want === null ? true : want.has(s.id)
+  app.store.touch()
+  app.editor.requestRender()
+  app.refresh()
+}
+
 function systemRow(app: App, sys: System, count: number): HTMLElement {
   const { store, editor } = app
   const refresh = (): void => { store.touch(); editor.requestRender(); app.refresh() }
-  const soloed = store.project.systems.every((s) => (s.id === sys.id ? s.visible : !s.visible))
+  const soloed = isOnly(store, [sys.id])
   return el('div', { class: `layer-row ${sys.visible ? '' : 'hidden'}` },
     el('button', {
       class: `eye ${sys.visible ? 'on' : ''}`,
@@ -508,13 +538,9 @@ function systemRow(app: App, sys: System, count: number): HTMLElement {
     el('span', { class: 'n' }, count ? String(count) : ''),
     el('button', {
       class: `solo ${soloed ? 'on' : ''}`,
-      title: 'Show only this system',
-      onclick: () => {
-        const wasSolo = soloed
-        for (const s of store.project.systems) s.visible = wasSolo ? true : s.id === sys.id
-        refresh()
-      },
-    }, 'S'),
+      title: `Show only ${sys.name}, and nothing else`,
+      onclick: () => showOnly(app, soloed ? null : [sys.id]),
+    }, 'only'),
     el('button', {
       class: `lock ${sys.locked ? 'on' : ''}`,
       title: sys.locked ? 'Unlock for editing' : 'Lock: visible but not selectable',
