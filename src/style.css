@@ -197,6 +197,18 @@ input[type="range"] { width: 90px; vertical-align: middle; }
 .lock.on { color: var(--warn); }
 
 .swatch { width: 26px; height: 12px; border-radius: 2px; display: inline-block; }
+
+.joined-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 2px 4px; margin: 1px 0 1px -4px;
+  border-radius: 4px; cursor: pointer;
+}
+.joined-row:hover { background: var(--accent-soft); }
+.joined-row .how {
+  flex: none; width: 26px; font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--ink-soft);
+}
+.joined-row .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .swatch canvas { display: block; }
 
 /* --------------------------------------------------------------- takeoff */
@@ -232,6 +244,7 @@ table.data tr.cat td { background: #f7f8fa; font-weight: 650; padding-top: 6px; 
 }
 #modes button:hover { border-color: var(--line); background: #fafbfc; }
 #modes button.on { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+#modes button.filter-chip { text-transform: none; letter-spacing: 0; color: var(--warn); border-color: var(--warn); background: #fdf6ec; }
 #sheet-tabs { display: flex; gap: 4px; align-items: center; }
 #sheet-tabs button { padding: 2px 8px; font-size: 11.5px; }
 #sheet-tabs button.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }

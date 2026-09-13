@@ -71,6 +71,21 @@ export class App {
   /** The latched drawing modes, shown and clickable the way a CAD status bar shows them. */
   private renderModes(): void {
     this.modesHost.replaceChildren()
+    // A filter set on the Layers tab hides things everywhere, so it has to be visible from
+    // everywhere. Otherwise it looks like the drawing lost half its contents.
+    const filter = this.store.project.settings.labelFilter.trim()
+    if (filter !== '') {
+      const chip = document.createElement('button')
+      chip.className = 'on filter-chip'
+      chip.textContent = `filter: ${filter} ✕`
+      chip.title = 'Only items whose label contains this are shown. Click to clear.'
+      chip.addEventListener('click', () => {
+        this.store.project.settings.labelFilter = ''
+        this.store.touch()
+        this.editor.requestRender()
+      })
+      this.modesHost.appendChild(chip)
+    }
     for (const mode of this.editor.modes()) {
       const btn = document.createElement('button')
       btn.textContent = mode.label

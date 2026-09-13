@@ -8,7 +8,7 @@ import {
 import { computeTakeoff } from '../takeoff.ts'
 import { countBySeverity, runChecks, type Finding, type Severity } from '../check.ts'
 import { missingAssetIds } from '../model/assets.ts'
-import { buildGraph, connectionsOf, networkOf } from '../topology.ts'
+import { buildGraph, connectionsOf, networkOf, type Contact } from '../topology.ts'
 import { adopt, generatedBy } from '../generate.ts'
 import { symbolsFor } from '../model/systems.ts'
 import { formatMetres } from '../units.ts'
@@ -267,10 +267,38 @@ function buildProperties(app: App, body: HTMLElement): void {
       const joined = connectionsOf(graph, first.id)
       const network = networkOf(graph, first.id)
       const loose = graph.freeEnds.filter((f) => f.itemId === first.id).length
-      body.appendChild(field('Joined to', el('div', {},
-        joined.length === 0 ? 'nothing yet' : `${joined.length} item${joined.length === 1 ? '' : 's'}`,
-        loose > 0 ? el('span', { style: { color: 'var(--ink-soft)' } }, `, ${loose} loose end${loose === 1 ? '' : 's'}`) : null,
-      )))
+
+      // Naming them, not counting them: a run that says "3 items" when you expected 2 is only
+      // useful if you can see which three.
+      const list = el('div', {})
+      if (joined.length === 0) {
+        list.appendChild(el('div', { style: { color: 'var(--ink-soft)' } }, 'nothing yet'))
+      }
+      for (const c of joined) {
+        const other = store.item(c.otherId)
+        if (!other) continue
+        const name = describeItem(store, other)
+        list.appendChild(el('div', {
+          class: 'joined-row',
+          title: `Show ${name}`,
+          onclick: () => {
+            store.selection.clear()
+            store.selection.add(other.id)
+            store.activeVertex = null
+            editor.zoomToSelection()
+            app.refresh()
+          },
+        },
+          el('span', { class: 'how' }, CONTACT_LABELS[c.how]),
+          swatch(store.system(other.systemId).color, store.system(other.systemId).dash, store.system(other.systemId).width),
+          el('span', { class: 'what' }, name),
+        ))
+      }
+      if (loose > 0) {
+        list.appendChild(el('div', { style: { color: 'var(--ink-soft)', marginTop: '2px' } },
+          `${loose} loose end${loose === 1 ? '' : 's'}`))
+      }
+      body.appendChild(field(`Joined to`, list))
       if (network && network.items.length > 1) {
         body.appendChild(field('Network', el('button', {
           onclick: () => {
@@ -397,6 +425,23 @@ function buildProperties(app: App, body: HTMLElement): void {
   }
 }
 
+const CONTACT_LABELS: Record<Contact, string> = {
+  'end-to-end': 'end',
+  tee: 'tee',
+  equipment: 'at',
+}
+
+/** Enough to recognise an item by, in as few words as possible. */
+function describeItem(store: App['store'], item: Item): string {
+  const sys = store.system(item.systemId).name
+  if (item.kind === 'room') return `${item.name} (room)`
+  if (item.kind === 'door') return `${item.ref ?? 'door'}`
+  const own = item.kind === 'note' ? item.text.slice(0, 24) : (item.label ?? '').trim()
+  const size = item.kind === 'run' ? (item.size ?? '').trim() : ''
+  const detail = [own, size].filter(Boolean).join(' ')
+  return detail ? `${detail} — ${sys}` : `${sys} ${item.kind}`
+}
+
 function labelForKind(item: Item): string {
   switch (item.kind) {
     case 'run': return 'Run'
@@ -458,6 +503,32 @@ function buildLayers(app: App, body: HTMLElement): void {
     el('b', {}, 'Only'),
     ' hides everything else, so you can look at one thing on its own; press it again to bring the '
     + 'rest back. Hidden systems are also excluded from clicks, exports and prints.'))
+
+  // Isolating one circuit by what it says about itself, which is where a group number lives.
+  const filterInput = el('input', {
+    type: 'text',
+    value: store.project.settings.labelFilter,
+    placeholder: 'label contains…  e.g. g7',
+    title: 'Show only items whose label, size or note contains this. Rooms and doors always stay.',
+  }) as HTMLInputElement
+  const commitFilter = (): void => {
+    if (filterInput.value === store.project.settings.labelFilter) return
+    store.project.settings.labelFilter = filterInput.value
+    store.touch()
+    editor.requestRender()
+    app.refresh()
+  }
+  filterInput.addEventListener('change', commitFilter)
+  filterInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') commitFilter()
+    if (e.key === 'Escape') { filterInput.value = ''; commitFilter() }
+  })
+  const active = store.project.settings.labelFilter.trim() !== ''
+  const filtered = active ? store.items().filter((i) => !store.isVisible(i)).length : 0
+  body.appendChild(field('Filter', el('div', { style: { display: 'flex', gap: '4px' } },
+    filterInput,
+    active ? el('button', { onclick: () => { filterInput.value = ''; commitFilter() } }, '×') : null,
+  ), active ? `${filtered} item(s) hidden by the filter. Rooms and doors are exempt.` : undefined))
 
   const buttons = el('div', { style: { display: 'flex', gap: '6px', margin: '6px 0 10px' } },
     el('button', {

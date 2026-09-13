@@ -252,6 +252,18 @@ export type Item = RunItem | BoxItem | MarkerItem | NoteItem | RoomItem | DoorIt
 /** Architecture, not services: exempt from the level filter and never material. */
 export const ARCHITECTURE_KINDS: Item['kind'][] = ['room', 'door']
 
+/** The text a label filter searches: everything the item says about itself. */
+export function searchTextOf(item: Item): string {
+  const parts: string[] = []
+  if (item.kind === 'room') parts.push(item.name, item.ref ?? '')
+  else if (item.kind === 'note') parts.push(item.text)
+  else if (item.kind === 'door') parts.push(item.ref ?? '', item.label ?? '')
+  else parts.push(item.label ?? '')
+  if (item.kind === 'run') parts.push(item.size ?? '', item.slope ?? '')
+  if ('note' in item && typeof item.note === 'string') parts.push(item.note)
+  return parts.join(' ').toLowerCase()
+}
+
 /** Items defined by a list of points: runs, room outlines and door openings. */
 export function pointsOf(item: Item): Pt[] | null {
   return item.kind === 'run' || item.kind === 'room' || item.kind === 'door' ? item.points : null
@@ -300,6 +312,11 @@ export interface Settings {
   /** Percentage added to every takeoff total for drops, slack and verticals. */
   takeoffSlackPct: number
   levelFilter: Level | 'all'
+  /**
+   * Show only items whose label, size or note contains this. Rooms and doors are exempt, so
+   * isolating one circuit does not take the building away with it.
+   */
+  labelFilter: string
 }
 
 export interface Project {
@@ -331,4 +348,5 @@ export const DEFAULT_SETTINGS: Settings = {
   showLevels: true,
   takeoffSlackPct: 10,
   levelFilter: 'all',
+  labelFilter: '',
 }

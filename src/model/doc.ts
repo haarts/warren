@@ -1,6 +1,6 @@
 import { defaultSystems, FALLBACK_SYSTEM } from './systems.ts'
 import { newId } from './ids.ts'
-import { ARCHITECTURE_KINDS, DEFAULT_SETTINGS, type Item, type Project, type Sheet, type System } from './types.ts'
+import { ARCHITECTURE_KINDS, DEFAULT_SETTINGS, searchTextOf, type Item, type Project, type Sheet, type System } from './types.ts'
 
 /** Everything under undo control. Assets (PDF bytes) sit outside - they are big and never edited. */
 interface Snapshot {
@@ -101,6 +101,8 @@ export class Store {
     if (ARCHITECTURE_KINDS.includes(item.kind)) return true
     const filter = this.project.settings.levelFilter
     if (filter !== 'all' && item.level !== filter) return false
+    const text = this.project.settings.labelFilter.trim().toLowerCase()
+    if (text !== '' && !searchTextOf(item).includes(text)) return false
     return true
   }
 

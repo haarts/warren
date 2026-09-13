@@ -74,3 +74,49 @@ test('notes are not part of the network - they are annotations', () => {
   assert.equal(networkOf(g, 'a')?.items.length, 1)
   assert.equal(networkOf(g, 'n'), null)
 })
+
+test('circuits leaving a board are joined to the board, not to each other', () => {
+  // Six dedicated runs from a distribution board share a start coordinate, because that is
+  // where snapping puts them. Reporting each as joined to the other five buries the one
+  // connection that matters.
+  const board: Item = { kind: 'box', id: 'board', systemId: 'power.230v', level: 'on-wall', x: 0, y: 0, w: 20, h: 30 }
+  // Fanned out after they leave the board, so the only shared point is the one at the board.
+  const at = (id: string, endX: number): Item =>
+    run(id, 'power.230v', [[10, 15], [endX, 15], [endX, 200]])
+  const g = buildGraph(sheet([board, at('koelkast', 200), at('vaatwasser', 300), at('oven', 400)]))
+
+  for (const id of ['koelkast', 'vaatwasser', 'oven']) {
+    const c = connectionsOf(g, id)
+    assert.equal(c.length, 1, `${id} should see only the board`)
+    assert.equal(c[0].otherId, 'board')
+    assert.equal(c[0].how, 'equipment')
+  }
+  assert.equal(connectionsOf(g, 'board').length, 3, 'the board sees all three')
+  // Connectivity is not lost - they are joined through the board.
+  assert.equal(networkOf(g, 'oven')?.items.length, 4)
+})
+
+test('runs meeting at an appliance point are joined to it, not to each other', () => {
+  // Two circuits reaching the same outlet, and a third whose route happens to pass through it.
+  const point: Item = { kind: 'marker', id: 'koelkast', systemId: 'power.230v', level: 'on-wall', x: 100, y: 0, symbol: 'socket' }
+  const g = buildGraph(sheet([
+    point,
+    run('a', 'power.230v', [[0, 0], [100, 0]]),
+    run('b', 'power.230v', [[100, 0], [100, 80]]),
+    run('c', 'power.230v', [[100, 0], [180, 40]]),
+  ]))
+  for (const id of ['a', 'b', 'c']) {
+    assert.deepEqual(connectionsOf(g, id).map((x) => x.otherId), ['koelkast'], `${id} sees only the outlet`)
+  }
+  assert.equal(connectionsOf(g, 'koelkast').length, 3)
+  assert.equal(networkOf(g, 'a')?.items.length, 4, 'still one network, joined through the outlet')
+})
+
+test('two runs meeting in open space are still joined to each other', () => {
+  // The board rule must not swallow an ordinary joint away from any equipment.
+  const g = buildGraph(sheet([
+    run('a', 'water.cold', [[0, 0], [100, 0]]),
+    run('b', 'water.cold', [[100, 0], [100, 100]]),
+  ]))
+  assert.deepEqual(connectionsOf(g, 'a').map((c) => c.otherId), ['b'])
+})

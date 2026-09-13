@@ -91,6 +91,12 @@ tab.
 
 ## Layers and levels — two different things
 
+The **Filter** box at the top of Layers shows only items whose label, size or note contains what
+you type — `g7` to look at one group on its own, `2.5mm` to see every run of that gauge. Rooms
+and doors are exempt, so the building stays put. An active filter shows in the status bar from
+every tab, because a filter you have forgotten looks exactly like a drawing that lost half its
+contents.
+
 **Layers** are the systems, grouped into disciplines. Toggle a whole discipline or a single
 system; hidden systems are also unclickable and excluded from exports and prints. **Only** on
 any row — or on a discipline header — hides everything else so you can look at one thing on its
@@ -313,10 +319,15 @@ away — so a generous tolerance does not find more connections, it invents them
 look joined but are not will show up as loose ends, which is the honest answer: they are not
 joined.
 
-Select a run and Properties tells you what it is joined to, how many loose ends it has, and
-offers **Select all n joined** — the quick way to grab a whole circuit or a whole drain line and
+Select a run and Properties **names** what it is joined to — each one clickable, tagged *end*,
+*tee* or *at* — tells you how many loose ends it has, and offers **Select all n joined** — the quick way to grab a whole circuit or a whole drain line and
 move it. A branch landing part way along a main is recorded as a *tee* rather than a joint,
 because the difference matters.
+
+**Equipment mediates.** Six circuits leaving a distribution board share a coordinate, and
+several runs reaching the same outlet share another — in both cases they are joined *to the
+thing*, not to each other. Without that rule a dedicated circuit reports being joined to all
+five of its neighbours, and the one connection that matters is buried.
 
 ## Checks
 

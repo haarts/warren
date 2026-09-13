@@ -96,13 +96,21 @@ export function buildGraph(sheet: Sheet, tolerance = toleranceFor(sheet)): Graph
     connections.set(a, list)
   }
 
+  const equipment = items.filter((i) => i.kind === 'box' || i.kind === 'marker')
   const runs = items.filter((i): i is RunItem => i.kind === 'run')
   for (const run of runs) {
     for (const p of endpointsOf(run)) {
+      // Equipment mediates. Six circuits leaving a distribution board share a coordinate, and
+      // several runs meeting at an appliance point share another; in both cases they are
+      // joined to the thing, not to each other, and saying otherwise buries the connection
+      // that matters under several that do not.
+      const insideEquipment = equipment.some((e) =>
+        e.kind === 'box' ? touchesBox(p, e, tolerance) : dist(p, { x: e.x, y: e.y }) <= tolerance)
       for (const other of items) {
         if (other.id === run.id) continue
         const contact = contactBetween(p, other, tolerance)
         if (!contact) continue
+        if (insideEquipment && other.kind === 'run') continue
         add(run.id, other.id, contact.at, contact.how)
         add(other.id, run.id, contact.at, contact.how === 'tee' ? 'tee' : contact.how)
       }

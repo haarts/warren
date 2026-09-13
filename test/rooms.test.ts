@@ -68,3 +68,52 @@ test('a level filter never hides the building', () => {
   store.loadProject(project, null)
   assert.equal(store.isVisible(room), true)
 })
+
+test('a label filter isolates one circuit without hiding the building', () => {
+  const store = new Store()
+  const project = emptyProject()
+  const sheet = project.sheets[0]
+  sheet.items.push(
+    { kind: 'room', id: 'r', systemId: 'struct.room', level: 'floor', name: 'Keuken', use: 'kitchen', points: square },
+    { kind: 'run', id: 'g7', systemId: 'power.230v', level: 'wall', flow: 'none', label: 'g7 koelkast',
+      size: '3×2.5mm²', points: [{ x: 0, y: 0 }, { x: 10, y: 0 }] },
+    { kind: 'run', id: 'g8', systemId: 'power.230v', level: 'wall', flow: 'none', label: 'g8 oven',
+      size: '3×2.5mm²', points: [{ x: 0, y: 2 }, { x: 10, y: 2 }] },
+    { kind: 'run', id: 'water', systemId: 'water.cold', level: 'floor', flow: 'none', size: 'Ø16',
+      points: [{ x: 0, y: 4 }, { x: 10, y: 4 }] },
+  )
+  store.loadProject(project, null)
+  const visible = (): string[] => store.items().filter((i) => store.isVisible(i)).map((i) => i.id)
+
+  assert.deepEqual(visible(), ['r', 'g7', 'g8', 'water'])
+
+  store.project.settings.labelFilter = 'g7'
+  assert.deepEqual(visible(), ['r', 'g7'], 'the room stays, so there is still something to read against')
+
+  store.project.settings.labelFilter = 'G7'
+  assert.deepEqual(visible(), ['r', 'g7'], 'case does not matter')
+
+  // It searches everything the item says about itself, not only the label.
+  store.project.settings.labelFilter = '2.5mm'
+  assert.deepEqual(visible(), ['r', 'g7', 'g8'])
+  store.project.settings.labelFilter = 'Ø16'
+  assert.deepEqual(visible(), ['r', 'water'])
+
+  store.project.settings.labelFilter = 'nothing matches this'
+  assert.deepEqual(visible(), ['r'], 'and an empty result still shows the building')
+
+  store.project.settings.labelFilter = '   '
+  assert.deepEqual(visible(), ['r', 'g7', 'g8', 'water'], 'blank means no filter')
+})
+
+test('a filtered-out item is unclickable too, not merely invisible', () => {
+  const store = new Store()
+  const project = emptyProject()
+  project.settings.labelFilter = 'g7'
+  project.sheets[0].items.push({
+    kind: 'run', id: 'g8', systemId: 'power.230v', level: 'wall', flow: 'none',
+    label: 'g8 oven', points: [{ x: 0, y: 0 }, { x: 10, y: 0 }],
+  })
+  store.loadProject(project, null)
+  assert.equal(store.isEditable(store.item('g8')!), false)
+})
