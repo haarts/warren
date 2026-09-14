@@ -161,7 +161,9 @@ export function buildToolbar(app: App, host: HTMLElement): void {
         app.refresh()
       },
     }) as HTMLSelectElement
-    roomFocus.appendChild(el('option', { value: '', selected: !store.project.settings.roomFocus }, 'All rooms'))
+    // Named like the others, so the closed dropdown says what the control does rather than
+    // just reporting a state.
+    roomFocus.appendChild(el('option', { value: '', selected: !store.project.settings.roomFocus }, 'Focus: all rooms'))
     for (const room of [...roomsHere].sort((a, b) => a.name.localeCompare(b.name))) {
       roomFocus.appendChild(el('option', {
         value: room.id, selected: store.project.settings.roomFocus === room.id,
