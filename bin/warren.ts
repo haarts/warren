@@ -198,6 +198,8 @@ interface ItemReport {
   text?: string
   use?: string
   areaM2?: number
+  /** Which symbol a marker draws with — otherwise invisible to anything but the raw file. */
+  symbol?: string
 }
 
 function reportItem(store: Store, sheet: Sheet, item: Item): ItemReport {
@@ -233,6 +235,7 @@ function reportItem(store: Store, sheet: Sheet, item: Item): ItemReport {
     report.atM = pointAtM(sheet, first)
   } else if (item.kind === 'box' || item.kind === 'marker' || item.kind === 'note') {
     report.atM = pointAtM(sheet, { x: item.x, y: item.y })
+    if (item.kind === 'marker') report.symbol = item.symbol
     if (item.kind === 'note') report.text = item.text
   }
   return report
@@ -310,7 +313,7 @@ async function cmdItems(args: Args): Promise<void> {
   if (rows.length === 0) return void console.log('nothing matched')
   for (const r of rows) {
     const where = r.atM ? `@ ${r.atM[0]},${r.atM[1]} m` : '@ uncalibrated'
-    const extra = [r.size, r.label, r.text, r.lengthM != null ? `${r.lengthM} m` : null, r.flow]
+    const extra = [r.size, r.symbol, r.label, r.text, r.lengthM != null ? `${r.lengthM} m` : null, r.flow]
       .filter(Boolean).join(' · ')
     console.log(`${r.id.padEnd(22)} ${r.kind.padEnd(7)} ${r.system.padEnd(28)} ${r.level.padEnd(9)} ${where.padEnd(22)} ${extra}`)
   }

@@ -299,3 +299,19 @@ test('--as marks what a batch places as unreviewed', async () => {
     .filter((i: { kind: string }) => i.kind === 'marker')
   assert.equal(plain.filter((i: { generated?: unknown }) => !i.generated).length, 1)
 })
+
+test('items reports which symbol a marker draws with', async () => {
+  const { dir, file } = await fixture()
+  const project = JSON.parse(readFileSync(join(dir, file), 'utf8'))
+  project.sheets[0].items.push(
+    { kind: 'marker', id: 'm1', systemId: 'power.smoke', level: 'ceiling', x: 100, y: 100, symbol: 'detector' },
+    { kind: 'marker', id: 'm2', systemId: 'power.smoke', level: 'ceiling', x: 200, y: 100, symbol: 'sensor' },
+  )
+  writeFileSync(join(dir, file), JSON.stringify(project))
+
+  const rows = JSON.parse(warren(['items', file, '--kind', 'marker', '--json'], dir).out) as { id: string; symbol?: string }[]
+  // Without this, telling two markers apart means reading the raw file, which is the one thing
+  // the command line exists to make unnecessary.
+  assert.deepEqual(rows.map((r) => [r.id, r.symbol]), [['m1', 'detector'], ['m2', 'sensor']])
+  assert.match(warren(['items', file, '--kind', 'marker'], dir).out, /detector/)
+})
