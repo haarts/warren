@@ -140,6 +140,23 @@ export class App {
     this.modesHost.replaceChildren()
     // A filter set on the Layers tab hides things everywhere, so it has to be visible from
     // everywhere. Otherwise it looks like the drawing lost half its contents.
+    const focusId = this.store.project.settings.roomFocus
+    if (focusId) {
+      const room = this.store.items().find((i) => i.kind === 'room' && i.id === focusId)
+      if (room && room.kind === 'room') {
+        const chip = document.createElement('button')
+        chip.className = 'on filter-chip'
+        chip.textContent = `focus: ${room.name} ✕`
+        chip.title = 'Everything outside this room is greyed. Click to show all rooms again.'
+        chip.addEventListener('click', () => {
+          this.store.project.settings.roomFocus = null
+          this.store.touch()
+          this.editor.requestRender()
+        })
+        this.modesHost.appendChild(chip)
+      }
+    }
+
     const filter = this.store.project.settings.labelFilter.trim()
     if (filter !== '') {
       const chip = document.createElement('button')

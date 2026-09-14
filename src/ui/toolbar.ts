@@ -2,7 +2,7 @@ import type { App } from '../app.ts'
 import type { ToolId } from '../interact/controller.ts'
 import {
   CATEGORY_LABELS, CATEGORIES, LEVELS, LEVEL_LABELS, MARKER_LABELS,
-  type Level, type MarkerSymbol,
+  type Level, type MarkerSymbol, type RoomItem,
 } from '../model/types.ts'
 import { symbolsFor } from '../model/systems.ts'
 import { saveCapabilityNote } from '../io/projectFile.ts'
@@ -146,6 +146,29 @@ export function buildToolbar(app: App, host: HTMLElement): void {
     }, `Only: ${LEVEL_LABELS[level]}`))
   }
   host.appendChild(levelFilter)
+
+  // Work on one room. Everything else greys out but stays reachable — hiding it would break
+  // the one thing every circuit must do, which is arrive at a panel somewhere else.
+  const roomsHere = store.items().filter((i): i is RoomItem => i.kind === 'room')
+  if (roomsHere.length) {
+    const roomFocus = el('select', {
+      title: 'Work on one room: everything else greys out, but stays selectable and snappable',
+      onchange: (e: Event) => {
+        const value = (e.target as HTMLSelectElement).value
+        store.project.settings.roomFocus = value === '' ? null : value
+        store.touch()
+        editor.requestRender()
+        app.refresh()
+      },
+    }) as HTMLSelectElement
+    roomFocus.appendChild(el('option', { value: '', selected: !store.project.settings.roomFocus }, 'All rooms'))
+    for (const room of [...roomsHere].sort((a, b) => a.name.localeCompare(b.name))) {
+      roomFocus.appendChild(el('option', {
+        value: room.id, selected: store.project.settings.roomFocus === room.id,
+      }, `Focus: ${room.name}`))
+    }
+    host.appendChild(roomFocus)
+  }
 
   host.appendChild(el('div', { class: 'sep' }))
   host.appendChild(el('button', { title: 'Edit the systems catalogue', onclick: () => openSystemsEditor(app) }, 'Systems…'))

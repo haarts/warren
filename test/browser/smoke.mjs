@@ -1022,6 +1022,30 @@ try {
   check('but a level still annotates a real label', /·/.test(quiet.withLabel), quiet.withLabel)
   check('running the same rule again changes nothing', generated.idempotent)
 
+  // --- focusing a room greys the rest without putting it out of reach -------------------------
+  const focus = await page.evaluate(async () => {
+    const { itemsInRoom } = await import('/src/rooms.ts')
+    const app = window.warren
+    const editable = () => app.store.items().filter((i) => app.store.isEditable(i)).length
+    const before = editable()
+    app.store.project.settings.roomFocus = 'demo-room'
+    app.store.touch(false)
+    app.refresh()
+    await new Promise((r) => setTimeout(r, 150))
+    const after = editable()
+    const inRoom = itemsInRoom(app.store.sheet, 'demo-room')
+    const chip = [...document.querySelectorAll('#modes button')].map((b) => b.textContent).join(' ')
+    app.store.project.settings.roomFocus = null
+    app.store.touch(false)
+    app.refresh()
+    return { before, after, inRoom: inRoom.size, total: app.store.items().length, chip }
+  })
+  check('focusing a room changes nothing about what can be clicked or snapped to',
+    focus.before === focus.after && focus.before > 0, `${focus.before} editable either way`)
+  check('and it is a focus, not a filter — the rest is still there',
+    focus.inRoom > 0 && focus.inRoom < focus.total, `${focus.inRoom} of ${focus.total} in the room`)
+  check('an active focus shows in the status bar', /focus:/.test(focus.chip), focus.chip)
+
   const protectedEdit = await page.evaluate(async (id) => {
     const { generate, applyGenerated, rulesOf, generatedBy } = await import('/src/generate.ts')
     const app = window.warren

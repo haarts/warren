@@ -5,6 +5,7 @@ import {
 import type { Store } from '../model/doc.ts'
 import { LEVEL_SHORT, type BoxItem, type DoorItem, type Item, type MarkerItem, type MarkerSymbol, type NoteItem, type RoomItem, type RunItem } from '../model/types.ts'
 import { pointsOf } from '../model/types.ts'
+import { itemsInRoom } from '../rooms.ts'
 import { measureNote, noteFont, noteHeight, NOTE_LINE_HEIGHT, NOTE_PAD, NOTE_STRIPE } from './notes.ts'
 import { formatMetres, niceScaleLength } from '../units.ts'
 import type { Camera } from './camera.ts'
@@ -40,12 +41,29 @@ export interface SceneOptions {
 
 const ACCENT = '#0b63d6'
 const HANDLE_FILL = '#ffffff'
+/** What an out-of-focus item is drawn in: present, plainly context, not competing. */
+const DIMMED = '#c3c9d2'
+
+/**
+ * Items in the focused room, for this frame only. Held here rather than threaded through every
+ * draw function; the render pass is one frame at a time, so there is nothing to race with.
+ */
+let inFocus: Set<string> | null = null
+
+const dimmed = (item: Item): boolean => inFocus !== null && !inFocus.has(item.id)
 
 export function drawScene(opts: SceneOptions): void {
   const { ctx, store, cam, width, height } = opts
   const ui = opts.uiScale ?? 1
   const interactive = opts.interactive ?? true
   const settings = store.project.settings
+
+  // Working on one room greys the rest. They stay selectable and snappable, because every
+  // circuit has to reach a panel in some other room.
+  const focused = settings.roomFocus ? itemsInRoom(store.sheet, settings.roomFocus) : null
+  // A focus naming a room that is no longer there greys the whole drawing, which would be
+  // baffling. Treat it as no focus at all.
+  inFocus = focused && focused.size > 0 ? focused : null
 
   ctx.save()
   ctx.clearRect(0, 0, width, height)
@@ -96,16 +114,19 @@ export function drawScene(opts: SceneOptions): void {
     // labels on top of each other and none of them would be readable.
     const placed: Rect[] = []
     for (const note of notes) {
+      if (dimmed(note)) continue
       placed.push({
         x: cam.toScreenX(note.x), y: cam.toScreenY(note.y),
         w: note.w * cam.zoom, h: noteHeight(note) * cam.zoom,
       })
     }
     // Room names claim their spot first: they are what you orient by.
+    // A room keeps its name whatever the focus — it is what you navigate by. Everything else
+    // out of focus loses its words: the shape is context, the label would be noise.
     for (const room of rooms) drawRoomLabel(ctx, store, cam, room, ui, placed)
-    for (const box of boxes) drawBoxLabel(ctx, store, cam, box, ui, placed)
-    for (const marker of markers) drawMarkerLabel(ctx, store, cam, marker, ui, placed)
-    for (const run of runs) drawRunLabel(ctx, store, cam, run, ui, placed)
+    for (const box of boxes) if (!dimmed(box)) drawBoxLabel(ctx, store, cam, box, ui, placed)
+    for (const marker of markers) if (!dimmed(marker)) drawMarkerLabel(ctx, store, cam, marker, ui, placed)
+    for (const run of runs) if (!dimmed(run)) drawRunLabel(ctx, store, cam, run, ui, placed)
   }
 
   // --- selection & tool feedback ------------------------------------------------------
@@ -139,7 +160,7 @@ export function drawScene(opts: SceneOptions): void {
 function strokeStyleFor(store: Store, item: Item): { color: string; dash: number[]; width: number } {
   const sys = store.system(item.systemId)
   return {
-    color: item.colorOverride ?? sys.color,
+    color: dimmed(item) ? DIMMED : item.colorOverride ?? sys.color,
     dash: sys.dash,
     width: sys.width,
   }
@@ -245,7 +266,7 @@ function drawBox(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, box: 
 
 function drawRoom(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, room: RoomItem): void {
   if (room.points.length < 3) return
-  const color = room.colorOverride ?? store.system(room.systemId).color
+  const color = dimmed(room) ? DIMMED : room.colorOverride ?? store.system(room.systemId).color
   const pts = screenPoints(cam, room.points)
   ctx.save()
   ctx.beginPath()
@@ -287,7 +308,7 @@ function drawRoomLabel(
   ctx.strokeStyle = 'rgba(255,255,255,0.85)'
   ctx.setLineDash([])
   ctx.strokeText(text, c.x, c.y)
-  ctx.fillStyle = store.system(room.systemId).color
+  ctx.fillStyle = dimmed(room) ? DIMMED : store.system(room.systemId).color
   ctx.fillText(text, c.x, c.y)
   ctx.restore()
 }
@@ -295,7 +316,7 @@ function drawRoomLabel(
 /** The architect's door symbol: the opening, the leaf from the hinge, and its swing. */
 function drawDoor(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, door: DoorItem, ui: number): void {
   if (door.points.length < 2) return
-  const color = door.colorOverride ?? store.system(door.systemId).color
+  const color = dimmed(door) ? DIMMED : door.colorOverride ?? store.system(door.systemId).color
   const hinge = door.points[0]
   const strike = door.points[1]
   const width = dist(hinge, strike) * cam.zoom
@@ -343,7 +364,7 @@ const NOTE_INK = '#422006'
 const NOTE_COLLAPSE_PX = 46
 
 function drawNote(ctx: CanvasRenderingContext2D, store: Store, cam: Camera, note: NoteItem, ui: number): void {
-  const accent = note.colorOverride ?? store.system(note.systemId).color
+  const accent = dimmed(note) ? DIMMED : note.colorOverride ?? store.system(note.systemId).color
   const x = cam.toScreenX(note.x)
   const y = cam.toScreenY(note.y)
   const w = note.w * cam.zoom

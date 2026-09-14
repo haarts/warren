@@ -260,6 +260,7 @@ export function parseProject(text: string): Project {
     if (typeof v === typeof DEFAULT_SETTINGS[key]) (settings as Record<string, unknown>)[key] = v
   }
   if (settings.levelFilter !== 'all' && !LEVELS.includes(settings.levelFilter)) settings.levelFilter = 'all'
+  settings.roomFocus = typeof settingsRaw.roomFocus === 'string' ? settingsRaw.roomFocus : null
 
   const activeSheetId = sheets.some((s) => s.id === raw.activeSheetId) ? String(raw.activeSheetId) : sheets[0].id
 

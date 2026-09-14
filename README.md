@@ -92,6 +92,19 @@ tab.
 
 ## Layers and levels — two different things
 
+**Focus** in the toolbar picks one room: everything outside it greys to pale, and loses its
+labels, but stays exactly as selectable and snappable as before. That last part is the whole
+design. Hiding would be cleaner to look at and useless to work with, because every circuit has
+to reach a panel in some other room — you would be unable to snap to the thing you are drawing
+towards.
+
+Which room something is in is **read from the geometry, never typed**: a run belongs to the
+rooms its two ends land in, a marker to the room it sits in. Merely crossing a room does not
+count. That matters more than it sounds — labelling things with the room they serve means
+declaring membership *before* the thing exists, so a run drawn while filtering on "Renze"
+vanishes the instant it appears. A run drawn in a room is in that room the moment it exists,
+with nothing to remember.
+
 The **Filter** box at the top of Layers shows only items whose label, size or note contains what
 you type — `g7` to look at one group on its own, `2.5mm` to see every run of that gauge. Rooms
 and doors are exempt, so the building stays put. An active filter shows in the status bar from
@@ -461,6 +474,7 @@ bin/serve.ts       holds the project so the app and the command line share it
 src/
   geom.ts          pure geometry (distances, ortho snap, polyline walking)
   topology.ts      what is joined to what, read from the geometry
+  rooms.ts         which room a thing is in, read from where it is
   check.ts         the rules, shared by the Check tab and `warren check`
   generate.ts      placement rules: arithmetic here, opinions in the data
   takeoff.ts       metres per system

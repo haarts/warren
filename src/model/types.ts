@@ -319,6 +319,11 @@ export interface Settings {
    * isolating one circuit does not take the building away with it.
    */
   labelFilter: string
+  /**
+   * Work on one room: everything else greys out but stays selectable and snappable. It has to
+   * stay reachable, because every circuit has to reach a panel in some other room.
+   */
+  roomFocus: string | null
 }
 
 export interface Project {
@@ -351,4 +356,5 @@ export const DEFAULT_SETTINGS: Settings = {
   takeoffSlackPct: 10,
   levelFilter: 'all',
   labelFilter: '',
+  roomFocus: null,
 }
