@@ -7,12 +7,14 @@
  * Everything speaks metres. The file stores PDF points and a per-sheet scale; converting at
  * the boundary is this tool's job, not the caller's.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs'
+import { pathToFileURL } from 'node:url'
 import { basename, dirname, join, resolve } from 'node:path'
 import { polygonArea, polygonCentroid, polylineLength, type Pt } from '../src/geom.ts'
 import { bytesToBase64, base64ToBytes, sha256Hex } from '../src/io/base64.ts'
 import { parseProject, serialize } from '../src/io/projectFile.ts'
 import { missingDefaults } from '../src/model/systems.ts'
+import { defaultRoot, serve } from './serve.ts'
 import { adopt, applyGenerated, generate, PLACEMENTS, rulesOf, type GenerateRule } from '../src/generate.ts'
 import { assetData, registerAsset } from '../src/model/assets.ts'
 import { Store } from '../src/model/doc.ts'
@@ -67,6 +69,10 @@ interface Loaded {
   store: Store
   /** Asset ids whose bytes could not be found on disk. */
   missingAssets: string[]
+  /** Base URL of the server holding this project, when one is running. */
+  server: string | null
+  /** The revision that came with it, so a write can refuse to clobber a newer one. */
+  rev: number | null
 }
 
 /**
@@ -101,9 +107,21 @@ async function load(args: Args): Promise<Loaded> {
   const path = args.positional[0]
   if (!path) fail('which project file? usage: warren <command> <file.warren.json>')
   if (!existsSync(path)) fail(`no such file: ${path}`)
+
+  // A running server holds the drawing a person is editing. Reading the file instead would
+  // mean working from a copy that is already behind, and writing it would overwrite their work.
+  const server = await runningServer(path)
   let project: Project
+  let rev: number | null = null
   try {
-    project = parseProject(readFileSync(path, 'utf8'))
+    if (server) {
+      const res = await fetch(`${server}/api/project`, { signal: AbortSignal.timeout(5000) })
+      const body = await res.json() as { rev: number; project: unknown }
+      project = parseProject(JSON.stringify(body.project))
+      rev = body.rev
+    } else {
+      project = parseProject(readFileSync(path, 'utf8'))
+    }
   } catch (err) {
     fail(`could not read ${path}: ${err instanceof Error ? err.message : err}`)
   }
@@ -111,7 +129,27 @@ async function load(args: Args): Promise<Loaded> {
   const missingAssets = await resolveAssets(project, path, assetDir)
   const store = new Store()
   store.loadProject(project, basename(path))
-  return { path, project, store, missingAssets }
+  return { path, project, store, missingAssets, server, rev }
+}
+
+/**
+ * Writes the project back to wherever it came from. Through the server when one is holding it,
+ * so the browser sees the change at once; straight to the file otherwise.
+ */
+async function persist(loaded: Loaded): Promise<void> {
+  if (!loaded.server) {
+    writeFileSync(loaded.path, serialize(loaded.project))
+    return
+  }
+  const res = await fetch(`${loaded.server}/api/project`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ rev: loaded.rev, project: loaded.project }),
+  })
+  if (res.status === 409) {
+    fail('the drawing changed while this command was running — nothing was written. Try again.')
+  }
+  if (!res.ok) fail(`the server refused the write: ${res.status}`)
 }
 
 // -------------------------------------------------------------------------------- units
@@ -124,13 +162,20 @@ const pointsFromMetres = (sheet: Sheet, m: number): number | null =>
 
 const round = (n: number, places = 2): number => Number(n.toFixed(places))
 
-function sheetOf(project: Project, selector: string | true | undefined): Sheet[] {
+/** The non-failing core, so a long-lived process can report a bad selector rather than exit. */
+export function findSheets(project: Project, selector: string | true | undefined): Sheet[] {
   if (selector === undefined || selector === true) return project.sheets
   const index = Number(selector)
   if (Number.isInteger(index) && index >= 1 && index <= project.sheets.length) return [project.sheets[index - 1]]
-  const byName = project.sheets.filter((s) => s.name.toLowerCase().includes(String(selector).toLowerCase()))
-  if (byName.length === 0) fail(`no sheet matching "${selector}". Sheets: ${project.sheets.map((s) => s.name).join(', ')}`)
-  return byName
+  return project.sheets.filter((s) => s.name.toLowerCase().includes(String(selector).toLowerCase()))
+}
+
+function sheetOf(project: Project, selector: string | true | undefined): Sheet[] {
+  const found = findSheets(project, selector)
+  if (found.length === 0) {
+    fail(`no sheet matching "${String(selector)}". Sheets: ${project.sheets.map((s) => s.name).join(', ')}`)
+  }
+  return found
 }
 
 const globToRegExp = (pattern: string): RegExp =>
@@ -412,13 +457,14 @@ async function cmdTrace(args: Args): Promise<void> {
  * room in an older project.
  */
 async function cmdSystems(args: Args): Promise<void> {
-  const { project, path } = await load(args)
+  const loaded = await load(args)
+  const { project } = loaded
   const missing = missingDefaults(project.systems)
 
   if (args.flags['add-missing']) {
     if (missing.length === 0) return void console.log('catalogue is already complete')
     project.systems.push(...missing)
-    writeFileSync(path, serialize(project))
+    await persist(loaded)
     console.log(`added ${missing.length}: ${missing.map((s) => s.id).join(', ')}`)
     return
   }
@@ -449,7 +495,7 @@ async function cmdSystems(args: Args): Promise<void> {
       }
     }
     project.systems = project.systems.filter((s) => !sources.includes(s.id))
-    writeFileSync(path, serialize(project))
+    await persist(loaded)
     console.log(`moved ${moved} item(s) to ${into}, removed ${sources.join(', ')}`)
     return
   }
@@ -475,7 +521,8 @@ async function cmdSystems(args: Args): Promise<void> {
  * the rooms supply the understanding — which came from a person or an AI, not from here.
  */
 async function cmdGenerate(args: Args): Promise<void> {
-  const { project, store, path } = await load(args)
+  const loaded = await load(args)
+  const { project, store, path } = loaded
   const only = typeof args.flags.rule === 'string' ? args.flags.rule : null
   const rooms = typeof args.flags.room === 'string' ? args.flags.room.split(',') : undefined
   const clear = args.flags.clear === true
@@ -528,7 +575,7 @@ async function cmdGenerate(args: Args): Promise<void> {
     }
   }
   if (dryRun) return void console.log('nothing written')
-  writeFileSync(path, serialize(project))
+  await persist(loaded)
   console.log(`written to ${basename(path)}${args.flags.save ? ` (rule "${only}" saved)` : ''}`)
 }
 
@@ -565,13 +612,14 @@ function applyOverrides(rule: GenerateRule, raw: string | true | undefined): Gen
 
 /** The rules themselves, so they can be read and replaced without opening the app. */
 async function cmdRules(args: Args): Promise<void> {
-  const { project, store, path } = await load(args)
+  const loaded = await load(args)
+  const { project, store } = loaded
   if (typeof args.flags.set === 'string') {
     const incoming: unknown = JSON.parse(readFileSync(args.flags.set, 'utf8'))
     const list = Array.isArray(incoming) ? incoming : (incoming as { rules?: unknown }).rules
     if (!Array.isArray(list)) fail('expected an array of rules, or {"rules": [...]}')
     project.rules = list as typeof project.rules
-    writeFileSync(path, serialize(project))
+    await persist(loaded)
     return void console.log(`set ${list.length} rule(s)`)
   }
   const rules = rulesOf(store)
@@ -585,7 +633,8 @@ async function cmdRules(args: Args): Promise<void> {
 // ----------------------------------------------------------------------- split / bundle
 
 async function cmdSplit(args: Args): Promise<void> {
-  const { project, path, missingAssets } = await load(args)
+  const loaded = await load(args)
+  const { project, path, missingAssets } = loaded
   if (missingAssets.length && !Object.values(project.assets).some((a) => a.data)) {
     fail('this file has no PDF inside it and none beside it, so there is nothing to split out')
   }
@@ -601,7 +650,7 @@ async function cmdSplit(args: Args): Promise<void> {
     }
   }
   const before = readFileSync(path).length
-  writeFileSync(path, serialize(project))
+  await persist(loaded)
   const after = readFileSync(path).length
   console.log(`${basename(path)}: ${(before / 1024 / 1024).toFixed(2)} MB → ${(after / 1024).toFixed(1)} KB`)
   for (const name of written) console.log(`wrote ${name}`)
@@ -609,7 +658,8 @@ async function cmdSplit(args: Args): Promise<void> {
 }
 
 async function cmdBundle(args: Args): Promise<void> {
-  const { project, path, missingAssets } = await load(args)
+  const loaded = await load(args)
+  const { project, path, missingAssets } = loaded
   if (missingAssets.length) {
     fail(`cannot bundle: the plan PDF is not beside this file (${missingAssets.map((id) => project.assets[id]?.name).join(', ')})`)
   }
@@ -640,25 +690,107 @@ const PATCHABLE = new Set([
  * Applies a batch of edits. Everything is validated first and written only if all of it is
  * good, so a half-understood instruction cannot leave the drawing half-changed.
  */
-async function cmdApply(args: Args): Promise<void> {
-  const { project, store, path } = await load(args)
-  const opsPath = args.positional[1]
-  if (!opsPath) fail('usage: warren apply <file.warren.json> <ops.json> [--dry-run]')
-  if (!existsSync(opsPath)) fail(`no such file: ${opsPath}`)
+// ----------------------------------------------------------------------------- serve
 
-  let ops: Op[]
+/** Where a running server announces itself, so other commands find it without being told. */
+function lockPath(projectPath: string): string {
+  return join(dirname(resolve(projectPath)), `.${basename(projectPath)}.serve.json`)
+}
+
+/** The server holding this project, if one is up and answering. */
+async function runningServer(projectPath: string): Promise<string | null> {
+  const lock = lockPath(projectPath)
+  if (!existsSync(lock)) return null
   try {
-    const parsed: unknown = JSON.parse(readFileSync(opsPath, 'utf8'))
-    ops = Array.isArray(parsed) ? parsed as Op[] : (parsed as { ops: Op[] }).ops
-    if (!Array.isArray(ops)) throw new Error('expected an array of ops, or {"ops": [...]}')
-  } catch (err) {
-    fail(`could not read ${opsPath}: ${err instanceof Error ? err.message : err}`)
+    const { port } = JSON.parse(readFileSync(lock, 'utf8')) as { port: number }
+    const url = `http://127.0.0.1:${port}`
+    const res = await fetch(`${url}/api/project`, { signal: AbortSignal.timeout(1500) })
+    if (!res.ok) return null
+    return url
+  } catch {
+    // A stale lock from a server that is no longer there; the file is still the truth.
+    return null
+  }
+}
+
+async function cmdServe(args: Args): Promise<void> {
+  const projectPath = args.positional[0]
+  if (!projectPath) fail('which project file? usage: warren serve <file.warren.json>')
+  if (!existsSync(projectPath)) fail(`no such file: ${projectPath}`)
+
+  const root = typeof args.flags.root === 'string' ? args.flags.root : defaultRoot()
+  if (!existsSync(join(root, 'index.html'))) {
+    fail(`nothing built at ${root}. Run: npm run build`)
   }
 
-  // `--as <who>` marks everything this batch adds as placed-but-unreviewed, the same standing
-  // a generated item has. Without it a model's suggestions would arrive looking like your work.
-  const stamp = typeof args.flags.as === 'string' ? { rule: args.flags.as, from: 'apply' } : null
+  const handle = await serve({
+    projectPath,
+    port: typeof args.flags.port === 'string' ? Number(args.flags.port) : 5170,
+    root,
+    hydrate: (project, path) => resolveAssets(project, path),
+    applyOps: (project, store, ops, as) => {
+      const plan = planOps(project, store, ops as Op[], as ? { rule: as, from: 'apply' } : null)
+      return {
+        problems: plan.problems,
+        describe: plan.describe,
+        commit: () => { for (const apply of plan.planned) apply() },
+      }
+    },
+  })
 
+  const lock = lockPath(projectPath)
+  writeFileSync(lock, JSON.stringify({ port: handle.port, pid: process.pid, path: resolve(projectPath) }))
+  const bye = (): void => {
+    try {
+      if (existsSync(lock)) unlinkSync(lock)
+    } catch { /* going away anyway */ }
+    handle.close()
+    process.exit(0)
+  }
+  process.on('SIGINT', bye)
+  process.on('SIGTERM', bye)
+
+  console.log(`warren serve — http://127.0.0.1:${handle.port}`)
+  console.log(`  holding ${basename(projectPath)}; other commands will route through this.`)
+  console.log('  Ctrl+C to stop.')
+}
+
+async function cmdSelect(args: Args): Promise<void> {
+  const projectPath = args.positional[0]
+  if (!projectPath) fail('which project file? usage: warren select <file> --id <a,b>')
+  const url = await runningServer(projectPath)
+  if (!url) fail('nothing is serving this project. Start it with: warren serve <file>')
+
+  const ids = typeof args.flags.id === 'string' ? args.flags.id.split(',').map((v) => v.trim()).filter(Boolean) : []
+  if (ids.length === 0) fail('which items? usage: warren select <file> --id run_abc,run_def')
+
+  const res = await fetch(`${url}/api/select`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      ids,
+      zoom: args.flags['no-zoom'] !== true,
+      say: typeof args.flags.say === 'string' ? args.flags.say : null,
+    }),
+  })
+  if (!res.ok) fail(`the server refused: ${res.status}`)
+  console.log(`pointing at ${ids.length} item(s) in the running app`)
+}
+
+/**
+ * Validates a batch and returns what it would do, without doing any of it. Pulled out of the
+ * apply command so the server can run the same checks against the project it is holding -
+ * there must not be two ideas of what a valid op is.
+ */
+export interface Plan {
+  problems: string[]
+  describe: string[]
+  planned: (() => void)[]
+}
+
+export function planOps(
+  project: Project, store: Store, ops: Op[], stamp: { rule: string; from: string } | null,
+): Plan {
   const index = new Map<string, { sheet: Sheet; item: Item }>()
   for (const sheet of project.sheets) for (const item of sheet.items) index.set(item.id, { sheet, item })
   const systemIds = new Set(project.systems.map((s) => s.id))
@@ -719,7 +851,8 @@ async function cmdApply(args: Args): Promise<void> {
         break
       }
       case 'add': {
-        const sheets = sheetOf(project, op.sheet)
+        const sheets = findSheets(project, op.sheet)
+        if (sheets.length === 0) return void problems.push(`${at}: no sheet matching "${String(op.sheet)}"`)
         const sheet = sheets[0]
         const raw = op.item ?? {}
         if (typeof raw.systemId !== 'string' || !systemIds.has(raw.systemId)) {
@@ -805,6 +938,31 @@ async function cmdApply(args: Args): Promise<void> {
     }
   })
 
+  return { problems, describe, planned }
+}
+
+async function cmdApply(args: Args): Promise<void> {
+  const loaded = await load(args)
+  const { project, store, path } = loaded
+  const opsPath = args.positional[1]
+  if (!opsPath) fail('usage: warren apply <file.warren.json> <ops.json> [--dry-run]')
+  if (!existsSync(opsPath)) fail(`no such file: ${opsPath}`)
+
+  let ops: Op[]
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(opsPath, 'utf8'))
+    ops = Array.isArray(parsed) ? parsed as Op[] : (parsed as { ops: Op[] }).ops
+    if (!Array.isArray(ops)) throw new Error('expected an array of ops, or {"ops": [...]}')
+  } catch (err) {
+    fail(`could not read ${opsPath}: ${err instanceof Error ? err.message : err}`)
+  }
+
+  // `--as <who>` marks everything this batch adds as placed-but-unreviewed, the same standing
+  // a generated item has. Without it a model's suggestions would arrive looking like your work.
+  const stamp = typeof args.flags.as === 'string' ? { rule: args.flags.as, from: 'apply' } : null
+
+  const { problems, describe, planned } = planOps(project, store, ops, stamp)
+
   if (problems.length) {
     for (const p of problems) process.stderr.write(`warren: ${p}\n`)
     process.stderr.write(`warren: nothing was written — ${problems.length} of ${ops.length} ops did not validate\n`)
@@ -814,7 +972,7 @@ async function cmdApply(args: Args): Promise<void> {
   for (const line of describe) console.log(line)
   if (args.flags['dry-run']) return void console.log(`${planned.length} op(s) would apply; nothing written`)
   for (const apply of planned) apply()
-  writeFileSync(path, serialize(project))
+  await persist(loaded)
   console.log(`applied ${planned.length} op(s) to ${basename(path)}`)
 }
 
@@ -970,6 +1128,33 @@ const MANUAL = {
     usage: ['warren bundle <file> [--out <path>]'],
     flags: [['--out <path>', 'where to write it (default: <name>.bundle.warren.json)']],
     writes: true,
+  },
+  serve: {
+    summary: 'hold the project so the app and the command line share it',
+    usage: ['warren serve <file> [--port 5170] [--root dist]'],
+    flags: [
+      ['--port <n>', 'port to listen on (default 5170)'],
+      ['--root <dir>', 'the built app to serve (default dist/)'],
+    ],
+    examples: ['warren serve house.warren.json'],
+    notes: [
+      'Without this the app holds the project in memory and the command line holds a file on disk, so every exchange between a person and a model is a manual save, apply and reopen — and pointing at something has to be done by writing a label into the file, which is an absurd price for a gesture.',
+      'While it runs, every other command routes through it instead of touching the file, so both see the same drawing. Writes reach the disk on a short delay; the file is always a real file.',
+      'The app still runs as static files with no server at all. This is an additional mode, not a replacement.',
+    ],
+  },
+  select: {
+    summary: 'point at items in the running app',
+    usage: ['warren select <file> --id <a,b> [--say "..."] [--no-zoom]'],
+    flags: [
+      ['--id <a,b>', 'the items to highlight, as printed by `items`'],
+      ['--say <text>', 'a line to show in the status bar alongside'],
+      ['--no-zoom', 'highlight without moving the view'],
+    ],
+    examples: ['warren select house.warren.json --id run_abc --say "two runs reach the Quooker"'],
+    notes: [
+      'Changes nothing: no write, no revision, no undo entry. It is a gesture, and it needs `serve` to be running.',
+    ],
   },
   apply: {
     summary: 'apply validated edits from an ops file',
@@ -1204,8 +1389,6 @@ function nearest(word: string): string | null {
 
 // ---------------------------------------------------------------------------------- main
 
-const args = parseArgs(process.argv.slice(2))
-
 // Typed by the manual, so a command that gains an implementation without gaining an entry — or
 // the other way round — does not compile. Self-description is not a thing to remember to do.
 const commands: Record<Command, (a: Args) => Promise<void>> = {
@@ -1221,30 +1404,42 @@ const commands: Record<Command, (a: Args) => Promise<void>> = {
   split: cmdSplit,
   bundle: cmdBundle,
   apply: cmdApply,
+  serve: cmdServe,
+  select: cmdSelect,
 }
 
-// Help is answered before anything is loaded, so `warren help apply` works with no file, no
-// plan PDF and nothing drawn yet — which is the state whoever is asking is usually in.
-if (args.command === 'help' || args.flags.help === true) {
-  const topic = args.command === 'help' ? args.positional[0] : args.command
-  if (topic !== undefined && !isCommand(topic)) {
-    const guess = nearest(topic)
-    fail(`no such command: ${topic}${guess ? `. Did you mean "${guess}"?` : ''}. Try: warren help`)
+async function main(): Promise<void> {
+  const args = parseArgs(process.argv.slice(2))
+
+  // Help is answered before anything is loaded, so `warren help apply` works with no file, no
+  // plan PDF and nothing drawn yet — which is the state whoever is asking is usually in.
+  if (args.command === 'help' || args.flags.help === true) {
+    const topic = args.command === 'help' ? args.positional[0] : args.command
+    if (topic !== undefined && !isCommand(topic)) {
+      const guess = nearest(topic)
+      fail(`no such command: ${topic}${guess ? `. Did you mean "${guess}"?` : ''}. Try: warren help`)
+    }
+    if (args.flags.json) {
+      const all = manifest()
+      console.log(JSON.stringify(topic === undefined ? all : all.commands.find((c) => c.name === topic), null, 2))
+    } else {
+      process.stdout.write(topic === undefined ? overview() : commandHelp(topic))
+    }
+    process.exit(0)
   }
-  if (args.flags.json) {
-    const all = manifest()
-    console.log(JSON.stringify(topic === undefined ? all : all.commands.find((c) => c.name === topic), null, 2))
-  } else {
-    process.stdout.write(topic === undefined ? overview() : commandHelp(topic))
+
+  const run = isCommand(args.command) ? commands[args.command] : undefined
+  if (!run) {
+    const guess = nearest(args.command)
+    process.stderr.write(`warren: no such command: ${args.command}${guess ? `. Did you mean "${guess}"?` : ''}\n`)
+    process.stdout.write(overview())
+    process.exit(2)
   }
-  process.exit(0)
+  await run(args).catch((err: unknown) => fail(err instanceof Error ? err.message : String(err)))
 }
 
-const run = isCommand(args.command) ? commands[args.command] : undefined
-if (!run) {
-  const guess = nearest(args.command)
-  process.stderr.write(`warren: no such command: ${args.command}${guess ? `. Did you mean "${guess}"?` : ''}\n`)
-  process.stdout.write(overview())
-  process.exit(2)
+// Only when run as the command. Importing this file — which the server and the tests do, for
+// the validators — must not start a CLI and exit the process.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main()
 }
-await run(args).catch((err: unknown) => fail(err instanceof Error ? err.message : String(err)))

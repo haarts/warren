@@ -354,6 +354,40 @@ One rule is an error rather than a suggestion: **non-potable water may never rea
 water**. That is derived from the geometry, so it holds whether or not anyone remembered to
 label anything.
 
+## Working together on one drawing
+
+A person draws with a mouse; a model reads, counts and edits in bulk at a command line. Those
+are different jobs and neither should be forced into the other's tools. The trouble is that by
+default they hold *different copies* — the app has the project in memory, the CLI has a file on
+disk — so every exchange is a manual save, apply and reopen. Worse, pointing at something had
+to be done by writing a label into the file, which is an absurd price for a gesture.
+
+```bash
+npm run build                       # once
+warren serve house.warren.json      # then open http://127.0.0.1:5170
+```
+
+While it runs, it owns the project and every other command routes through it. The browser saves
+continuously, so there is nothing to remember; the file on disk is always a real file, written
+on a short delay.
+
+```bash
+warren select house.warren.json --id run_abc --say "two runs reach the Quooker"
+```
+
+That highlights the run in the open window and says so in the status bar. It writes nothing,
+bumps no revision and leaves no undo entry — a gesture should not cost a change to your
+drawing. Edits made from the command line appear in the window as they land, with your view and
+selection kept.
+
+Two writers cannot silently overwrite each other: a save built on a revision that has since
+moved on is refused, and the stale side reloads. Merging two drawings is not something to guess
+at.
+
+**The app still runs as static files.** Open `dist/index.html` from anywhere, with no Node and
+no server, and it behaves exactly as it always has: open a file, save a file. `serve` is an
+additional mode for when the two of you are working at once.
+
 ## The `warren` command
 
 Everything the app computes is available from a terminal, running the same modules — so a
@@ -373,6 +407,8 @@ warren trace   house.warren.json --id run_x # what one run is joined to, and wha
 warren split   house.warren.json            # move the PDF out beside the file
 warren bundle  house.warren.json            # one self-contained file
 warren apply   house.warren.json ops.json   # validated batch edits
+warren serve   house.warren.json            # hold it, so the app and the CLI share one copy
+warren select  house.warren.json --id run_x # point at something in the running app
 warren help    apply                        # usage, flags, ops and the rules of one command
 ```
 
@@ -419,6 +455,7 @@ drawing you can read.
 
 ```
 bin/warren.ts      the command line, over the same modules the app runs on
+bin/serve.ts       holds the project so the app and the command line share it
 src/
   geom.ts          pure geometry (distances, ortho snap, polyline walking)
   topology.ts      what is joined to what, read from the geometry
@@ -427,7 +464,7 @@ src/
   takeoff.ts       metres per system
   units.ts         metric formatting
   model/           types, the systems catalogue, the document store + undo
-  io/              pdf.js import, project file, autosave, PNG export, print
+  io/              pdf.js import, project file, autosave, PNG export, print, live session
   render/          camera, background raster cache, the scene painter
   interact/        hit testing, snapping, the pointer/tool state machine
   ui/              toolbar, side panel, dialogs

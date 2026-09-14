@@ -2,6 +2,7 @@ import { Editor } from './interact/controller.ts'
 import { clearAutosave, readAutosave, writeAutosave } from './io/autosave.ts'
 import { base64ToBytes, bytesToBase64, sha256Hex } from './io/base64.ts'
 import { cacheAsset, hydrateAssets } from './io/assetCache.ts'
+import { isServed, Session } from './io/session.ts'
 import { downloadBlob } from './io/exportImage.ts'
 import { assetData, describeAsset } from './model/assets.ts'
 import { forgetDocument, pageSizePt } from './io/pdf.ts'
@@ -23,6 +24,8 @@ export class App {
   store = new Store()
   editor: Editor
   saveTarget: SaveTarget | null = null
+  /** Present only when served by `warren serve`. */
+  session: Session | null = null
 
   private toolbarHost = document.getElementById('toolbar') as HTMLElement
   private panelHost = document.getElementById('panel') as HTMLElement
@@ -45,11 +48,75 @@ export class App {
 
   async init(): Promise<void> {
     this.attachKeys()
-    this.attachUnloadGuard()
-    window.setInterval(() => void this.autosave(), AUTOSAVE_MS)
-    await this.offerRestore()
+    if (isServed()) await this.joinSession()
+    else {
+      this.attachUnloadGuard()
+      window.setInterval(() => void this.autosave(), AUTOSAVE_MS)
+      await this.offerRestore()
+    }
     this.refresh()
     this.editor.zoomToFit()
+  }
+
+  /**
+   * Served by `warren serve`: the project lives in one place and both this window and the
+   * command line work on it. There is no opening or saving to do, and no unsaved work to lose.
+   */
+  private async joinSession(): Promise<void> {
+    const session = new Session({
+      onChanged: (project) => {
+        // Keep the view and the selection across a change from elsewhere, so a relabel does
+        // not throw away where you were looking.
+        const camera = { x: this.editor.cam.x, y: this.editor.cam.y, zoom: this.editor.cam.zoom }
+        const selected = [...this.store.selection]
+        const sheetId = this.store.project.activeSheetId
+        this.store.loadProject(project, this.session?.name ?? null)
+        if (project.sheets.some((s) => s.id === sheetId)) this.store.project.activeSheetId = sheetId
+        for (const id of selected) if (this.store.item(id)) this.store.selection.add(id)
+        Object.assign(this.editor.cam, camera)
+        this.store.dirty = false
+        this.editor.invalidateBackground()
+        this.editor.requestRender()
+        this.refresh()
+      },
+      onSelect: (ids, zoom, say) => {
+        this.store.selection.clear()
+        for (const id of ids) {
+          const found = this.store.item(id)
+          if (found) this.store.selection.add(id)
+          else {
+            // It may be on another sheet; follow it there rather than shrug.
+            const sheet = this.store.project.sheets.find((sh) => sh.items.some((i) => i.id === id))
+            if (sheet) {
+              this.store.setActiveSheet(sheet.id)
+              this.editor.invalidateBackground()
+              this.store.selection.add(id)
+            }
+          }
+        }
+        this.store.activeVertex = null
+        this.store.touch(false)
+        if (zoom && this.store.selection.size) this.editor.zoomToSelection()
+        this.editor.flash(say ?? `Pointing at ${this.store.selection.size} item(s)`)
+        this.refresh()
+      },
+      onStatus: (text) => this.editor.flash(text),
+    })
+    this.session = session
+    try {
+      const { project, name } = await session.load()
+      this.store.loadProject(project, name)
+      this.store.dirty = false
+      session.listen()
+      // Continuous, because the server owns the file: saving is not a thing to remember.
+      this.store.subscribe(() => {
+        if (this.store.dirty) session.save(this.store.project)
+      })
+      this.editor.invalidateBackground()
+      this.editor.flash(`Shared with warren serve — ${name}`)
+    } catch (err) {
+      alertDialog('Could not join the session', String(err instanceof Error ? err.message : err))
+    }
   }
 
   // --- UI ------------------------------------------------------------------------------
@@ -152,6 +219,12 @@ export class App {
   }
 
   async save(): Promise<void> {
+    if (this.session) {
+      await this.session.flush(this.store.project)
+      this.store.dirty = false
+      this.editor.flash('Saved')
+      return
+    }
     if (!this.saveTarget) return this.saveAs()
     await this.writeProject(this.saveTarget)
   }

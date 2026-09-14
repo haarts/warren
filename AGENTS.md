@@ -34,6 +34,21 @@ So the useful division is: you read the plan, Warren grades what you read. A roo
 `expectM2` — Dutch plans print the area of every room — and the whole batch is refused if your
 traced polygon disagrees by more than 8%.
 
+## When somebody is watching
+
+If `warren serve` is running, it holds the project and every command routes through it, so the
+person's window shows your changes as they land. Two things follow.
+
+**You can point.** `warren select <file> --id run_abc --say "..."` highlights items in their
+window and writes nothing at all. Use it whenever you would otherwise describe a position in
+prose, or — worse — label something just to make it findable.
+
+**They may be drawing while you work.** Read immediately before you write, keep batches small,
+and expect a write to be refused if the drawing moved underneath you; re-read and redo rather
+than forcing it.
+
+Nothing serving? Everything below still works, straight against the file.
+
 ## The loop
 
 ```bash
