@@ -64,16 +64,16 @@ export function buildToolbar(app: App, host: HTMLElement): void {
       systemSelect.value = first.id
     }
   }
-  host.appendChild(systemSelect)
+  host.appendChild(el('label', { class: 'inline', title: 'System for new items' }, 'System', systemSelect))
 
   const levelSelect = el('select', {
-    title: 'Where this sits in the building fabric',
+    title: 'Where new items sit in the building fabric',
     onchange: (e: Event) => { editor.activeLevel = (e.target as HTMLSelectElement).value as Level },
   }) as HTMLSelectElement
   for (const level of LEVELS) {
     levelSelect.appendChild(el('option', { value: level, selected: level === editor.activeLevel }, LEVEL_LABELS[level]))
   }
-  host.appendChild(levelSelect)
+  host.appendChild(el('label', { class: 'inline', title: 'Where new items sit in the building fabric' }, 'Level', levelSelect))
 
   if (editor.tool === 'marker') {
     const offered = symbolsFor(store.system(editor.activeSystemId))
@@ -139,13 +139,16 @@ export function buildToolbar(app: App, host: HTMLElement): void {
       editor.requestRender()
     },
   }) as HTMLSelectElement
-  levelFilter.appendChild(el('option', { value: 'all', selected: store.project.settings.levelFilter === 'all' }, 'All levels'))
+  // The label carries the meaning, so an option only has to say its own value. Named "Show"
+  // rather than "Level" because the dropdown two along also says Level, and sets a different
+  // thing entirely - what you are about to draw, not what you can see.
+  levelFilter.appendChild(el('option', { value: 'all', selected: store.project.settings.levelFilter === 'all' }, 'all levels'))
   for (const level of LEVELS) {
     levelFilter.appendChild(el('option', {
       value: level, selected: store.project.settings.levelFilter === level,
-    }, `Only: ${LEVEL_LABELS[level]}`))
+    }, LEVEL_LABELS[level]))
   }
-  host.appendChild(levelFilter)
+  host.appendChild(el('label', { class: 'inline', title: 'Show only one building level' }, 'Show', levelFilter))
 
   // Work on one room. Everything else greys out but stays reachable — hiding it would break
   // the one thing every circuit must do, which is arrive at a panel somewhere else.
@@ -161,15 +164,16 @@ export function buildToolbar(app: App, host: HTMLElement): void {
         app.refresh()
       },
     }) as HTMLSelectElement
-    // Named like the others, so the closed dropdown says what the control does rather than
-    // just reporting a state.
-    roomFocus.appendChild(el('option', { value: '', selected: !store.project.settings.roomFocus }, 'Focus: all rooms'))
+    roomFocus.appendChild(el('option', { value: '', selected: !store.project.settings.roomFocus }, 'all rooms'))
     for (const room of [...roomsHere].sort((a, b) => a.name.localeCompare(b.name))) {
       roomFocus.appendChild(el('option', {
         value: room.id, selected: store.project.settings.roomFocus === room.id,
-      }, `Focus: ${room.name}`))
+      }, room.name))
     }
-    host.appendChild(roomFocus)
+    host.appendChild(el('label', {
+      class: 'inline',
+      title: 'Work on one room: everything else greys out, but stays selectable and snappable',
+    }, 'Focus', roomFocus))
   }
 
   host.appendChild(el('div', { class: 'sep' }))

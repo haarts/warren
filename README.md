@@ -92,7 +92,7 @@ tab.
 
 ## Layers and levels — two different things
 
-**Focus** in the toolbar picks one room: everything outside it greys to pale, and loses its
+**Focus** in the toolbar picks one room (`Show` beside it does the same for building levels): everything outside it greys to pale, and loses its
 labels, but stays exactly as selectable and snappable as before. That last part is the whole
 design. Hiding would be cleaner to look at and useless to work with, because every circuit has
 to reach a panel in some other room — you would be unable to snap to the thing you are drawing
