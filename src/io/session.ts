@@ -25,9 +25,12 @@ export interface SessionHandlers {
 export class Session {
   rev = 0
   name = ''
+  /** Identifies this window to the server, so it can tell our own changes from anyone else's. */
+  private readonly id = `w${Math.random().toString(36).slice(2, 10)}`
   private saveTimer: number | null = null
   private saving = false
   private pending = false
+  private latest: Project | null = null
 
   constructor(private handlers: SessionHandlers) {}
 
@@ -59,8 +62,14 @@ export class Session {
   listen(): void {
     const source = new EventSource('/api/events')
     source.addEventListener('changed', (e) => {
-      const data = JSON.parse((e as MessageEvent).data) as { rev: number; source: string }
-      // Our own save comes back to us; only somebody else's is news.
+      const data = JSON.parse((e as MessageEvent).data) as { rev: number; source: string; by: string | null }
+      // Our own save comes back to us. Comparing revisions cannot tell the difference, because
+      // the server broadcasts before our POST has returned - so it is told by name instead.
+      // Reloading our own change would race with anything typed since, and lose it.
+      if (data.by === this.id) {
+        this.rev = Math.max(this.rev, data.rev)
+        return
+      }
       if (data.rev <= this.rev) return
       void this.reload(data.source)
     })
@@ -74,6 +83,17 @@ export class Session {
   }
 
   private async reload(from: string): Promise<void> {
+    // Somebody else changed the drawing while this window has edits it has not sent. Send them
+    // first: either they land, or the server refuses and this comes back round knowing it is a
+    // real conflict. Replacing the project outright would throw the unsent work away.
+    if (this.latest && (this.saveTimer !== null || this.saving || this.pending)) {
+      if (this.saveTimer !== null) {
+        clearTimeout(this.saveTimer)
+        this.saveTimer = null
+      }
+      await this.flush(this.latest)
+      return
+    }
     try {
       const { project } = await this.load()
       this.handlers.onChanged(project, this.rev)
@@ -88,6 +108,7 @@ export class Session {
    * file, so there is no such thing as unsaved work to lose.
    */
   save(project: Project): void {
+    this.latest = project
     if (this.saveTimer !== null) clearTimeout(this.saveTimer)
     this.saveTimer = window.setTimeout(() => {
       this.saveTimer = null
@@ -96,32 +117,44 @@ export class Session {
   }
 
   async flush(project: Project): Promise<void> {
+    this.latest = project
     if (this.saving) {
       this.pending = true
       return
+    }
+    if (this.saveTimer !== null) {
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
     }
     this.saving = true
     try {
       const res = await fetch('/api/project', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ rev: this.rev, project: JSON.parse(serialize(project)) }),
+        body: JSON.stringify({ rev: this.rev, by: this.id, project: JSON.parse(serialize(project)) }),
       })
       if (res.status === 409) {
-        // Somebody else got there first. Theirs is the truth; take it rather than guess at a merge.
-        this.handlers.onStatus('The drawing changed elsewhere — reloading')
+        // A genuine collision: somebody else changed it while this window had unsent edits.
+        // Theirs is the truth, because merging two drawings is not something to guess at - but
+        // say so plainly rather than let work vanish quietly.
+        this.saving = false
+        this.pending = false
+        this.latest = null
+        this.handlers.onStatus('The drawing changed elsewhere while you were editing — taking theirs')
         await this.reload('other')
         return
       }
       if (!res.ok) throw new Error(String(res.status))
       this.rev = (await res.json() as { rev: number }).rev
+      this.latest = null
     } catch (err) {
       this.handlers.onStatus(`Could not save: ${err instanceof Error ? err.message : err}`)
     } finally {
       this.saving = false
       if (this.pending) {
         this.pending = false
-        this.save(project)
+        // Whatever the store holds now, not the snapshot this call was given.
+        this.save(this.latest ?? project)
       }
     }
   }

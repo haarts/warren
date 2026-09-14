@@ -27,6 +27,7 @@ Other scripts:
 npm run check        # typecheck
 npm test             # unit tests (node --test, no framework)
 npm run test:browser # end-to-end: drives the real app in headless Chromium
+npm run test:session # the shared session: a browser and the CLI on one project at once
 npm run build        # static site in dist/ - open it with any web server
 ```
 
@@ -381,8 +382,9 @@ drawing. Edits made from the command line appear in the window as they land, wit
 selection kept.
 
 Two writers cannot silently overwrite each other: a save built on a revision that has since
-moved on is refused, and the stale side reloads. Merging two drawings is not something to guess
-at.
+moved on is refused, and the stale side reloads with a plain word about it. Merging two
+drawings is not something to guess at. A window never reloads its *own* change, and never
+throws away an edit it has not sent yet.
 
 **The app still runs as static files.** Open `dist/index.html` from anywhere, with no Node and
 no server, and it behaves exactly as it always has: open a file, save a file. `serve` is an

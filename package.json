@@ -11,7 +11,8 @@
     "check": "tsc --noEmit",
     "test": "node --test --experimental-strip-types test/*.test.ts",
     "test:browser": "node test/browser/smoke.mjs",
-    "warren": "node bin/warren.ts"
+    "warren": "node bin/warren.ts",
+    "test:session": "node test/browser/session.mjs"
   },
   "dependencies": {
     "pdfjs-dist": "^6.3.289"

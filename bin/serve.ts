@@ -118,7 +118,7 @@ export async function serve(opts: ServeOptions): Promise<{ port: number; close: 
       }
 
       if (route === '/api/project' && req.method === 'POST') {
-        const body = JSON.parse(await readBody(req)) as { rev?: number; project?: unknown }
+        const body = JSON.parse(await readBody(req)) as { rev?: number; project?: unknown; by?: string }
         if (typeof body.rev === 'number' && body.rev !== rev) {
           // Somebody else has changed it since this browser loaded. Reloading is the honest
           // answer: merging two drawings is not something to guess at.
@@ -128,7 +128,9 @@ export async function serve(opts: ServeOptions): Promise<{ port: number; close: 
         await opts.hydrate(project, path)
         rev += 1
         persist()
-        broadcast('changed', { rev, source: 'browser' })
+        // Tagged with who did it, so the window that saved does not turn round and reload its
+        // own change — which would race with anything typed since, and lose it.
+        broadcast('changed', { rev, source: 'browser', by: typeof body.by === 'string' ? body.by : null })
         return json(res, 200, { rev })
       }
 
@@ -144,7 +146,7 @@ export async function serve(opts: ServeOptions): Promise<{ port: number; close: 
         plan.commit()
         rev += 1
         persist()
-        broadcast('changed', { rev, source: 'cli' })
+        broadcast('changed', { rev, source: 'cli', by: null })
         return json(res, 200, { rev, describe: plan.describe, applied: plan.describe.length })
       }
 
