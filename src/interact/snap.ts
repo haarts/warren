@@ -10,7 +10,11 @@ export interface SnapResult {
 }
 
 export interface SnapOptions {
-  /** Vertex/segment we are currently dragging, so a point never snaps to itself. */
+  /**
+   * The item we are currently dragging, so a point never snaps to itself - a run vertex only
+   * excludes its own index (the rest of the run is still a valid target), while a positioned
+   * item (marker/note) excludes its whole point, since moving it *is* moving that one point.
+   */
   excludeRunId?: string
   excludeIndex?: number
   /** When drawing, the previous point - enables ortho lock with Shift. */
@@ -71,6 +75,7 @@ function snapToVertices(store: Store, raw: Pt, tol: number, opts: SnapOptions): 
       for (const c of boxCorners(item)) consider(c, 'corner')
       consider({ x: item.x + item.w / 2, y: item.y + item.h / 2 }, 'centre')
     } else if (isPositioned(item)) {
+      if (item.id === opts.excludeRunId) continue
       consider({ x: item.x, y: item.y }, 'marker')
     }
   }
@@ -82,7 +87,7 @@ function snapToEdges(store: Store, p: Pt, tol: number, opts: SnapOptions): SnapR
   let best: { point: Pt; d: number } | null = null
   for (const item of store.items()) {
     if (!store.isVisible(item)) continue
-    if (item.kind === 'run' && item.id === opts.excludeRunId) continue
+    if (item.id === opts.excludeRunId) continue
     const r = nearestPointOnItem(item, p)
     if (r && r.dist <= tol && (best === null || r.dist < best.d)) best = { point: r.point, d: r.dist }
   }
