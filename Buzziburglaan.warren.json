@@ -17,14 +17,6 @@
         "Ø20",
         "Ø25",
         "Ø32"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -41,14 +33,6 @@
         "Ø16",
         "Ø20",
         "Ø25"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -67,16 +51,7 @@
       "sizes": [
         "Ø12",
         "Ø16"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "water.soft",
@@ -92,14 +67,6 @@
         "Ø16",
         "Ø20",
         "Ø25"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -118,14 +85,6 @@
       "sizes": [
         "Ø16",
         "Ø20"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -144,14 +103,6 @@
       "sizes": [
         "Ø12",
         "Ø16"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -174,15 +125,6 @@
         "Ø25",
         "Ø40"
       ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true,
       "tag": "NON-POTABLE"
     },
     {
@@ -199,14 +141,6 @@
         "Ø16",
         "Ø20",
         "Ø25"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ],
       "tag": "NON-POTABLE"
     },
@@ -228,14 +162,6 @@
       "sizes": [
         "Ø16",
         "Ø20"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -255,16 +181,7 @@
         "Ø110",
         "Ø75",
         "Ø125"
-      ],
-      "symbols": [
-        "drain",
-        "cleanout",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "drain.soil",
@@ -280,16 +197,7 @@
         "Ø110",
         "Ø125",
         "Ø160"
-      ],
-      "symbols": [
-        "drain",
-        "cleanout",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "drain.waste",
@@ -306,16 +214,7 @@
         "Ø32",
         "Ø40",
         "Ø75"
-      ],
-      "symbols": [
-        "drain",
-        "cleanout",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "drain.vent",
@@ -336,16 +235,7 @@
         "Ø75",
         "Ø50",
         "Ø110"
-      ],
-      "symbols": [
-        "drain",
-        "cleanout",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "drain.rain",
@@ -363,16 +253,7 @@
         "Ø100",
         "Ø110",
         "Ø125"
-      ],
-      "symbols": [
-        "drain",
-        "cleanout",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "drain.condensate",
@@ -391,16 +272,7 @@
         "Ø20",
         "Ø25",
         "Ø32"
-      ],
-      "symbols": [
-        "drain",
-        "cleanout",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "heat.ufh",
@@ -416,14 +288,6 @@
         "Ø16",
         "Ø17",
         "Ø20"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -444,16 +308,7 @@
         "Ø16",
         "Ø28",
         "Ø35"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "heat.return",
@@ -473,16 +328,7 @@
         "Ø16",
         "Ø28",
         "Ø35"
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "heat.hp",
@@ -503,14 +349,6 @@
         "1/4\"+3/8\"",
         "1/4\"+5/8\"",
         "3/8\"+5/8\""
-      ],
-      "symbols": [
-        "valve",
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -530,15 +368,7 @@
         "Ø100",
         "Ø160",
         "Ø180"
-      ],
-      "symbols": [
-        "air-valve",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "air.extract",
@@ -557,15 +387,7 @@
         "Ø100",
         "Ø160",
         "Ø180"
-      ],
-      "symbols": [
-        "air-valve",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "air.outside",
@@ -582,15 +404,7 @@
         "Ø125",
         "Ø180",
         "Ø200"
-      ],
-      "symbols": [
-        "air-valve",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "air.dryer",
@@ -609,15 +423,7 @@
         "Ø100",
         "Ø125",
         "Ø150"
-      ],
-      "symbols": [
-        "air-valve",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
-      ],
-      "assumeFlow": true
+      ]
     },
     {
       "id": "power.light",
@@ -692,12 +498,6 @@
         "5×6mm²",
         "5×10mm²",
         "5×16mm²"
-      ],
-      "symbols": [
-        "socket",
-        "switch",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -715,11 +515,6 @@
         "4mm²",
         "10mm²",
         "16mm²"
-      ],
-      "symbols": [
-        "outlet",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -739,11 +534,6 @@
         "2×6mm²",
         "2×4mm²",
         "2×10mm²"
-      ],
-      "symbols": [
-        "outlet",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -765,13 +555,6 @@
         "Ø25",
         "Ø40",
         "Ø50"
-      ],
-      "symbols": [
-        "outlet",
-        "riser-up",
-        "riser-down",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -794,12 +577,6 @@
         "XMvK 5×2.5mm²",
         "XMvK 5×6mm²",
         "XMvK 5×10mm²"
-      ],
-      "symbols": [
-        "socket",
-        "switch",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -817,11 +594,6 @@
         "CAT6",
         "2×CAT6A",
         "CAT7"
-      ],
-      "symbols": [
-        "data-outlet",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -838,16 +610,11 @@
       "width": 1.3,
       "visible": true,
       "locked": false,
-      "defaultSize": "duplex OS2",
       "sizes": [
         "duplex OS2",
         "G.657.A2"
       ],
-      "symbols": [
-        "data-outlet",
-        "penetration",
-        "note"
-      ]
+      "defaultSize": "duplex OS2"
     },
     {
       "id": "data.coax",
@@ -861,16 +628,11 @@
       "width": 1.1,
       "visible": true,
       "locked": false,
-      "defaultSize": "RG6",
       "sizes": [
         "RG6",
         "RG11"
       ],
-      "symbols": [
-        "data-outlet",
-        "penetration",
-        "note"
-      ]
+      "defaultSize": "RG6"
     },
     {
       "id": "data.sensor",
@@ -881,19 +643,13 @@
       "width": 1.1,
       "visible": true,
       "locked": false,
-      "defaultSize": "KNX 2×2×0.8",
       "sizes": [
         "KNX 2×2×0.8",
         "2×0.8mm",
         "4×0.8mm",
         "CAT6A"
       ],
-      "symbols": [
-        "sensor",
-        "data-outlet",
-        "penetration",
-        "note"
-      ]
+      "defaultSize": "KNX 2×2×0.8"
     },
     {
       "id": "data.speaker",
@@ -907,17 +663,12 @@
       "width": 1.1,
       "visible": true,
       "locked": false,
-      "defaultSize": "2×1.5mm²",
       "sizes": [
         "2×1.5mm²",
         "2×2.5mm²",
         "4×1.5mm²"
       ],
-      "symbols": [
-        "outlet",
-        "penetration",
-        "note"
-      ]
+      "defaultSize": "2×1.5mm²"
     },
     {
       "id": "data.security",
@@ -931,18 +682,12 @@
       "width": 1.3,
       "visible": true,
       "locked": false,
-      "defaultSize": "CAT6A (PoE)",
       "sizes": [
         "CAT6A (PoE)",
         "6×0.22mm",
         "8×0.22mm"
       ],
-      "symbols": [
-        "sensor",
-        "data-outlet",
-        "penetration",
-        "note"
-      ]
+      "defaultSize": "CAT6A (PoE)"
     },
     {
       "id": "struct.penetration",
@@ -953,7 +698,6 @@
       "width": 1.5,
       "visible": true,
       "locked": false,
-      "defaultSize": "Ø110",
       "sizes": [
         "Ø110",
         "Ø50",
@@ -962,12 +706,7 @@
         "Ø160",
         "200×200"
       ],
-      "symbols": [
-        "penetration",
-        "riser-up",
-        "riser-down",
-        "note"
-      ]
+      "defaultSize": "Ø110"
     },
     {
       "id": "struct.shaft",
@@ -980,13 +719,7 @@
       ],
       "width": 1.8,
       "visible": true,
-      "locked": false,
-      "symbols": [
-        "penetration",
-        "riser-up",
-        "riser-down",
-        "note"
-      ]
+      "locked": false
     },
     {
       "id": "struct.nodrill",
@@ -1003,13 +736,7 @@
       ],
       "width": 1.4,
       "visible": true,
-      "locked": false,
-      "symbols": [
-        "penetration",
-        "riser-up",
-        "riser-down",
-        "note"
-      ]
+      "locked": false
     },
     {
       "id": "struct.airtight",
@@ -1022,13 +749,7 @@
       ],
       "width": 1.5,
       "visible": true,
-      "locked": false,
-      "symbols": [
-        "penetration",
-        "riser-up",
-        "riser-down",
-        "note"
-      ]
+      "locked": false
     },
     {
       "id": "power.smoke",
@@ -1051,11 +772,6 @@
         "3×1.5mm² + interlink",
         "4×1.5mm²",
         "3×1.5mm² (RF interlink)"
-      ],
-      "symbols": [
-        "detector",
-        "penetration",
-        "note"
       ]
     },
     {
@@ -1066,66 +782,7 @@
       "dash": [],
       "width": 1.2,
       "visible": true,
-      "locked": false,
-      "symbols": [
-        "note",
-        "penetration"
-      ]
-    },
-    {
-      "id": "power.230v",
-      "category": "power",
-      "name": "230V group",
-      "color": "#ea580c",
-      "dash": [],
-      "width": 1.7,
-      "visible": true,
-      "locked": false,
-      "defaultSize": "3×2.5mm²",
-      "sizes": [
-        "3×2.5mm²",
-        "3×1.5mm²",
-        "3×4mm²",
-        "3×6mm²"
-      ],
-      "symbols": [
-        "socket",
-        "socket-2",
-        "socket-3",
-        "socket-4",
-        "switch",
-        "light",
-        "penetration",
-        "note"
-      ]
-    },
-    {
-      "id": "struct.room",
-      "category": "struct",
-      "name": "Room",
-      "color": "#0f766e",
-      "dash": [],
-      "width": 1,
-      "visible": true,
-      "locked": false,
-      "symbols": [
-        "note",
-        "penetration"
-      ]
-    },
-    {
-      "id": "struct.door",
-      "category": "struct",
-      "name": "Door",
-      "color": "#7c3aed",
-      "dash": [],
-      "width": 1.6,
-      "visible": true,
-      "locked": false,
-      "symbols": [
-        "note",
-        "penetration"
-      ]
+      "locked": false
     }
   ],
   "sheets": [
@@ -2193,503 +1850,6 @@
           ],
           "flow": "forward",
           "size": "Ø22"
-        },
-        {
-          "id": "room_mu2njumi32o",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Keuken",
-          "use": "kitchen",
-          "points": [
-            {
-              "x": 1034,
-              "y": 204
-            },
-            {
-              "x": 1327,
-              "y": 204
-            },
-            {
-              "x": 1327,
-              "y": 372
-            },
-            {
-              "x": 1034,
-              "y": 372
-            }
-          ],
-          "ref": "0.04"
-        },
-        {
-          "id": "room_mu2njumi4g0",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Eetkamer",
-          "use": "dining",
-          "points": [
-            {
-              "x": 1034,
-              "y": 372
-            },
-            {
-              "x": 1327,
-              "y": 372
-            },
-            {
-              "x": 1327,
-              "y": 694
-            },
-            {
-              "x": 1034,
-              "y": 694
-            }
-          ],
-          "ref": "0.03"
-        },
-        {
-          "id": "room_mu2njumi56i",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Opkamer",
-          "use": "living",
-          "points": [
-            {
-              "x": 1165,
-              "y": 694
-            },
-            {
-              "x": 1327,
-              "y": 694
-            },
-            {
-              "x": 1327,
-              "y": 908
-            },
-            {
-              "x": 1165,
-              "y": 908
-            }
-          ],
-          "ref": "0.02"
-        },
-        {
-          "id": "room_mu2njvb43za",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Woonkamer",
-          "use": "living",
-          "points": [
-            {
-              "x": 364,
-              "y": 206
-            },
-            {
-              "x": 661,
-              "y": 206
-            },
-            {
-              "x": 661,
-              "y": 357
-            },
-            {
-              "x": 954,
-              "y": 357
-            },
-            {
-              "x": 954,
-              "y": 450
-            },
-            {
-              "x": 661,
-              "y": 450
-            },
-            {
-              "x": 661,
-              "y": 732
-            },
-            {
-              "x": 364,
-              "y": 732
-            }
-          ],
-          "ref": "0.08"
-        },
-        {
-          "id": "room_mu2njvb44th",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Patio",
-          "use": "outdoor",
-          "points": [
-            {
-              "x": 661,
-              "y": 198
-            },
-            {
-              "x": 954,
-              "y": 198
-            },
-            {
-              "x": 954,
-              "y": 357
-            },
-            {
-              "x": 661,
-              "y": 357
-            }
-          ]
-        },
-        {
-          "id": "room_mu2njvb45yt",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Berging",
-          "use": "storage",
-          "points": [
-            {
-              "x": 694,
-              "y": 450
-            },
-            {
-              "x": 942,
-              "y": 450
-            },
-            {
-              "x": 942,
-              "y": 600
-            },
-            {
-              "x": 852,
-              "y": 600
-            },
-            {
-              "x": 852,
-              "y": 655
-            },
-            {
-              "x": 694,
-              "y": 655
-            }
-          ],
-          "ref": "0.07"
-        },
-        {
-          "id": "room_mu2njvb46ni",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Toilet",
-          "use": "toilet",
-          "points": [
-            {
-              "x": 852,
-              "y": 600
-            },
-            {
-              "x": 942,
-              "y": 600
-            },
-            {
-              "x": 942,
-              "y": 655
-            },
-            {
-              "x": 852,
-              "y": 655
-            }
-          ],
-          "ref": "0.06"
-        },
-        {
-          "id": "room_mu2njvb471k",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Bijkeuken",
-          "use": "utility",
-          "points": [
-            {
-              "x": 364,
-              "y": 732
-            },
-            {
-              "x": 487,
-              "y": 732
-            },
-            {
-              "x": 487,
-              "y": 907
-            },
-            {
-              "x": 364,
-              "y": 907
-            }
-          ],
-          "ref": "0.09"
-        },
-        {
-          "id": "room_mu2njvb481b",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Werkplaats",
-          "use": "workshop",
-          "points": [
-            {
-              "x": 490,
-              "y": 730
-            },
-            {
-              "x": 950,
-              "y": 730
-            },
-            {
-              "x": 950,
-              "y": 900
-            },
-            {
-              "x": 490,
-              "y": 900
-            }
-          ],
-          "ref": "0.10"
-        },
-        {
-          "id": "room_mu2njvb499j",
-          "systemId": "struct.room",
-          "level": "floor",
-          "kind": "room",
-          "name": "Zij entree",
-          "use": "hall",
-          "points": [
-            {
-              "x": 955,
-              "y": 650
-            },
-            {
-              "x": 1174,
-              "y": 650
-            },
-            {
-              "x": 1174,
-              "y": 908
-            },
-            {
-              "x": 955,
-              "y": 908
-            }
-          ],
-          "ref": "0.01"
-        },
-        {
-          "id": "door_mu2nk3ph3hp",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 1020,
-              "y": 400
-            },
-            {
-              "x": 1020,
-              "y": 448
-            }
-          ],
-          "swing": 1,
-          "ref": "B.09"
-        },
-        {
-          "id": "door_mu2nk3ph4vp",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 951,
-              "y": 513
-            },
-            {
-              "x": 1016,
-              "y": 513
-            }
-          ],
-          "swing": -1,
-          "ref": "B.08"
-        },
-        {
-          "id": "door_mu2nk3ph5s9",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 947,
-              "y": 587
-            },
-            {
-              "x": 947,
-              "y": 539
-            }
-          ],
-          "swing": -1,
-          "ref": "B.07"
-        },
-        {
-          "id": "door_mu2nk3ph6cl",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 893,
-              "y": 665
-            },
-            {
-              "x": 938,
-              "y": 665
-            }
-          ],
-          "swing": 1,
-          "ref": "B.06"
-        },
-        {
-          "id": "door_mu2nk3ph7fq",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 1019,
-              "y": 638
-            },
-            {
-              "x": 1019,
-              "y": 686
-            }
-          ],
-          "swing": -1,
-          "ref": "B.04"
-        },
-        {
-          "id": "door_mu2nk4eu3pp",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 435,
-              "y": 728
-            },
-            {
-              "x": 482,
-              "y": 728
-            }
-          ],
-          "swing": -1,
-          "ref": "B.10"
-        },
-        {
-          "id": "door_mu2nk4eu44d",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 486,
-              "y": 772
-            },
-            {
-              "x": 486,
-              "y": 820
-            }
-          ],
-          "swing": -1,
-          "ref": "B.12"
-        },
-        {
-          "id": "door_mu2nk4eu5cv",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 1111,
-              "y": 709
-            },
-            {
-              "x": 1111,
-              "y": 759
-            }
-          ],
-          "swing": 1,
-          "ref": "B.01"
-        },
-        {
-          "id": "door_mu2nk4eu65m",
-          "systemId": "struct.door",
-          "level": "wall",
-          "kind": "door",
-          "points": [
-            {
-              "x": 1165,
-              "y": 824
-            },
-            {
-              "x": 1165,
-              "y": 872
-            }
-          ],
-          "swing": -1,
-          "ref": "B.02"
-        },
-        {
-          "kind": "marker",
-          "id": "mk_mu2nulli3gm",
-          "systemId": "power.light",
-          "level": "ceiling",
-          "x": 807.5,
-          "y": 403.5,
-          "symbol": "light",
-          "label": "plafondlamp",
-          "generated": {
-            "rule": "ai:lighting",
-            "from": "apply"
-          }
-        },
-        {
-          "kind": "marker",
-          "id": "mk_mu2nulli4ai",
-          "systemId": "power.light",
-          "level": "on-wall",
-          "x": 1117,
-          "y": 698,
-          "symbol": "switch",
-          "label": "schakelaar",
-          "generated": {
-            "rule": "ai:lighting",
-            "from": "apply"
-          }
-        },
-        {
-          "kind": "marker",
-          "id": "mk_mu2nulli5dq",
-          "systemId": "power.light",
-          "level": "on-wall",
-          "x": 1041,
-          "y": 350,
-          "symbol": "switch",
-          "label": "schakelaar",
-          "generated": {
-            "rule": "ai:lighting",
-            "from": "apply"
-          }
         }
       ]
     },
@@ -3178,15 +2338,13 @@
     "showGrid": false,
     "snapToGrid": false,
     "snapToItems": true,
-    "orthoLock": false,
     "backgroundOpacity": 0.65,
     "showLabels": true,
     "showFlow": true,
     "showNotes": true,
     "showLevels": true,
     "takeoffSlackPct": 10,
-    "levelFilter": "all",
-    "labelFilter": ""
+    "levelFilter": "all"
   },
   "activeSheetId": "sh_mtsg8skb2tb"
 }
