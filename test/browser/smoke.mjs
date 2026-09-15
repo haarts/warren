@@ -382,6 +382,39 @@ try {
   check('snapping to an end makes a real connection', joined.joins >= 1 && joined.network >= 2,
     `${joined.joins} joined, network of ${joined.network}`)
 
+  // --- dragging a marker onto a run's free end attaches it: a lamp on a stub mid-room -----------
+  const stub = await page.evaluate((firstRunId) => {
+    const app = window.warren
+    const run = app.store.items().find((i) => i.kind === 'run' && i.id !== firstRunId)
+    const end = run.points[run.points.length - 1]
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    return { runId: run.id, end, x: r.x + app.editor.cam.toScreenX(end.x), y: r.y + app.editor.cam.toScreenY(end.y) }
+  }, joinPoint.id)
+
+  await page.keyboard.press('m')
+  const farSpot = { x: stub.x - 140, y: stub.y - 90 }
+  await page.mouse.click(farSpot.x, farSpot.y)
+  const lampId = await page.evaluate(() => window.warren.store.items().filter((i) => i.kind === 'marker').pop().id)
+
+  await page.keyboard.press('v')
+  await page.mouse.move(farSpot.x, farSpot.y)
+  await page.mouse.down()
+  // Land a few pixels short of the exact end - close enough to snap, not close enough that
+  // landing there proves nothing.
+  await page.mouse.move(stub.x + 6, stub.y - 5, { steps: 6 })
+  await page.mouse.up()
+
+  const attached = await page.evaluate(async ({ lampId, runId }) => {
+    const { buildGraph, connectionsOf } = await import('/src/topology.ts')
+    const app = window.warren
+    const lamp = app.store.item(lampId)
+    const g = buildGraph(app.store.sheet)
+    return { x: lamp.x, y: lamp.y, joins: connectionsOf(g, runId).some((c) => c.otherId === lampId) }
+  }, { lampId, runId: stub.runId })
+  check("dragging a marker near a run's free end snaps it exactly there and connects it",
+    Math.abs(attached.x - stub.end.x) < 1e-6 && Math.abs(attached.y - stub.end.y) < 1e-6 && attached.joins,
+    `${JSON.stringify(attached)} vs end ${JSON.stringify(stub.end)}`)
+
   // Properties offers it as navigation, not as a complaint.
   const netButton = await page.evaluate(async (id) => {
     const app = window.warren
@@ -825,7 +858,7 @@ try {
     app.duplicateSelectionToSheet(second)
     return app.store.project.sheets[1].items.length
   })
-  check('copy-to-sheet duplicates at the same coordinates', copied === 7, `${copied} items`)
+  check('copy-to-sheet duplicates at the same coordinates', copied === 8, `${copied} items`)
 
   // --- autosave round trip through IndexedDB -------------------------------------------------------------
   const autosave = await page.evaluate(async () => {
@@ -844,7 +877,7 @@ try {
     }
   })
   check('autosave survives a round trip through IndexedDB',
-    autosave.items === 7 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
+    autosave.items === 8 && autosave.assets === 1 && Math.abs(autosave.scale - 20) < 0.5 && autosave.cleared,
     JSON.stringify(autosave))
 
   // --- a recovery copy written before the rename is still found --------------------------------

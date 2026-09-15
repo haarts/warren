@@ -397,11 +397,24 @@ export class Editor {
         break
       }
       case 'move': {
-        // Item snapping is off while moving: it would snap the cursor, not the shape, which
-        // feels random. Ortho (Shift) and the grid still apply.
-        const target = this.resolve(world, { anchor: this.drag.start, itemSnap: false })
-        const dx = target.x - this.drag.start.x
-        const dy = target.y - this.drag.start.y
+        const only = this.drag.originals.size === 1 ? [...this.drag.originals.values()][0] : null
+        let dx: number, dy: number
+        if (only && (only.kind === 'marker' || only.kind === 'note')) {
+          // A single marker or note is nothing but a point - the cursor and the shape are the
+          // same thing, so this is exactly where snapping to a run's end belongs (attaching a
+          // lamp to a stub that ends mid-room). Resolve where the *item* would land, not the
+          // raw cursor, and exclude the item from its own candidate list.
+          const candidate = { x: only.x + (world.x - this.drag.start.x), y: only.y + (world.y - this.drag.start.y) }
+          const target = this.resolve(candidate, { excludeRunId: only.id })
+          dx = target.x - only.x
+          dy = target.y - only.y
+        } else {
+          // Item snapping is off while moving a shape or a group: it would snap the cursor,
+          // not the shape, which feels random. Ortho (Shift) and the grid still apply.
+          const target = this.resolve(world, { anchor: this.drag.start, itemSnap: false })
+          dx = target.x - this.drag.start.x
+          dy = target.y - this.drag.start.y
+        }
         if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) this.drag.moved = true
         for (const [id, original] of this.drag.originals) {
           const live = this.store.item(id)
