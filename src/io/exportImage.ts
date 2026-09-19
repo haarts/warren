@@ -2,7 +2,7 @@ import { assetData } from '../model/assets.ts'
 import type { Store } from '../model/doc.ts'
 import { Camera } from '../render/camera.ts'
 import { drawScene } from '../render/scene.ts'
-import { renderPage } from './pdf.ts'
+import { newCanvas, renderPage } from './pdf.ts'
 
 export interface ExportOptions {
   /** Output pixels per PDF point. 4 ≈ 288 dpi. */
@@ -33,11 +33,8 @@ export async function renderSheetImage(store: Store, opts: ExportOptions): Promi
     }
   }
 
-  const out = document.createElement('canvas')
-  out.width = Math.max(1, Math.round(widthPt * scale))
-  out.height = Math.max(1, Math.round(heightPt * scale))
-  const ctx = out.getContext('2d')
-  if (!ctx) throw new Error('Canvas 2D unavailable')
+  const out = newCanvas(Math.round(widthPt * scale), Math.round(heightPt * scale), 'Canvas 2D unavailable')
+  const ctx = out.getContext('2d')!
 
   const cam = new Camera()
   cam.x = 0

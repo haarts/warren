@@ -59,7 +59,7 @@ const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && isFi
 const bool = (v: unknown, fallback = false): boolean => (typeof v === 'boolean' ? v : fallback)
 
 /** `v` if it is one of `list`, else `fallback` - the shape every enum field on the file falls back through. */
-function oneOf<T extends string>(list: readonly T[], v: unknown, fallback: T): T {
+export function oneOf<T extends string>(list: readonly T[], v: unknown, fallback: T): T {
   return list.includes(v as T) ? (v as T) : fallback
 }
 
