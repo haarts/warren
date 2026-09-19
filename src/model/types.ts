@@ -309,7 +309,8 @@ export interface Direction {
 /**
  * A compass rose laid over the plan: four tips a quarter-turn apart, turned to match however
  * the building sits. Each tip carries the names people use for that way. The directions it
- * implies are derived from it (see directions.ts), never copied into `Sheet.directions`.
+ * implies are derived from it (see directions.ts), never copied into `Project.directions`.
+ * It is drawn on every sheet at the same position.
  */
 export interface CompassRose {
   /** Centre, in sheet points. Only for the eye - no bearing depends on where it stands. */
@@ -327,10 +328,6 @@ export interface Sheet {
   pdf: SheetPdf | null
   /** Real-world millimetres per PDF point. null until calibrated. */
   mmPerPoint: number | null
-  /** Optional. The usual way to orient a sheet: one rose, four named tips. */
-  compass?: CompassRose
-  /** Optional. Named bearings a compass rose does not cover - an off-axis facade, say. */
-  directions?: Direction[]
   items: Item[]
 }
 
@@ -366,6 +363,14 @@ export interface Project {
   name: string
   /** Placement rules. Data rather than code, so they are yours to change. */
   rules?: import('../generate.ts').GenerateRule[]
+  /**
+   * Which way is which - one for the whole project, not one per sheet. Pipes and ducts pass
+   * from floor to floor, so every sheet has to be drawn the same way round already; a floor
+   * turned against another would break far more than its directions.
+   */
+  compass?: CompassRose
+  /** Named bearings the compass rose does not cover - an off-axis facade, say. */
+  directions?: Direction[]
   systems: System[]
   sheets: Sheet[]
   /**

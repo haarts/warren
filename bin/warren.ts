@@ -538,74 +538,65 @@ async function cmdSystems(args: Args): Promise<void> {
 // ------------------------------------------------------------------------- directions
 
 /**
- * Which way is which on a sheet. Usually one compass rose with four named tips, set once from
- * whatever the plan itself shows - a north arrow, an entrance marker, the street - and reused
- * after that instead of re-derived by eye each time. The one-off list is for a bearing the rose
- * does not cover. Reads go through `directionsOf`, the same accessor the app uses.
+ * Which way is which - one answer for the whole project, since every sheet is drawn the same way
+ * round or nothing passing between floors would line up. Usually one compass rose with four
+ * named tips, set once from whatever the plan shows and reused after that instead of re-derived
+ * by eye each time; the one-off list is for a bearing the rose does not cover. Reads go through
+ * `directionsOf`, the same accessor the app uses.
  */
 async function cmdDirections(args: Args): Promise<void> {
   const loaded = await load(args)
   const { project } = loaded
-  const targets = () => (args.flags['all-sheets'] ? project.sheets : sheetOf(project, args.flags.sheet))
+  // Only needed to turn metres into points: the rose's position and --toward's arithmetic.
+  const scaleSheet = (): Sheet => sheetOf(project, args.flags.sheet)[0]
 
   if (args.flags.compass) {
-    let rotationDeg: number | null = null
+    const rose: CompassRose = project.compass
+      ? { ...project.compass, tips: [...project.compass.tips] as CompassRose['tips'] }
+      : { x: 0, y: 0, rotationDeg: 0, tips: ['', '', '', ''] }
+    if (!project.compass) {
+      // Where it lands only matters to the eye: the middle of the first page is as good as anywhere.
+      const page = project.sheets[0]?.pdf
+      rose.x = (page?.widthPt ?? 0) / 2
+      rose.y = (page?.heightPt ?? 0) / 2
+    }
     if (args.flags.rotation !== undefined) {
       if (typeof args.flags.rotation !== 'string' || !isFinite(Number(args.flags.rotation))) fail('--rotation needs a number of degrees')
-      rotationDeg = ((Number(args.flags.rotation) % 360) + 360) % 360
+      rose.rotationDeg = ((Number(args.flags.rotation) % 360) + 360) % 360
     }
-    let tips: CompassRose['tips'] | null = null
     if (args.flags.tips !== undefined) {
       if (typeof args.flags.tips !== 'string') fail('--tips needs a value: "north,noord; east; south,tuin; west"')
       const parts = (args.flags.tips as string).split(';')
-      if (parts.length > 4) fail(`--tips takes at most four tips separated by ";" — got ${parts.length}`)
-      tips = [0, 1, 2, 3].map((i) => splitNames(parts[i] ?? '').join(', ')) as CompassRose['tips']
+      if (parts.length !== 4) fail(`--tips replaces all four tips, so it needs exactly four, separated by ";" — got ${parts.length}. To change one, use --tip <n> --names "..."`)
+      rose.tips = parts.map((part) => splitNames(part).join(', ')) as CompassRose['tips']
     }
-    let at: [number, number] | null = null
+    if (args.flags.tip !== undefined) {
+      const n = Number(args.flags.tip)
+      if (![1, 2, 3, 4].includes(n)) fail('--tip is 1, 2, 3 or 4')
+      if (typeof args.flags.names !== 'string') fail('--tip needs --names "a, b" — every name for that tip, as it should read afterwards')
+      rose.tips[n - 1] = splitNames(args.flags.names as string).join(', ')
+    }
     if (args.flags.at !== undefined) {
-      const [x, y] = String(args.flags.at).split(',').map(Number)
-      if (!isFinite(x) || !isFinite(y)) fail('--at must be "xM,yM"')
-      at = [x, y]
+      const [xM, yM] = String(args.flags.at).split(',').map(Number)
+      if (!isFinite(xM) || !isFinite(yM)) fail('--at must be "xM,yM"')
+      const sheet = scaleSheet()
+      const x = pointsFromMetres(sheet, xM)
+      const y = pointsFromMetres(sheet, yM)
+      if (x === null || y === null) fail(`sheet "${sheet.name}" has no scale, so --at in metres means nothing there`)
+      rose.x = x!
+      rose.y = y!
     }
-    const sheets = targets()
-    for (const sheet of sheets) {
-      let x: number
-      let y: number
-      if (at) {
-        const px = pointsFromMetres(sheet, at[0])
-        const py = pointsFromMetres(sheet, at[1])
-        if (px === null || py === null) fail(`sheet "${sheet.name}" has no scale, so --at in metres means nothing there`)
-        x = px!
-        y = py!
-      } else if (sheet.compass) {
-        x = sheet.compass.x
-        y = sheet.compass.y
-      } else {
-        // Where it lands only matters to the eye: the middle of the page is as good as anywhere.
-        x = (sheet.pdf?.widthPt ?? 0) / 2
-        y = (sheet.pdf?.heightPt ?? 0) / 2
-      }
-      sheet.compass = {
-        x,
-        y,
-        rotationDeg: rotationDeg ?? sheet.compass?.rotationDeg ?? 0,
-        tips: tips ?? sheet.compass?.tips ?? ['', '', '', ''],
-      }
-    }
+    project.compass = rose
     await persist(loaded)
-    for (const sheet of sheets) console.log(`${sheet.name}: ${describeCompass(sheet)}`)
+    console.log(describeCompass(project))
     return
   }
 
   if (args.flags['remove-compass']) {
-    let removed = 0
-    for (const sheet of targets()) {
-      if (!sheet.compass) continue
-      delete sheet.compass
-      removed += 1
-    }
+    const had = !!project.compass
+    delete project.compass
     await persist(loaded)
-    console.log(`removed the compass rose from ${removed} sheet(s)`)
+    console.log(had ? 'removed the compass rose' : 'there was no compass rose')
     return
   }
 
@@ -616,39 +607,33 @@ async function cmdDirections(args: Args): Promise<void> {
     }
     const bearingDeg = ((Number(args.flags.bearing) % 360) + 360) % 360
     const aliases = typeof args.flags.aliases === 'string' ? splitNames(args.flags.aliases) : []
-    const sheets = targets()
-    for (const sheet of sheets) {
-      const list = sheet.directions ?? (sheet.directions = [])
-      const existing = list.find((d) => d.id === id)
-      if (existing) { existing.bearingDeg = bearingDeg; existing.aliases = aliases }
-      else list.push({ id, bearingDeg, aliases })
-    }
+    const list = project.directions ?? (project.directions = [])
+    const existing = list.find((d) => d.id === id)
+    if (existing) { existing.bearingDeg = bearingDeg; existing.aliases = aliases }
+    else list.push({ id, bearingDeg, aliases })
     await persist(loaded)
-    console.log(`${id}: ${round(bearingDeg, 1)}°, aliases: ${aliases.join(', ') || '(none)'} — on ${sheets.map((s) => s.name).join(', ')}`)
+    console.log(`${id}: ${round(bearingDeg, 1)}°, aliases: ${aliases.join(', ') || '(none)'}`)
     return
   }
 
   if (typeof args.flags.remove === 'string') {
     const id = args.flags.remove
-    let removed = 0
-    for (const sheet of targets()) {
-      if (!sheet.directions) continue
-      const before = sheet.directions.length
-      sheet.directions = sheet.directions.filter((d) => d.id !== id)
-      removed += before - sheet.directions.length
-      if (sheet.directions.length === 0) delete sheet.directions
-    }
+    const before = project.directions?.length ?? 0
+    project.directions = (project.directions ?? []).filter((d) => d.id !== id)
+    const removed = before - project.directions.length
+    if (project.directions.length === 0) delete project.directions
     await persist(loaded)
-    console.log(`removed "${id}" from ${removed} sheet(s)${removed === 0 ? ' — a compass rose tip is renamed with --compass --tips, not removed here' : ''}`)
+    console.log(removed
+      ? `removed "${id}"`
+      : `no one-off direction called "${id}" — a compass rose tip is renamed with --compass --tip <n> --names, not removed here`)
     return
   }
 
   if (typeof args.flags.resolve === 'string') {
-    const sheet = sheetOf(project, args.flags.sheet)[0]
-    const dir = resolveDirection(sheet, args.flags.resolve)
+    const dir = resolveDirection(project, args.flags.resolve)
     if (!dir) {
-      const known = directionsOf(sheet).flatMap((d) => d.aliases.length ? d.aliases : [d.id])
-      fail(`"${args.flags.resolve}" matches no direction on ${sheet.name}. Known: ${known.join(', ') || '(none set)'}`)
+      const known = directionsOf(project).flatMap((d) => d.aliases.length ? d.aliases : [d.id])
+      fail(`"${args.flags.resolve}" matches no direction. Known: ${known.join(', ') || '(none set)'}`)
     }
     const from = dir!.source === 'compass' ? `compass rose tip ${dir!.tip! + 1}` : 'one-off direction'
     console.log(`"${args.flags.resolve}" → ${dir!.id}: ${round(dir!.bearingDeg, 1)}°, ${from}`)
@@ -656,7 +641,7 @@ async function cmdDirections(args: Args): Promise<void> {
   }
 
   if (typeof args.flags.toward === 'string') {
-    const sheet = sheetOf(project, args.flags.sheet)[0]
+    const sheet = scaleSheet()
     const fromArg = typeof args.flags.from === 'string' ? args.flags.from : null
     const distanceM = typeof args.flags.distanceM === 'string' ? Number(args.flags.distanceM) : NaN
     if (!fromArg || !isFinite(distanceM)) {
@@ -668,43 +653,35 @@ async function cmdDirections(args: Args): Promise<void> {
     const fy = pointsFromMetres(sheet, fyM)
     if (fx === null || fy === null) fail(`sheet "${sheet.name}" has no scale, so metres mean nothing here`)
     const distancePt = pointsFromMetres(sheet, distanceM)!
-    const target = pointToward(sheet, { x: fx!, y: fy! }, args.flags.toward, distancePt)
-    if (!target) fail(`"${args.flags.toward}" matches no direction on ${sheet.name}`)
+    const target = pointToward(project, { x: fx!, y: fy! }, args.flags.toward, distancePt)
+    if (!target) fail(`"${args.flags.toward}" matches no direction`)
     console.log(JSON.stringify({ xM: round(metres(sheet, target!.x)!), yM: round(metres(sheet, target!.y)!) }))
     return
   }
 
   if (args.flags.json) {
-    return void console.log(JSON.stringify(project.sheets.map((s) => ({
-      sheet: s.name,
-      compass: s.compass
-        ? {
-          rotationDeg: round(s.compass.rotationDeg, 1),
-          atM: s.mmPerPoint === null ? null : [round(metres(s, s.compass.x)!), round(metres(s, s.compass.y)!)],
-          tips: s.compass.tips,
-        }
+    return void console.log(JSON.stringify({
+      compass: project.compass
+        ? { rotationDeg: round(project.compass.rotationDeg, 1), tips: project.compass.tips }
         : null,
-      directions: directionsOf(s).map((d) => ({ ...d, bearingDeg: round(d.bearingDeg, 1) })),
-    })), null, 2))
+      directions: directionsOf(project).map((d) => ({ ...d, bearingDeg: round(d.bearingDeg, 1) })),
+    }, null, 2))
   }
-  for (const sheet of project.sheets) {
-    console.log(`${sheet.name}:`)
-    console.log(`  ${describeCompass(sheet)}`)
-    const others = sheet.directions ?? []
-    if (others.length) console.log('  other directions:')
-    for (const d of others) {
-      console.log(`    ${d.id.padEnd(14)} ${`${round(d.bearingDeg, 1)}°`.padStart(7)}  ${d.aliases.join(', ')}`)
-    }
+  console.log(describeCompass(project))
+  const others = project.directions ?? []
+  if (others.length) console.log('other directions:')
+  for (const d of others) {
+    console.log(`  ${d.id.padEnd(14)} ${`${round(d.bearingDeg, 1)}°`.padStart(7)}  ${d.aliases.join(', ')}`)
   }
 }
 
-function describeCompass(sheet: Sheet): string {
-  const rose = sheet.compass
+function describeCompass(project: Project): string {
+  const rose = project.compass
   if (!rose) return 'no compass rose'
-  const lines = [`compass rose, tip 1 at ${round(rose.rotationDeg, 1)}°`]
+  const lines = [`compass rose (every sheet), tip 1 at ${round(rose.rotationDeg, 1)}°`]
   rose.tips.forEach((names, tip) => {
     const b = tipBearing(rose, tip)
-    lines.push(`    tip ${tip + 1} ${`${round(b, 1)}°`.padStart(7)}  ${names || '(unnamed)'}`)
+    lines.push(`  tip ${tip + 1} ${`${round(b, 1)}°`.padStart(7)}  ${names || '(unnamed)'}`)
   })
   return lines.join('\n')
 }
@@ -1283,41 +1260,45 @@ const MANUAL = {
     writes: true,
   },
   directions: {
-    summary: 'which way is which — a compass rose with named tips, plus one-off bearings',
+    summary: 'which way is which — one compass rose with named tips, plus one-off bearings',
     usage: [
       'warren directions <file>',
       'warren directions <file> --compass [--rotation <deg>] [--tips "a,b; c; d; e"] [--at <xM,yM>]',
+      'warren directions <file> --compass --tip <n> --names "a, b"',
       'warren directions <file> --remove-compass',
       'warren directions <file> --set <id> --bearing <deg> [--aliases "a,b,c"]',
       'warren directions <file> --remove <id>',
       'warren directions <file> --resolve <term>',
-      'warren directions <file> --toward <term> --from <xM,yM> --distanceM <d>',
+      'warren directions <file> --toward <term> --from <xM,yM> --distanceM <d> [--sheet <n|name>]',
     ],
     flags: [
-      SHEET_FLAG,
-      ['--compass', 'place the compass rose, or update the one there; parts you leave out stay as they are'],
-      ['--rotation <deg>', 'where tip 1 points, clockwise from "up" on the sheet; tips 2-4 follow at +90° each'],
-      ['--tips <names>', 'the four tips\' names: ";" between tips, "," between names for the same tip'],
-      ['--at <xM,yM>', 'where the rose stands, in metres — only for the eye, no bearing depends on it'],
-      ['--remove-compass', 'take the rose off the sheet'],
+      ['--compass', 'place the compass rose, or update it; parts you leave out stay as they are'],
+      ['--rotation <deg>', 'where tip 1 points, clockwise from "up"; tips 2-4 follow at +90° each'],
+      ['--tips <names>', 'all four tips\' names at once: exactly four, ";" between tips, "," between names'],
+      ['--tip <n>', 'one tip (1-4) to rename, with --names; the other three are left alone'],
+      ['--names <a,b,...>', 'every name tip <n> should carry afterwards, used with --tip'],
+      ['--at <xM,yM>', 'where the rose stands, in metres on --sheet (default the first) — only for the eye'],
+      ['--remove-compass', 'take the rose off'],
       ['--set <id>', 'a one-off direction the rose does not cover'],
       ['--bearing <deg>', 'its bearing, clockwise from "up" (0=up, 90=right, 180=down, 270=left)'],
       ['--aliases <a,b,...>', 'every name the one-off direction answers to'],
       ['--remove <id>', 'delete a one-off direction'],
-      ['--all-sheets', 'apply a write to every sheet, not just the selected one'],
       ['--resolve <term>', 'look a name up and print the bearing it means'],
       ['--toward <term>', 'with --from and --distanceM, print the point that far along this bearing'],
-      ['--from <xM,yM>', 'origin point in metres, used with --toward'],
+      ['--from <xM,yM>', 'origin point in metres on --sheet, used with --toward'],
       ['--distanceM <d>', 'distance in metres, used with --toward'],
+      SHEET_FLAG,
     ],
     examples: [
-      'warren directions house.warren.json --compass --rotation 12 --tips "north, straatzijde; east; south, tuin; west" --all-sheets',
+      'warren directions house.warren.json --compass --rotation 12 --tips "north, straatzijde; east; south, tuin; west"',
+      'warren directions house.warren.json --compass --tip 4 --names "west, links, voorkant"',
       'warren directions house.warren.json --resolve straatzijde',
-      'warren directions house.warren.json --toward street --from 12.87,11.39 --distanceM 6.5',
+      'warren directions house.warren.json --toward straatzijde --from 12.87,11.39 --distanceM 6.5',
     ],
     notes: [
-      'A sheet usually carries one compass rose: four tips a quarter-turn apart, turned to match the building, each with as many names as people use for that way. In the app it is dragged into place and named in Properties; here it is --compass.',
-      'Bearings are in the sheet\'s own coordinates, clockwise from "up" — not true north, unless the rose says so. Only confirmed readings belong here: a guess recorded as a direction becomes a fact the next session trusts.',
+      'There is one set of directions for the whole project, not one per sheet: pipes and ducts pass between floors, so every sheet is already drawn the same way round. The rose shows on every sheet at the same spot.',
+      'A compass rose is four tips a quarter-turn apart, turned to match the building, each with as many names as people use for that way. In the app it is dragged into place and named in Properties; here it is --compass.',
+      'Bearings are clockwise from "up" on the plan — not true north, unless the rose says so. Only confirmed readings belong here: a guess recorded as a direction becomes a fact the next session trusts.',
       'The rose\'s tips and the one-off list are read together: --resolve, --toward and the app all see both.',
       '--toward computes a point; it draws nothing. Feed the result into an `add` op\'s pointsM/xM/yM.',
       'Lookup is case-insensitive and substring-tolerant: "street" matches a tip named "street side".',

@@ -233,7 +233,7 @@ export class Editor {
     }
     if (this.tool === 'run' && this.draft.length) parts.push('Enter/double-click finishes · Backspace removes last point · Esc cancels')
     if (this.tool === 'calibrate') parts.push(this.measurePts.length === 0 ? 'Click the first end of a known dimension' : 'Click the second end')
-    const rose = this.store.sheet.compass
+    const rose = this.store.project.compass
     if (rose && (this.drag.mode === 'compassTurn' || this.hoverCompass?.part === 'tip')) {
       const tip = this.drag.mode === 'compassTurn' ? this.drag.tip : (this.hoverCompass as { tip: number }).tip
       parts.push(`compass rose tip ${tip + 1} at ${Math.round(tipBearing(rose, tip))}° — drag to turn the rose, Shift for 45° steps`)
@@ -329,12 +329,12 @@ export class Editor {
       return
     }
 
-    // The rose is sheet furniture, not an item: no selecting it first, its tips and hub are
+    // The rose is project furniture, not an item: no selecting it first, its tips and hub are
     // always live in the select tool.
     const rose = this.hitCompass(world)
-    if (rose && store.sheet.compass) {
+    if (rose && store.project.compass) {
       store.begin()
-      const c = store.sheet.compass
+      const c = store.project.compass
       this.drag = rose.part === 'tip'
         ? { mode: 'compassTurn', tip: rose.tip, moved: false }
         : { mode: 'compassMove', offset: { x: world.x - c.x, y: world.y - c.y }, moved: false }
@@ -497,7 +497,7 @@ export class Editor {
         break
       }
       case 'compassTurn': {
-        const rose = this.store.sheet.compass
+        const rose = this.store.project.compass
         if (!rose) break
         const centre = { x: rose.x, y: rose.y }
         // Anchored at the centre, so Shift locks the turn to 45° steps like any other line.
@@ -512,7 +512,7 @@ export class Editor {
         break
       }
       case 'compassMove': {
-        const rose = this.store.sheet.compass
+        const rose = this.store.project.compass
         if (!rose) break
         rose.x = world.x - this.drag.offset.x
         rose.y = world.y - this.drag.offset.y
@@ -788,7 +788,7 @@ export class Editor {
     if (aliases.length === 0) { this.measurePts = []; return }
     const id = slugifyDirectionId(aliases[0])
     this.store.mutate(() => {
-      const list = this.store.sheet.directions ?? (this.store.sheet.directions = [])
+      const list = this.store.project.directions ?? (this.store.project.directions = [])
       const existing = list.find((d) => d.id === id)
       if (existing) { existing.bearingDeg = bearingDeg; existing.aliases = aliases }
       else list.push({ id, bearingDeg, aliases })
@@ -807,21 +807,22 @@ export class Editor {
   // --- compass rose ----------------------------------------------------------------------
 
   /**
-   * Drops a compass rose in the middle of whatever is on screen, pointing straight up. A sheet
-   * has at most one: asking again just brings the existing one into view.
+   * Drops a compass rose in the middle of whatever is on screen, pointing straight up. There is
+   * one for the whole project, shown on every sheet at the same spot: asking again just brings
+   * it into view - which is also the way back if a page of another size leaves it off the edge.
    */
   placeCompass(): void {
-    const existing = this.store.sheet.compass
+    const existing = this.store.project.compass
     if (existing) {
       this.cam.x = existing.x - this.cssWidth / 2 / this.cam.zoom
       this.cam.y = existing.y - this.cssHeight / 2 / this.cam.zoom
-      this.flash('This sheet already has a compass rose — it is in the middle of the view now')
+      this.flash('The project already has a compass rose — it is in the middle of the view now')
       this.requestRender()
       return
     }
     const centre = this.cam.toWorld(this.cssWidth / 2, this.cssHeight / 2)
     this.store.mutate(() => {
-      this.store.sheet.compass = { x: centre.x, y: centre.y, rotationDeg: 0, tips: ['', '', '', ''] }
+      this.store.project.compass = { x: centre.x, y: centre.y, rotationDeg: 0, tips: ['', '', '', ''] }
     })
     this.flash('Compass rose placed — drag a tip to turn it, drag the centre to move it, name the tips in Properties')
     this.requestRender()
@@ -830,7 +831,7 @@ export class Editor {
 
   /** What tip `tip` (0-3) is called, comma-separated as typed. */
   nameCompassTip(tip: number, names: string): void {
-    const rose = this.store.sheet.compass
+    const rose = this.store.project.compass
     if (!rose || tip < 0 || tip > 3) return
     const text = splitNames(names).join(', ')
     if (rose.tips[tip] === text) return
@@ -841,7 +842,7 @@ export class Editor {
 
   /** Types an exact rotation instead of dragging one. */
   turnCompass(rotationDeg: number): void {
-    const rose = this.store.sheet.compass
+    const rose = this.store.project.compass
     if (!rose || !isFinite(rotationDeg)) return
     const next = ((rotationDeg % 360) + 360) % 360
     if (next === rose.rotationDeg) return
@@ -851,8 +852,8 @@ export class Editor {
   }
 
   removeCompass(): void {
-    if (!this.store.sheet.compass) return
-    this.store.mutate(() => { delete this.store.sheet.compass })
+    if (!this.store.project.compass) return
+    this.store.mutate(() => { delete this.store.project.compass })
     this.hoverCompass = null
     this.requestRender()
     this.onChange?.()
@@ -863,7 +864,7 @@ export class Editor {
    * is measured in pixels and converted - otherwise it would be ungrabbable when zoomed out.
    */
   private hitCompass(world: Pt): CompassPart | null {
-    const rose = this.store.sheet.compass
+    const rose = this.store.project.compass
     if (!rose) return null
     const centre = { x: rose.x, y: rose.y }
     const tol = this.tol(HIT_TOL_PX)
@@ -877,10 +878,10 @@ export class Editor {
 
   removeDirection(id: string): void {
     this.store.mutate(() => {
-      const list = this.store.sheet.directions
+      const list = this.store.project.directions
       if (!list) return
-      this.store.sheet.directions = list.filter((d) => d.id !== id)
-      if (this.store.sheet.directions.length === 0) delete this.store.sheet.directions
+      this.store.project.directions = list.filter((d) => d.id !== id)
+      if (this.store.project.directions.length === 0) delete this.store.project.directions
     })
     this.requestRender()
     this.onChange?.()

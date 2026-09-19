@@ -840,14 +840,14 @@ try {
   await page.waitForSelector('.dialog input[type=text]', { timeout: 5000 })
   await page.type('.dialog input[type=text]', 'street, north, noord, straatzijde')
   await page.keyboard.press('Enter')
-  await page.waitForFunction(() => (window.warren.store.sheet.directions ?? []).length > 0, { timeout: 5000 })
-  const direction = await page.evaluate(() => window.warren.store.sheet.directions[0])
+  await page.waitForFunction(() => (window.warren.store.project.directions ?? []).length > 0, { timeout: 5000 })
+  const direction = await page.evaluate(() => window.warren.store.project.directions[0])
   check('naming a direction from two clicks stores one bearing with every alias typed',
     direction.id === 'street' && Math.abs(direction.bearingDeg) < 1 && direction.aliases.length === 4,
     JSON.stringify(direction))
   const resolved = await page.evaluate(async () => {
     const { resolveDirection } = await import('/src/directions.ts')
-    return resolveDirection(window.warren.store.sheet, 'straatzijde')?.id
+    return resolveDirection(window.warren.store.project, 'straatzijde')?.id
   })
   check('any of the aliases resolves back to the same direction', resolved === 'street', resolved)
   await page.keyboard.press('Escape')
@@ -862,8 +862,8 @@ try {
 
   // --- compass rose: dropped on the plan, turned by a tip, four tips named in Properties -------------
   check('Place compass rose is offered in Properties', await panelButton('Place compass rose'))
-  await page.waitForFunction(() => !!window.warren.store.sheet.compass, { timeout: 5000 })
-  const placed = await page.evaluate(() => window.warren.store.sheet.compass)
+  await page.waitForFunction(() => !!window.warren.store.project.compass, { timeout: 5000 })
+  const placed = await page.evaluate(() => window.warren.store.project.compass)
   check('the rose lands pointing straight up, with four unnamed tips',
     placed.rotationDeg === 0 && placed.tips.length === 4 && placed.tips.every((t) => t === ''), JSON.stringify(placed))
 
@@ -878,14 +878,14 @@ try {
     }
     await page.keyboard.type(tipNames[tip])
     await page.keyboard.press('Tab')
-    await page.waitForFunction((t, v) => window.warren.store.sheet.compass.tips[t] === v, { timeout: 5000 }, tip, tipNames[tip])
+    await page.waitForFunction((t, v) => window.warren.store.project.compass.tips[t] === v, { timeout: 5000 }, tip, tipNames[tip])
   }
-  const tipsNow = await page.evaluate(() => window.warren.store.sheet.compass.tips)
+  const tipsNow = await page.evaluate(() => window.warren.store.project.compass.tips)
   check('tabbing through the four tip fields names all four, focus following along',
     JSON.stringify(tipsNow) === JSON.stringify(tipNames), JSON.stringify(tipsNow))
   const viaTip = await page.evaluate(async () => {
     const { resolveDirection } = await import('/src/directions.ts')
-    const d = resolveDirection(window.warren.store.sheet, 'tuinzijde')
+    const d = resolveDirection(window.warren.store.project, 'tuinzijde')
     return d && { id: d.id, bearingDeg: d.bearingDeg, source: d.source }
   })
   check('a tip name resolves to that tip\'s bearing', viaTip?.id === 'south' && viaTip.bearingDeg === 180 && viaTip.source === 'compass',
@@ -896,7 +896,7 @@ try {
     const { COMPASS_RADIUS_PX } = await import('/src/render/scene.ts')
     const app = window.warren
     const r = document.getElementById('canvas').getBoundingClientRect()
-    const c = app.editor.cam.toScreen(app.store.sheet.compass)
+    const c = app.editor.cam.toScreen(app.store.project.compass)
     return {
       hub: { x: r.x + c.x, y: r.y + c.y },
       tip1: { x: r.x + c.x, y: r.y + c.y - COMPASS_RADIUS_PX },
@@ -910,35 +910,53 @@ try {
   await page.mouse.move(rosePts.east.x - 10, rosePts.east.y - 4, { steps: 4 })
   await page.mouse.move(rosePts.east.x, rosePts.east.y, { steps: 4 })
   await page.mouse.up()
-  const turned = await page.evaluate(() => window.warren.store.sheet.compass.rotationDeg)
+  const turned = await page.evaluate(() => window.warren.store.project.compass.rotationDeg)
   check('dragging tip 1 turns the rose', Math.abs(turned - 90) < 1.5, turned.toFixed(2))
   const southNow = await page.evaluate(async () => {
     const { resolveDirection } = await import('/src/directions.ts')
-    return resolveDirection(window.warren.store.sheet, 'tuinzijde')?.bearingDeg
+    return resolveDirection(window.warren.store.project, 'tuinzijde')?.bearingDeg
   })
   check('and every tip\'s direction turns with it', Math.abs(southNow - 270) < 1.5, southNow?.toFixed(2))
 
   await page.keyboard.down('Control'); await page.keyboard.press('z'); await page.keyboard.up('Control')
-  check('one undo puts the whole turn back', (await page.evaluate(() => window.warren.store.sheet.compass.rotationDeg)) === 0)
+  check('one undo puts the whole turn back', (await page.evaluate(() => window.warren.store.project.compass.rotationDeg)) === 0)
 
   await page.mouse.move(rosePts.hub.x, rosePts.hub.y)
   await page.mouse.down()
   await page.mouse.move(rosePts.hub.x + 60, rosePts.hub.y + 30, { steps: 5 })
   await page.mouse.up()
-  const roseMoved = await page.evaluate(() => window.warren.store.sheet.compass)
+  const roseMoved = await page.evaluate(() => window.warren.store.project.compass)
   check('dragging the hub moves the rose without turning it',
     (roseMoved.x !== placed.x || roseMoved.y !== placed.y) && roseMoved.rotationDeg === 0,
     JSON.stringify({ x: roseMoved.x, y: roseMoved.y }))
 
+  // One rose for the whole project: a sheet it was never placed on shows it, names and all.
+  const onOtherSheet = await page.evaluate(async () => {
+    const app = window.warren
+    const home = app.store.project.activeSheetId
+    const before = app.store.project.sheets.length
+    app.addSheet()
+    await new Promise((r) => setTimeout(r, 100))
+    const fields = [...document.querySelectorAll('input[data-focus-key^="compass-tip-"]')].map((i) => i.value)
+    // Leave the extra sheet behind the way a person would: switch back and delete it via the store.
+    const extra = app.store.project.activeSheetId
+    app.store.setActiveSheet(home)
+    app.store.project.sheets = app.store.project.sheets.filter((s) => s.id !== extra)
+    app.store.touch(false)
+    return { added: app.store.project.sheets.length === before, fields }
+  })
+  check('a new sheet shows the same rose, tip names and all',
+    onOtherSheet.added && JSON.stringify(onOtherSheet.fields) === JSON.stringify(tipNames), JSON.stringify(onOtherSheet.fields))
+
   check('Properties offers an off-axis direction as well', await page.evaluate(() =>
     [...document.querySelectorAll('.tab-body button')].some((b) => b.textContent.startsWith('Add another'))))
   check('the compass rose can be removed from Properties', await panelButton('Remove'))
-  await page.waitForFunction(() => !window.warren.store.sheet.compass, { timeout: 5000 })
+  await page.waitForFunction(() => !window.warren.store.project.compass, { timeout: 5000 })
   // 'street' is the one-off named by the two-click Direction check further up; move that block
   // and this one needs its own one-off first.
   check('removing it takes its directions with it, and leaves the one-offs alone', await page.evaluate(async () => {
     const { directionsOf } = await import('/src/directions.ts')
-    const ids = directionsOf(window.warren.store.sheet).map((d) => d.id)
+    const ids = directionsOf(window.warren.store.project).map((d) => d.id)
     return !ids.includes('south') && ids.includes('street')
   }))
 

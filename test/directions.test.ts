@@ -3,11 +3,13 @@ import assert from 'node:assert/strict'
 import {
   angleDiff, bearingBetween, compassDirections, compassLabel, directionsOf, isToward, pointToward,
   resolveDirection, splitNames, tipBearing,
+  type Oriented,
 } from '../src/directions.ts'
-import type { Direction, Sheet } from '../src/model/types.ts'
+import type { Direction } from '../src/model/types.ts'
 
-function sheet(directions: Direction[]): Sheet {
-  return { id: 's', name: 'S', pdf: null, mmPerPoint: 20, items: [], directions }
+/** Orientation lives on the project; these tests only need that slice of one. */
+function sheet(directions: Direction[]): Oriented {
+  return { directions }
 }
 
 test('bearingBetween reads like a plan\'s own north arrow: up is 0, clockwise from there', () => {
@@ -67,8 +69,7 @@ test('compassLabel is a display convenience, not a claim about true north', () =
 })
 
 test('a compass rose names four bearings a quarter-turn apart, starting from its rotation', () => {
-  const s: Sheet = {
-    id: 's', name: 'S', pdf: null, mmPerPoint: 20, items: [],
+  const s: Oriented = {
     compass: { x: 0, y: 0, rotationDeg: 300, tips: ['north, straatzijde', 'east', '', 'west, links'] },
   }
   const dirs = compassDirections(s)
@@ -81,9 +82,8 @@ test('a compass rose names four bearings a quarter-turn apart, starting from its
   assert.equal(tipBearing(s.compass!, 2), 120, 'an unnamed tip still has a bearing, it just is not a direction')
 })
 
-test('a rose-only sheet resolves by any tip name, and one-off directions sit alongside it', () => {
-  const s: Sheet = {
-    id: 's', name: 'S', pdf: null, mmPerPoint: 20, items: [],
+test('a rose on its own resolves by any tip name, and one-off directions sit alongside it', () => {
+  const s: Oriented = {
     compass: { x: 0, y: 0, rotationDeg: 12, tips: ['north, straatzijde', '', 'south, tuin', ''] },
     directions: [{ id: 'carport', bearingDeg: 250, aliases: ['carport', 'oprit'] }],
   }

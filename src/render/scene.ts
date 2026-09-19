@@ -139,8 +139,8 @@ export function drawScene(opts: SceneOptions): void {
   }
 
   // The rose sits above the drawing - it is what you read the drawing's directions off.
-  if (store.sheet.compass) {
-    drawCompass(ctx, cam, store.sheet.compass, ui, interactive, interactive ? opts.overlay?.compass ?? null : null)
+  if (store.project.compass) {
+    drawCompass(ctx, cam, store.project.compass, ui, interactive, interactive ? opts.overlay?.compass ?? null : null)
   }
 
   // --- selection & tool feedback ------------------------------------------------------

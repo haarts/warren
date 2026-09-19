@@ -77,8 +77,6 @@ function buildProperties(app: App, body: HTMLElement): void {
       'Uncalibrated: lengths and the takeoff stay empty. Click Calibrate, then click the two ends of a dimension printed on the plan.'))
   }
 
-  buildOrientation(app, body)
-
   const lockedOnSheet = store.items().filter((i) => i.locked)
   if (lockedOnSheet.length) {
     body.appendChild(field('Locked', el('button', {
@@ -109,6 +107,8 @@ function buildProperties(app: App, body: HTMLElement): void {
       },
     }, `Assume direction for ${flowless.length} run${flowless.length === 1 ? '' : 's'}`)))
   }
+
+  buildOrientation(app, body)
 
   if (items.length === 0) {
     body.appendChild(el('div', { class: 'section-title' }, 'Nothing selected'))
@@ -495,18 +495,19 @@ function sizeInput(
 }
 
 /**
- * Which way is which on this sheet: the compass rose and its four tip names, plus any one-off
- * bearing the rose does not cover. All of it optional - nothing else depends on it.
+ * Which way is which: the compass rose and its four tip names, plus any one-off bearing the rose
+ * does not cover. One set for the whole project, so it gets its own heading rather than sitting
+ * under Sheet. All of it optional - nothing else depends on it.
  */
 function buildOrientation(app: App, body: HTMLElement): void {
   const { store, editor } = app
-  const sheet = store.sheet
-  const rose = sheet.compass
+  const rose = store.project.compass
+  body.appendChild(el('div', { class: 'section-title' }, 'Directions — every sheet'))
 
   if (!rose) {
     body.appendChild(field('Compass',
       el('button', { onclick: () => editor.placeCompass() }, 'Place compass rose'),
-      'Optional. Drops a rose on the plan: drag a tip to turn it, then name each tip here.'))
+      'Optional. Drops a rose on the plan — one for all sheets. Drag a tip to turn it, then name each tip here.'))
   } else {
     const turned = el('input', {
       type: 'number', step: '0.5', value: String(Number(rose.rotationDeg.toFixed(1))), style: { width: '70px' },
@@ -534,8 +535,8 @@ function buildOrientation(app: App, body: HTMLElement): void {
     }
   }
 
-  const others = sheet.directions ?? []
-  body.appendChild(field(rose ? 'Other directions' : 'Directions', el('div', {},
+  const others = store.project.directions ?? []
+  body.appendChild(field(rose ? 'Others' : 'Off-axis', el('div', {},
     ...others.map((d) => el('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' } },
       el('span', {}, `${d.aliases.join(', ') || d.id} · ${Math.round(d.bearingDeg)}°`),
       el('button', {

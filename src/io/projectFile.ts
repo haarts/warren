@@ -241,17 +241,11 @@ function asSheet(raw: unknown, index: number): Sheet {
       heightPt: num(raw.pdf.heightPt, 842),
     }
   }
-  const directions = Array.isArray(raw.directions)
-    ? (raw.directions.map(asDirection).filter(Boolean) as Direction[])
-    : undefined
-  const compass = asCompass(raw.compass)
   return {
     id: str(raw.id, fallbackId),
     name: str(raw.name, `Sheet ${index + 1}`),
     pdf,
     mmPerPoint: typeof raw.mmPerPoint === 'number' && raw.mmPerPoint > 0 ? raw.mmPerPoint : null,
-    ...(compass ? { compass } : {}),
-    ...(directions?.length ? { directions } : {}),
     items: Array.isArray(raw.items) ? (raw.items.map(asItem).filter(Boolean) as Item[]) : [],
   }
 }
@@ -297,6 +291,19 @@ export function parseProject(text: string): Project {
 
   const activeSheetId = sheets.some((s) => s.id === raw.activeSheetId) ? String(raw.activeSheetId) : sheets[0].id
 
+  // Orientation is one thing for the whole project. For a short while it lived on each sheet;
+  // such a file hands over the first sheet's rose and every sheet's one-off directions rather
+  // than losing them, and is written back the new way on the next save.
+  const rawSheets = Array.isArray(raw.sheets) ? raw.sheets.filter(isObj) : []
+  const compass = asCompass(raw.compass) ?? rawSheets.map((s) => asCompass(s.compass)).find(Boolean)
+  const directions: Direction[] = []
+  for (const source of [raw.directions, ...rawSheets.map((s) => s.directions)]) {
+    if (!Array.isArray(source)) continue
+    for (const d of source.map(asDirection)) {
+      if (d && !directions.some((known) => known.id === d.id)) directions.push(d)
+    }
+  }
+
   const rules = Array.isArray(raw.rules)
     ? (raw.rules.filter(isObj) as unknown as Project['rules'])
     : undefined
@@ -305,6 +312,8 @@ export function parseProject(text: string): Project {
     version: 1,
     name: str(raw.name, 'Untitled'),
     ...(rules?.length ? { rules } : {}),
+    ...(compass ? { compass } : {}),
+    ...(directions.length ? { directions } : {}),
     systems: systems.length > 0 ? systems : defaultSystems(),
     sheets,
     assets,

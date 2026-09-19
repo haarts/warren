@@ -21,9 +21,10 @@ Writing an `ops.json` for `apply`? Use the `warren-apply-ops` skill — it has t
 the field-nesting mistakes that actually cause validation failures.
 
 Placing something "toward the street" or "on the left"? Warren has no built-in idea of north,
-left, or straatzijde — but a sheet can carry a compass rose whose four tips are named however
-people say them, plus the odd one-off bearing. `warren directions --resolve <name>` tells you what
-a name means; see the `warren-read-plan` skill for recording one only once it is confirmed.
+left, or straatzijde — but the project can carry one compass rose (for every sheet) whose four
+tips are named however people say them, plus the odd one-off bearing. `warren directions
+--resolve <name>` tells you what a name means; see the `warren-read-plan` skill for recording
+one only once it is confirmed.
 
 Installed as a package the command is `warren`; in this repo it is `node bin/warren.ts`. There
 is an `npm run warren -- <args>` too, but npm prints a banner on stdout that will corrupt any

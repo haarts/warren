@@ -37,16 +37,20 @@ the same thing, and a plan crop that doesn't show a north arrow or street contex
 resolve which is which.
 
 **Check what is already recorded first, and record what you work out — don't re-derive it.**
-A sheet can carry a compass rose: four tips a quarter-turn apart, turned to match the building,
-each named however people say that way. The human usually sets it by dragging it in the app;
-you read it, or set it once it is confirmed:
+A project carries one compass rose, shared by every sheet: four tips a quarter-turn apart,
+turned to match the building, each named however people say that way. The human usually sets
+it by dragging it in the app; you read it, or set it once it is confirmed:
 
 ```bash
-warren directions house.warren.json                                   # what is set, per sheet
+warren directions house.warren.json                                   # what is set
 warren directions house.warren.json --resolve straatzijde             # what a name means
-warren directions house.warren.json --compass --rotation 12 --tips "north, straatzijde; east; south, tuin; west" --all-sheets
+warren directions house.warren.json --compass --rotation 12 --tips "north, straatzijde; east; south, tuin; west"
+warren directions house.warren.json --compass --tip 4 --names "west, links, voorkant"   # one tip, the rest untouched
 warren directions house.warren.json --toward straatzijde --from 12.87,11.39 --distanceM 6.5   # -> {"xM":..,"yM":..} for an `add` op
 ```
+
+`--tips` replaces all four and refuses anything but four; to add a name to one tip, read it
+first and pass its full list with `--tip <n> --names`.
 
 Every later instruction ("route it to the street side", "toward noord") then resolves to the
 same bearing instead of a fresh eyeball each time. A bearing the rose does not cover — a facade

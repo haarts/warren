@@ -9,6 +9,8 @@ interface Snapshot {
   sheets: Sheet[]
   settings: Project['settings']
   activeSheetId: string
+  compass: Project['compass']
+  directions: Project['directions']
 }
 
 export function emptySheet(name = 'Sheet 1'): Sheet {
@@ -132,6 +134,8 @@ export class Store {
       sheets: this.project.sheets,
       settings: this.project.settings,
       activeSheetId: this.project.activeSheetId,
+      compass: this.project.compass,
+      directions: this.project.directions,
     })
   }
 
@@ -141,6 +145,11 @@ export class Store {
     this.project.sheets = snap.sheets
     this.project.settings = snap.settings
     this.project.activeSheetId = snap.activeSheetId
+    // Absent is a state too: undoing "place the rose" has to take it away again.
+    if (snap.compass) this.project.compass = snap.compass
+    else delete this.project.compass
+    if (snap.directions) this.project.directions = snap.directions
+    else delete this.project.directions
     this.invalidateSystems()
     for (const id of [...this.selection]) if (!this.item(id)) this.selection.delete(id)
     this.activeVertex = null
