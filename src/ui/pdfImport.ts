@@ -2,7 +2,7 @@ import type { App } from '../app.ts'
 import { pageCount, renderThumbnail } from '../io/pdf.ts'
 import { assetData } from '../model/assets.ts'
 import { el } from './dom.ts'
-import { openModal } from './modal.ts'
+import { dialogFooter, openModal } from './modal.ts'
 
 const MAX_THUMBS = 60
 
@@ -22,13 +22,7 @@ export async function openPdfImportDialog(
     title: 'Choose a page',
     width: '760px',
     body: el('div', {}, status, grid),
-    footer: el('div', { style: { display: 'flex', gap: '8px' } },
-      el('button', { onclick: close }, 'Cancel'),
-      el('button', {
-        class: 'primary',
-        onclick: () => { close(); void app.attachPage(assetId, selected, target, fileName) },
-      }, 'Use this page'),
-    ),
+    footer: dialogFooter(close, 'Use this page', () => { close(); void app.attachPage(assetId, selected, target, fileName) }),
   }))
 
   const cards: HTMLElement[] = []

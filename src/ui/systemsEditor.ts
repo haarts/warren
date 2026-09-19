@@ -1,8 +1,8 @@
 import type { App } from '../app.ts'
 import { DASH_PRESETS, missingDefaults, PALETTE } from '../model/systems.ts'
-import { CATEGORIES, CATEGORY_LABELS, type Category, type System } from '../model/types.ts'
+import { CATEGORIES, CATEGORY_LABELS, type System } from '../model/types.ts'
 import { newId } from '../model/ids.ts'
-import { el, swatch } from './dom.ts'
+import { el, select, swatch } from './dom.ts'
 import { confirmDialog, openModal } from './modal.ts'
 
 function dashIndex(dash: number[]): number {
@@ -127,14 +127,13 @@ function systemRow(app: App, sys: System, rebuild: () => void, rerender: () => v
     rerender()
   })
 
-  const dashSelect = el('select', {}) as HTMLSelectElement
-  DASH_PRESETS.forEach((preset, i) => {
-    dashSelect.appendChild(el('option', { value: String(i), selected: i === dashIndex(sys.dash) }, preset.name))
-  })
-  dashSelect.addEventListener('change', () => {
-    store.mutate(() => { sys.dash = [...DASH_PRESETS[Number(dashSelect.value)].dash] })
-    refreshPreview()
-  })
+  const dashSelect = select(
+    DASH_PRESETS.map((preset, i) => [String(i), preset.name] as const), String(dashIndex(sys.dash)),
+    (v) => {
+      store.mutate(() => { sys.dash = [...DASH_PRESETS[Number(v)].dash] })
+      refreshPreview()
+    },
+  )
 
   const widthInput = el('input', { type: 'number', min: '0.4', max: '10', step: '0.1', value: String(sys.width) }) as HTMLInputElement
   widthInput.addEventListener('change', () => {
@@ -188,16 +187,6 @@ function systemRow(app: App, sys: System, rebuild: () => void, rerender: () => v
       rerender()
     },
   }, '×')
-
-  const categorySelect = el('select', { style: { display: 'none' } }) as HTMLSelectElement
-  for (const category of CATEGORIES) {
-    categorySelect.appendChild(el('option', { value: category, selected: category === sys.category }, CATEGORY_LABELS[category]))
-  }
-  categorySelect.addEventListener('change', () => {
-    store.mutate(() => { sys.category = categorySelect.value as Category })
-    rebuild()
-    rerender()
-  })
 
   const flowBox = el('input', {
     type: 'checkbox',

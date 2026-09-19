@@ -1,4 +1,4 @@
-import { Editor } from './interact/controller.ts'
+import { Editor, type ToolId } from './interact/controller.ts'
 import { clearAutosave, readAutosave, writeAutosave } from './io/autosave.ts'
 import { base64ToBytes, bytesToBase64, sha256Hex } from './io/base64.ts'
 import { cacheAsset, hydrateAssets } from './io/assetCache.ts'
@@ -13,7 +13,8 @@ import {
 import { emptyProject, emptySheet, Store } from './model/doc.ts'
 import { newId } from './model/ids.ts'
 import type { Project, Sheet } from './model/types.ts'
-import { alertDialog, askNumber, askText, confirmDialog } from './ui/modal.ts'
+import { clear, el } from './ui/dom.ts'
+import { alertDialog, askNumber, askText, confirmDialog, guarded } from './ui/modal.ts'
 import { openPdfImportDialog } from './ui/pdfImport.ts'
 import { buildPanel } from './ui/panel.ts'
 import { buildToolbar } from './ui/toolbar.ts'
@@ -138,68 +139,51 @@ export class App {
 
   /** The latched drawing modes, shown and clickable the way a CAD status bar shows them. */
   private renderModes(): void {
-    this.modesHost.replaceChildren()
+    clear(this.modesHost)
     // A filter set on the Layers tab hides things everywhere, so it has to be visible from
     // everywhere. Otherwise it looks like the drawing lost half its contents.
     const focusId = this.store.project.settings.roomFocus
-    if (focusId) {
-      const room = this.store.items().find((i) => i.kind === 'room' && i.id === focusId)
-      if (room && room.kind === 'room') {
-        const chip = document.createElement('button')
-        chip.className = 'on filter-chip'
-        chip.textContent = `focus: ${room.name} ✕`
-        chip.title = 'Everything outside this room is greyed. Click to show all rooms again.'
-        chip.addEventListener('click', () => {
+    const room = focusId ? this.store.items().find((i) => i.kind === 'room' && i.id === focusId) : undefined
+    if (room && room.kind === 'room') {
+      this.modesHost.appendChild(chip(`focus: ${room.name} ✕`,
+        'Everything outside this room is greyed. Click to show all rooms again.', () => {
           this.store.project.settings.roomFocus = null
           this.store.touch()
           this.editor.requestRender()
-        })
-        this.modesHost.appendChild(chip)
-      }
+        }))
     }
 
     const filter = this.store.project.settings.labelFilter.trim()
     if (filter !== '') {
-      const chip = document.createElement('button')
-      chip.className = 'on filter-chip'
-      chip.textContent = `filter: ${filter} ✕`
-      chip.title = 'Only items whose label contains this are shown. Click to clear.'
-      chip.addEventListener('click', () => {
-        this.store.project.settings.labelFilter = ''
-        this.store.touch()
-        this.editor.requestRender()
-      })
-      this.modesHost.appendChild(chip)
+      this.modesHost.appendChild(chip(`filter: ${filter} ✕`,
+        'Only items whose label contains this are shown. Click to clear.', () => {
+          this.store.project.settings.labelFilter = ''
+          this.store.touch()
+          this.editor.requestRender()
+        }))
     }
     for (const mode of this.editor.modes()) {
-      const btn = document.createElement('button')
-      btn.textContent = mode.label
-      btn.className = mode.on ? 'on' : ''
-      btn.title = mode.title
-      btn.addEventListener('click', () => this.editor.toggleMode(mode.id))
-      this.modesHost.appendChild(btn)
+      this.modesHost.appendChild(el('button', {
+        class: mode.on ? 'on' : '', title: mode.title, onclick: () => this.editor.toggleMode(mode.id),
+      }, mode.label))
     }
   }
 
   private renderSheetTabs(): void {
-    this.sheetTabs.replaceChildren()
+    clear(this.sheetTabs)
     for (const sheet of this.store.project.sheets) {
-      const btn = document.createElement('button')
-      btn.textContent = sheet.name
-      if (sheet.id === this.store.project.activeSheetId) btn.className = 'active'
-      btn.addEventListener('click', () => {
-        this.store.setActiveSheet(sheet.id)
-        this.editor.invalidateBackground()
-        this.editor.zoomToFit()
-      })
-      btn.addEventListener('dblclick', () => void this.renameSheet(sheet))
-      this.sheetTabs.appendChild(btn)
+      this.sheetTabs.appendChild(el('button', {
+        class: sheet.id === this.store.project.activeSheetId ? 'active' : '',
+        onclick: () => {
+          this.store.setActiveSheet(sheet.id)
+          this.refit()
+        },
+        ondblclick: () => void this.renameSheet(sheet),
+      }, sheet.name))
     }
-    const add = document.createElement('button')
-    add.textContent = '+'
-    add.title = 'Add a sheet (another floor)'
-    add.addEventListener('click', () => this.addSheet())
-    this.sheetTabs.appendChild(add)
+    this.sheetTabs.appendChild(el('button', {
+      title: 'Add a sheet (another floor)', onclick: () => this.addSheet(),
+    }, '+'))
   }
 
   // --- project lifecycle ---------------------------------------------------------------
@@ -209,13 +193,12 @@ export class App {
     this.store.loadProject(emptyProject(), null)
     this.saveTarget = null
     await clearAutosave()
-    this.editor.invalidateBackground()
-    this.editor.zoomToFit()
+    this.refit()
   }
 
   async openProject(): Promise<void> {
     if (this.store.dirty && !(await confirmDialog('Discard changes?', 'The current project has unsaved changes.', 'Discard'))) return
-    try {
+    await guarded('Could not open that file', async () => {
       const picked = await pickOpenFile()
       if (!picked) return
       const text = await picked.file.text()
@@ -229,11 +212,8 @@ export class App {
       if (missing.length) void this.locateMissingAssets(project, missing)
       this.saveTarget = picked.handle ? { handle: picked.handle, name: picked.file.name } : null
       await clearAutosave()
-      this.editor.invalidateBackground()
-      this.editor.zoomToFit()
-    } catch (err) {
-      alertDialog('Could not open that file', String(err instanceof Error ? err.message : err))
-    }
+      this.refit()
+    })
   }
 
   async save(): Promise<void> {
@@ -275,7 +255,7 @@ export class App {
    * readable by anything that is not this app.
    */
   private async writeProject(target: SaveTarget): Promise<void> {
-    try {
+    await guarded('Save failed', async () => {
       await writeTo(target, serialize(this.store.project))
       await this.ensurePlanPdfOnDisk()
       this.store.dirty = false
@@ -285,9 +265,7 @@ export class App {
         ? `Saved ${target.name}`
         : `Downloaded ${target.name} — this browser cannot write over an existing file`)
       this.refresh()
-    } catch (err) {
-      alertDialog('Save failed', String(err instanceof Error ? err.message : err))
-    }
+    })
   }
 
   /** Assets already written out this session, so a repeated save does not re-download them. */
@@ -324,12 +302,10 @@ export class App {
     const name = suggestedFileName(this.store.project.name).replace(/\.json$/, '.bundle.json')
     const target = await pickSaveTarget(name)
     if (!target) return
-    try {
+    await guarded('Export failed', async () => {
       await writeTo(target, serialize(this.store.project, { bundle: true }))
       this.editor.flash(`Wrote ${target.name} with the plan PDF inside it`)
-    } catch (err) {
-      alertDialog('Export failed', String(err instanceof Error ? err.message : err))
-    }
+    })
   }
 
   private async autosave(): Promise<void> {
@@ -379,36 +355,34 @@ export class App {
   async importPdf(target: 'current' | 'new'): Promise<void> {
     const file = await promptForFile('application/pdf,.pdf')
     if (!file) return
-    try {
+    await guarded('Could not read that PDF', async () => {
       const bytes = new Uint8Array(await file.arrayBuffer())
       const assetId = await sha256Hex(bytes)
       await cacheAsset(assetId, bytesToBase64(bytes))
       this.store.project.assets[assetId] = { name: file.name, bytes: bytes.length }
       await openPdfImportDialog(this, assetId, file.name, target)
-    } catch (err) {
-      alertDialog('Could not read that PDF', String(err instanceof Error ? err.message : err))
-    }
+    })
   }
 
   async attachPage(assetId: string, page: number, target: 'current' | 'new', sourceName: string): Promise<void> {
     const base64 = assetData(assetId)
     if (!base64) return
     const size = await pageSizePt(assetId, base64, page, 0)
+    const name = `${sourceName.replace(/\.pdf$/i, '')} p${page}`
     this.store.mutate(() => {
       let sheet: Sheet
       if (target === 'new') {
-        sheet = emptySheet(`${sourceName.replace(/\.pdf$/i, '')} p${page}`)
+        sheet = emptySheet(name)
         this.store.project.sheets.push(sheet)
         this.store.project.activeSheetId = sheet.id
       } else {
         sheet = this.store.sheet
-        if (sheet.name === 'Ground floor' && sheet.items.length === 0) sheet.name = `${sourceName.replace(/\.pdf$/i, '')} p${page}`
+        if (sheet.name === 'Ground floor' && sheet.items.length === 0) sheet.name = name
       }
       sheet.pdf = { assetId, page, rotation: 0, widthPt: size.widthPt, heightPt: size.heightPt }
     })
     this.store.selection.clear()
-    this.editor.invalidateBackground()
-    this.editor.zoomToFit()
+    this.refit()
   }
 
   /**
@@ -434,8 +408,7 @@ export class App {
     }
     await cacheAsset(id, bytesToBase64(bytes))
     this.exportedAssets.add(id)
-    this.editor.invalidateBackground()
-    this.editor.zoomToFit()
+    this.refit()
     this.editor.flash(`Found ${file.name}`)
   }
 
@@ -453,8 +426,7 @@ export class App {
         s.pdf.widthPt = size.widthPt
         s.pdf.heightPt = size.heightPt
       })
-      this.editor.invalidateBackground()
-      this.editor.zoomToFit()
+      this.refit()
     })
   }
 
@@ -465,6 +437,12 @@ export class App {
     this.store.mutate(() => { this.store.sheet.pdf = null })
     forgetDocument(assetId)
     this.editor.invalidateBackground()
+  }
+
+  /** The plan under the drawing changed shape - redraw it and reframe on the new sheet. */
+  private refit(): void {
+    this.editor.invalidateBackground()
+    this.editor.zoomToFit()
   }
 
   // --- sheets -----------------------------------------------------------------------------
@@ -500,8 +478,7 @@ export class App {
         this.store.project.activeSheetId = this.store.project.sheets[0].id
       }
     })
-    this.editor.invalidateBackground()
-    this.editor.zoomToFit()
+    this.refit()
   }
 
   duplicateSelectionToSheet(sheetId: string): void {
@@ -563,81 +540,20 @@ export class App {
       const typing = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
       if (typing) return
 
-      const mod = e.ctrlKey || e.metaKey
-      if (mod && e.key.toLowerCase() === 'z') {
-        e.preventDefault()
-        if (e.shiftKey) this.store.redo()
-        else this.store.undo()
+      if (e.ctrlKey || e.metaKey) {
+        const action = MOD_KEY_ACTIONS[e.key.toLowerCase()]
+        if (action) { e.preventDefault(); action(this, e) }
         return
       }
-      if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); this.store.redo(); return }
-      if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); void (e.shiftKey ? this.saveAs() : this.save()); return }
-      if (mod && e.key.toLowerCase() === 'o') { e.preventDefault(); void this.openProject(); return }
-      if (mod && e.key.toLowerCase() === 'a') {
+      if (e.key === ' ') {
+        if (!e.repeat) this.editor.setSpaceHeld(true)
         e.preventDefault()
-        this.store.selection.clear()
-        for (const item of this.store.items()) if (this.store.isEditable(item)) this.store.selection.add(item.id)
-        this.store.touch(false)
         return
       }
-      if (mod) return
+      if (e.key === 'Shift') { this.editor.setShiftHeld(true); return }
 
-      switch (e.key) {
-        // The CAD function keys. An architect reaches for these without thinking.
-        case 'F8': e.preventDefault(); this.editor.toggleMode('ortho'); return
-        case 'F3': e.preventDefault(); this.editor.toggleMode('snap'); return
-        case 'F7': e.preventDefault(); this.editor.toggleMode('grid'); return
-        case ' ':
-          if (!e.repeat) this.editor.setSpaceHeld(true)
-          e.preventDefault()
-          return
-        case 'Shift':
-          this.editor.setShiftHeld(true)
-          return
-        case 'v': case 'V': this.editor.setTool('select'); return
-        case 'l': case 'L': this.editor.setTool('run'); return
-        case 'r': case 'R': this.editor.setTool('box'); return
-        case 'm': case 'M': this.editor.setTool('marker'); return
-        case 'n': case 'N': this.editor.setTool('note'); return
-        case 'd': case 'D': this.editor.setTool('measure'); return
-        case 'k': case 'K': this.editor.setTool('calibrate'); return
-        case 'b': case 'B': this.editor.setTool('direction'); return
-        case 'Escape':
-          if (this.editor.isDrafting) this.editor.cancelDraft()
-          else {
-            this.editor.cancelCalibration()
-            this.editor.cancelDirection()
-            this.store.selection.clear()
-            this.store.activeVertex = null
-            this.store.touch(false)
-          }
-          return
-        case 'Enter':
-          if (this.editor.isDrafting) { e.preventDefault(); this.editor.finishDraft() }
-          return
-        case 'Backspace':
-          if (this.editor.isDrafting) { e.preventDefault(); this.editor.removeLastDraftPoint(); return }
-          e.preventDefault()
-          this.editor.deleteSelectionOrVertex()
-          return
-        case 'Delete':
-          e.preventDefault()
-          this.editor.deleteSelectionOrVertex()
-          return
-        case 'ArrowUp': case 'ArrowDown': case 'ArrowLeft': case 'ArrowRight': {
-          e.preventDefault()
-          const step = e.shiftKey ? 10 : 1
-          const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0
-          const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0
-          this.editor.nudgeByPixels(dx, dy)
-          return
-        }
-        case 'f': case 'F': this.editor.zoomToFit(); return
-        case '+': case '=': this.editor.zoomBy(1.25); return
-        case '-': case '_': this.editor.zoomBy(0.8); return
-        default:
-          return
-      }
+      // Single letters answer to either case, so 'v' and 'V' need only one row below.
+      KEY_ACTIONS[e.key.length === 1 ? e.key.toLowerCase() : e.key]?.(this, e)
     })
 
     window.addEventListener('keyup', (e) => {
@@ -650,4 +566,58 @@ export class App {
       this.editor.setShiftHeld(false)
     })
   }
+}
+
+/** A dismissible status-bar pill, for a filter or focus that is quietly changing what is shown. */
+const chip = (text: string, title: string, onclick: () => void): HTMLElement =>
+  el('button', { class: 'on filter-chip', title, onclick }, text)
+
+type KeyAction = (app: App, e: KeyboardEvent) => void
+
+const tool = (id: ToolId): KeyAction => (app) => app.editor.setTool(id)
+const mode = (id: 'ortho' | 'snap' | 'grid'): KeyAction => (app, e) => { e.preventDefault(); app.editor.toggleMode(id) }
+const nudge = (dx: number, dy: number): KeyAction => (app, e) => {
+  e.preventDefault()
+  const step = e.shiftKey ? 10 : 1
+  app.editor.nudgeByPixels(dx * step, dy * step)
+}
+
+/** What happens while nothing is being typed into, one row per key. The CAD function keys and
+ *  the single-letter tool shortcuts are what an architect reaches for without thinking. */
+const KEY_ACTIONS: Record<string, KeyAction> = {
+  F8: mode('ortho'), F3: mode('snap'), F7: mode('grid'),
+  v: tool('select'), l: tool('run'), r: tool('box'), m: tool('marker'),
+  n: tool('note'), d: tool('measure'), k: tool('calibrate'), b: tool('direction'),
+  f: (app) => app.editor.zoomToFit(),
+  '+': (app) => app.editor.zoomBy(1.25), '=': (app) => app.editor.zoomBy(1.25),
+  '-': (app) => app.editor.zoomBy(0.8), '_': (app) => app.editor.zoomBy(0.8),
+  Escape: (app) => {
+    if (app.editor.isDrafting) { app.editor.cancelDraft(); return }
+    app.editor.cancelCalibration()
+    app.editor.cancelDirection()
+    app.store.selection.clear()
+    app.store.activeVertex = null
+    app.store.touch(false)
+  },
+  Enter: (app, e) => { if (app.editor.isDrafting) { e.preventDefault(); app.editor.finishDraft() } },
+  Backspace: (app, e) => {
+    e.preventDefault()
+    if (app.editor.isDrafting) app.editor.removeLastDraftPoint()
+    else app.editor.deleteSelectionOrVertex()
+  },
+  Delete: (app, e) => { e.preventDefault(); app.editor.deleteSelectionOrVertex() },
+  ArrowUp: nudge(0, -1), ArrowDown: nudge(0, 1), ArrowLeft: nudge(-1, 0), ArrowRight: nudge(1, 0),
+}
+
+/** Same idea, for the Ctrl/Cmd-modified shortcuts. */
+const MOD_KEY_ACTIONS: Record<string, KeyAction> = {
+  z: (app, e) => { if (e.shiftKey) app.store.redo(); else app.store.undo() },
+  y: (app) => app.store.redo(),
+  s: (app, e) => void (e.shiftKey ? app.saveAs() : app.save()),
+  o: (app) => void app.openProject(),
+  a: (app) => {
+    app.store.selection.clear()
+    for (const item of app.store.items()) if (app.store.isEditable(item)) app.store.selection.add(item.id)
+    app.store.touch(false)
+  },
 }
