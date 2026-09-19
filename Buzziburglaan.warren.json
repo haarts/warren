@@ -1,6 +1,17 @@
 {
   "version": 1,
   "name": "Buzziburglaan",
+  "compass": {
+    "x": 1497.298558763236,
+    "y": 127.38972233543717,
+    "rotationDeg": 0,
+    "tips": [
+      "drieklinken, boven",
+      "tuin, rechts, woonboerderij, achterkant",
+      "beneden, onder",
+      "buzzi, links, deel, voorkant"
+    ]
+  },
   "systems": [
     {
       "id": "water.cold",
@@ -1088,17 +1099,6 @@
         "heightPt": 1191
       },
       "mmPerPoint": 17.61518638854942,
-      "compass": {
-        "x": 1497.298558763236,
-        "y": 127.38972233543717,
-        "rotationDeg": 0,
-        "tips": [
-          "drieklinken, boven",
-          "tuin, rechts, woonboerderij",
-          "beneden, onder",
-          "buzzi, links, deel"
-        ]
-      },
       "items": [
         {
           "id": "box_mtsgiisf3s7",
@@ -3517,17 +3517,6 @@
         "heightPt": 1191
       },
       "mmPerPoint": 16.97350784781793,
-      "compass": {
-        "x": 1554.1866911966192,
-        "y": 131.9703634677948,
-        "rotationDeg": 0,
-        "tips": [
-          "drieklinken, boven",
-          "tuin, rechts, woonboerderij",
-          "beneden, onder",
-          "buzzi, links, deel"
-        ]
-      },
       "items": [
         {
           "id": "mk_mtskmd6k16jj",
