@@ -492,9 +492,16 @@ drawing you can read.
 ## Layout
 
 ```
-bin/warren.ts      the command line, over the same modules the app runs on
-bin/serve.ts       holds the project so the app and the command line share it
+bin/
+  warren.ts        the command line: argv → a command, over the same modules the app runs on
+  commands/        one file per family: read, catalogue, directions, generate, apply, …
+  ops.ts           what `apply` validates and does, one handler per op
+  help.ts          the manual behind `help` and `help --json`
+  project.ts       loading and saving, and routing through a running `warren serve`
+  serve.ts         holds the project so the app and the command line share it
 src/
+  app.ts           boot, keyboard shortcuts, and the calibrate/direction prompts
+  app/             file, PDF and sheet operations the toolbar and shortcuts call
   geom.ts          pure geometry (distances, ortho snap, polyline walking)
   topology.ts      what is joined to what, read from the geometry
   rooms.ts         which room a thing is in, read from where it is
@@ -504,9 +511,11 @@ src/
   units.ts         metric formatting
   model/           types, the systems catalogue, the document store + undo
   io/              pdf.js import, project file, autosave, PNG export, print, live session
-  render/          camera, background raster cache, the scene painter
-  interact/        hit testing, snapping, the pointer/tool state machine
-  ui/              toolbar, side panel, dialogs
+  render/          camera, background raster cache; scene.ts paints a frame from one file
+                   per kind of thing drawn (runs, shapes, markers, notes, labels, compass…)
+  interact/        editor.ts holds the state; pointer.ts is the pointer/tool state machine,
+                   view.ts the camera and status line, compass.ts directions and calibration
+  ui/              toolbar, dialogs, and the side panel — one file per tab in ui/panel/
 docs/systems-checklist.md   what to draw, and what people forget
 ```
 

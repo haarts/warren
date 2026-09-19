@@ -111,7 +111,9 @@ re-running leaves it alone — that is the intended way to correct a placement.
 ## The repo
 
 ```
-bin/warren.ts     the command line, over the same modules the app runs on
+bin/warren.ts     the command line: argv → one of bin/commands/*, over the modules the app runs on
+bin/ops.ts        what `apply` validates and does, one handler per op
+bin/help.ts       the manual behind `help` and `help --json` — the contract
 src/model/        the document: types, systems catalogue, ids
 src/check.ts      the rules behind `warren check` and the app's Check tab
 src/generate.ts   placement rules, and running them over rooms
