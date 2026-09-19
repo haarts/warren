@@ -48,6 +48,15 @@ function normalizeRotation(deg: number): number {
   return ((deg % 360) + 360) % 360
 }
 
+/** A canvas sized to a pdf.js viewport, with a 2D context guaranteed to exist. */
+function viewportCanvas(viewport: { width: number; height: number }): HTMLCanvasElement {
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.ceil(viewport.width))
+  canvas.height = Math.max(1, Math.ceil(viewport.height))
+  if (!canvas.getContext('2d')) throw new Error('Could not get a 2D context for PDF rendering')
+  return canvas
+}
+
 /**
  * Rasterise one page. We keep the source PDF in the project and re-render on demand rather
  * than storing a flattened image, so zooming in stays sharp and the plan can be re-exported
@@ -61,11 +70,7 @@ export async function renderPage(
   const rotation = normalizeRotation(pg.rotate + spec.rotation)
   const base = pg.getViewport({ scale: 1, rotation })
   const viewport = pg.getViewport({ scale, rotation })
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.ceil(viewport.width))
-  canvas.height = Math.max(1, Math.ceil(viewport.height))
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Could not get a 2D context for PDF rendering')
+  const canvas = viewportCanvas(viewport)
   await pg.render({ canvas, viewport, background: '#ffffff' }).promise
   return { canvas, widthPt: base.width, heightPt: base.height, scale }
 }
@@ -78,11 +83,7 @@ export async function renderThumbnail(
   const base = pg.getViewport({ scale: 1, rotation: pg.rotate })
   const scale = maxPx / Math.max(base.width, base.height)
   const viewport = pg.getViewport({ scale, rotation: pg.rotate })
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, Math.ceil(viewport.width))
-  canvas.height = Math.max(1, Math.ceil(viewport.height))
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('no 2d context')
+  const canvas = viewportCanvas(viewport)
   await pg.render({ canvas, viewport, background: '#ffffff' }).promise
   return canvas
 }

@@ -128,23 +128,15 @@ export class Store {
 
   // --- undo -------------------------------------------------------------------------
   private snapshot(): Snapshot {
-    return structuredClone({
-      name: this.project.name,
-      systems: this.project.systems,
-      sheets: this.project.sheets,
-      settings: this.project.settings,
-      activeSheetId: this.project.activeSheetId,
-      compass: this.project.compass,
-      directions: this.project.directions,
-    })
+    const { name, systems, sheets, settings, activeSheetId, compass, directions } = this.project
+    return structuredClone({ name, systems, sheets, settings, activeSheetId, compass, directions })
   }
 
   private restore(snap: Snapshot): void {
-    this.project.name = snap.name
-    this.project.systems = snap.systems
-    this.project.sheets = snap.sheets
-    this.project.settings = snap.settings
-    this.project.activeSheetId = snap.activeSheetId
+    Object.assign(this.project, {
+      name: snap.name, systems: snap.systems, sheets: snap.sheets,
+      settings: snap.settings, activeSheetId: snap.activeSheetId,
+    })
     // Absent is a state too: undoing "place the rose" has to take it away again.
     if (snap.compass) this.project.compass = snap.compass
     else delete this.project.compass
@@ -193,23 +185,18 @@ export class Store {
   canUndo(): boolean { return this.undoStack.length > 0 }
   canRedo(): boolean { return this.redoStack.length > 0 }
 
-  undo(): void {
-    const snap = this.undoStack.pop()
+  /** Undo and redo are mirrors of each other: pop one stack, park the present on the other. */
+  private swap(from: Snapshot[], to: Snapshot[]): void {
+    const snap = from.pop()
     if (!snap) return
-    this.redoStack.push(this.snapshot())
+    to.push(this.snapshot())
     this.restore(snap)
     this.dirty = true
     this.emit()
   }
 
-  redo(): void {
-    const snap = this.redoStack.pop()
-    if (!snap) return
-    this.undoStack.push(this.snapshot())
-    this.restore(snap)
-    this.dirty = true
-    this.emit()
-  }
+  undo(): void { this.swap(this.undoStack, this.redoStack) }
+  redo(): void { this.swap(this.redoStack, this.undoStack) }
 
   resetHistory(): void {
     this.undoStack.length = 0

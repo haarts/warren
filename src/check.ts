@@ -72,7 +72,9 @@ type Add = (severity: Severity, rule: string, where: string, message: string, it
 function checkSheet(
   store: Store, sheet: Sheet, systemIds: Set<string>, seenIds: Set<string>, opts: CheckOptions, add: Add,
 ): void {
-  const at = (item: Item): string => `${sheet.name}/${item.id}`
+  // Most findings are about one item on this sheet - `flag` is `add` with that boilerplate filled in.
+  const flag = (item: Item, severity: Severity, rule: string, message: string): void =>
+    add(severity, rule, `${sheet.name}/${item.id}`, message, [item.id], sheet.id)
 
   if (sheet.mmPerPoint === null && sheet.items.some((i) => i.kind === 'run')) {
     add('warning', 'uncalibrated', sheet.name,
@@ -85,23 +87,19 @@ function checkSheet(
 
   const page = sheet.pdf
   for (const item of sheet.items) {
-    if (seenIds.has(item.id)) add('error', 'duplicate-id', at(item), 'two items share this id', [item.id], sheet.id)
+    if (seenIds.has(item.id)) flag(item, 'error', 'duplicate-id', 'two items share this id')
     seenIds.add(item.id)
     if (!systemIds.has(item.systemId)) {
-      add('error', 'unknown-system', at(item),
-        `systemId "${item.systemId}" is not in this project's catalogue`, [item.id], sheet.id)
+      flag(item, 'error', 'unknown-system', `systemId "${item.systemId}" is not in this project's catalogue`)
     }
-    if (!LEVELS.includes(item.level)) {
-      add('error', 'unknown-level', at(item), `level "${item.level}" is not a level`, [item.id], sheet.id)
-    }
+    if (!LEVELS.includes(item.level)) flag(item, 'error', 'unknown-level', `level "${item.level}" is not a level`)
 
     const coords: Pt[] = coordsOf(item)
     if (item.kind === 'run' && item.points.length < 2) {
-      add('error', 'run-too-short', at(item),
-        `a run needs two points, this has ${item.points.length}`, [item.id], sheet.id)
+      flag(item, 'error', 'run-too-short', `a run needs two points, this has ${item.points.length}`)
     }
     if (coords.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y))) {
-      add('error', 'bad-coordinate', at(item), 'has a coordinate that is not a finite number', [item.id], sheet.id)
+      flag(item, 'error', 'bad-coordinate', 'has a coordinate that is not a finite number')
     }
     if (page) {
       // Coordinates are PDF points. A value far off the page usually means metres or
@@ -110,18 +108,16 @@ function checkSheet(
       const off = coords.some((p) =>
         p.x < -margin || p.y < -margin || p.x > page.widthPt + margin || p.y > page.heightPt + margin)
       if (off) {
-        add('warning', 'off-page', at(item),
-          `sits far outside the ${Math.round(page.widthPt)}×${Math.round(page.heightPt)} pt page — are these points, or did millimetres get written here?`,
-          [item.id], sheet.id)
+        flag(item, 'warning', 'off-page',
+          `sits far outside the ${Math.round(page.widthPt)}×${Math.round(page.heightPt)} pt page — are these points, or did millimetres get written here?`)
       }
     }
     if (item.kind === 'run' && !item.size && opts.strict) {
-      add('warning', 'no-size', at(item), 'no size or spec, so it cannot be ordered from', [item.id], sheet.id)
+      flag(item, 'warning', 'no-size', 'no size or spec, so it cannot be ordered from')
     }
-    if (item.kind === 'run' && store.system(item.systemId).assumeFlow && item.flow === 'none') {
-      add('warning', 'no-direction', at(item),
-        `a ${store.system(item.systemId).name} run with no direction: which way does it fall or blow?`,
-        [item.id], sheet.id)
+    const sys = store.system(item.systemId)
+    if (item.kind === 'run' && sys.assumeFlow && item.flow === 'none') {
+      flag(item, 'warning', 'no-direction', `a ${sys.name} run with no direction: which way does it fall or blow?`)
     }
   }
 

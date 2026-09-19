@@ -1,11 +1,5 @@
 /** Metric only, on purpose: this is a Dutch build. mm for sizes, m for run lengths. */
 
-export function formatMm(mm: number): string {
-  if (!isFinite(mm)) return '—'
-  if (Math.abs(mm) >= 1000) return `${(mm / 1000).toFixed(2)} m`
-  return `${mm.toFixed(0)} mm`
-}
-
 export function formatMetres(mm: number, decimals = 1): string {
   if (!isFinite(mm)) return '—'
   return `${(mm / 1000).toFixed(decimals)} m`
