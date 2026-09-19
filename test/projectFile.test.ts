@@ -197,3 +197,48 @@ test('a file with no systems falls back to the default catalogue', () => {
   assert.ok(project.systems.length > 20)
   assert.ok(project.systems.some((s) => s.id === 'reuse.dist'))
 })
+
+test('a sheet\'s named bearings (north/left/straatzijde-style directions) round trip', () => {
+  const withDirections = parseProject(JSON.stringify({
+    version: 1,
+    sheets: [{
+      id: 's', name: 'S', items: [],
+      directions: [
+        { id: 'street', bearingDeg: 370, aliases: ['north', 'noord', 'left', 'straatzijde'] },
+        // Missing bits are dropped, not fatal to the whole entry.
+        { id: 'garden', bearingDeg: 180 },
+        { id: 'no-id-so-dropped', bearingDeg: 'not a number', aliases: ['x'] },
+        { bearingDeg: 90, aliases: ['nowhere, has no id'] },
+      ],
+    }],
+  }))
+  const dirs = withDirections.sheets[0].directions
+  assert.equal(dirs?.length, 2, 'the two malformed entries are dropped, not kept as garbage')
+  assert.equal(dirs?.[0].bearingDeg, 10, 'out-of-range degrees are normalised into [0, 360)')
+  assert.deepEqual(dirs?.[0].aliases, ['north', 'noord', 'left', 'straatzijde'])
+  assert.deepEqual(dirs?.[1].aliases, [], 'no aliases key at all still parses, just empty')
+
+  // And it survives being written back out and read again.
+  const again = parseProject(serialize(withDirections))
+  assert.deepEqual(again.sheets[0].directions, dirs)
+})
+
+test('a sheet with no directions set at all has none, not an empty list nobody asked for', () => {
+  const project = parseProject(JSON.stringify({ version: 1, sheets: [{ id: 's', name: 'S', items: [] }] }))
+  assert.equal(project.sheets[0].directions, undefined)
+})
+
+test('a compass rose round trips, and a damaged one is repaired or dropped', () => {
+  const parsed = parseProject(JSON.stringify({
+    version: 1,
+    sheets: [
+      { id: 'a', name: 'A', items: [], compass: { x: 10, y: 20, rotationDeg: -30, tips: ['north, straatzijde', 'east'] } },
+      { id: 'b', name: 'B', items: [], compass: { x: 'nope', y: 1, rotationDeg: 0, tips: [] } },
+    ],
+  }))
+  const rose = parsed.sheets[0].compass
+  assert.equal(rose?.rotationDeg, 330, 'negative rotation is normalised')
+  assert.deepEqual(rose?.tips, ['north, straatzijde', 'east', '', ''], 'always exactly four tips')
+  assert.equal(parsed.sheets[1].compass, undefined, 'a rose with no position is not kept')
+  assert.deepEqual(parseProject(serialize(parsed)).sheets[0].compass, rose)
+})

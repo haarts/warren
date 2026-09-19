@@ -63,6 +63,7 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 | **Notes** | `N` drops a sticky note. Type into Properties; drag the bottom-right handle for width, the height follows the text |
 | **Measure** | `D` |
 | **Calibrate** | `K`, then click the two ends of a dimension printed on the plan and type its real length in mm |
+| **Compass rose** | Properties → Sheet → *Place compass rose*. Drag a numbered tip to turn it, drag the centre to move it, and name the four tips in Properties. Entirely optional |
 | **Pan / zoom** | **Mouse:** wheel zooms toward the cursor, middle-drag pans, middle double-click zooms to extents — AutoCAD's controls, unchanged. **Trackpad:** two fingers pan, pinch zooms. Either way space-drag pans and `F` fits |
 | **Drawing modes** | `F8` ortho, `F3` snap, `F7` grid — latched, and shown as clickable toggles in the status bar. Shift flips ortho while held, whichever way it is latched |
 | **Undo** | `Ctrl+Z` / `Ctrl+Shift+Z`, 100 deep |
@@ -89,6 +90,23 @@ a lie by a few percent.
 
 After that you get live lengths while drawing, a length per run, a scale bar, and the Takeoff
 tab.
+
+## Which way is which — optional
+
+*Properties → Sheet → Place compass rose* drops a compass rose in the middle of the view. Drag
+any of its numbered tips to turn it until it matches how the building sits (Shift for 45°
+steps), drag the centre to move it out of the way, and give each tip its names in Properties —
+comma separated, as many as people use: `north, straatzijde`. Tab walks you through all four.
+Tip 1 is the red one; its bearing is the rose's rotation, and you can also type that exactly.
+
+Every name then means that tip's bearing, wherever it is asked: the app, `warren directions
+--resolve`, or an AI placing something "toward the straatzijde". The rose is the usual way to
+orient a sheet; for the odd bearing it does not cover — a facade at an angle — *Add an off-axis
+direction…* takes two clicks on the plan and a name.
+
+Nothing requires any of this. A sheet without a rose works exactly as before; it exists so that
+whoever later needs "toward the street" does not have to re-guess it from the drawing.
+`warren directions` does the same from the command line — see `warren help directions`.
 
 ## Layers and levels — two different things
 

@@ -35,8 +35,10 @@ import { adopt } from '../generate.ts'
 import { formatMetres } from '../units.ts'
 import { hitBoxCorner, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { resolvePoint } from './snap.ts'
+import { alongBearing, bearingBetween, slugifyDirectionId, splitNames, tipBearing } from '../directions.ts'
+import { COMPASS_RADIUS_PX, type CompassPart } from '../render/scene.ts'
 
-export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate'
+export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate' | 'direction'
 
 type Drag =
   | { mode: 'none' }
@@ -47,6 +49,8 @@ type Drag =
   | { mode: 'noteWidth'; noteId: string }
   | { mode: 'rubber'; start: Pt; additive: boolean; current: Pt }
   | { mode: 'newBox'; start: Pt; current: Pt }
+  | { mode: 'compassTurn'; tip: number; moved: boolean }
+  | { mode: 'compassMove'; offset: Pt; moved: boolean }
 
 const HIT_TOL_PX = 9
 const SNAP_TOL_PX = 11
@@ -60,6 +64,8 @@ export class Editor {
 
   /** Fired when the user has picked two calibration points; UI asks for the real distance. */
   onCalibrateRequest: ((lengthPt: number) => void) | null = null
+  /** Fired when the user has picked two direction points; UI asks what to call this bearing. */
+  onDirectionRequest: ((bearingDeg: number) => void) | null = null
   onChange: (() => void) | null = null
   onStatus: ((text: string) => void) | null = null
 
@@ -72,6 +78,7 @@ export class Editor {
   private snap: { point: Pt; label: string | null } | null = null
   private hoverId: string | null = null
   private hoverLockedId: string | null = null
+  private hoverCompass: CompassPart | null = null
   private spaceHeld = false
   private shiftHeld = false
   private cursorWorld: Pt | null = null
@@ -168,11 +175,16 @@ export class Editor {
           : null,
       hoverId: this.hoverId,
       hoverLockedId: this.hoverLockedId,
+      compass: this.drag.mode === 'compassTurn' ? { part: 'tip', tip: this.drag.tip }
+        : this.drag.mode === 'compassMove' ? { part: 'hub' }
+        : this.hoverCompass,
     }
   }
 
   private cursorFor(): string {
     if (this.spaceHeld || this.drag.mode === 'pan') return 'grab'
+    const rose = this.drag.mode === 'compassTurn' || this.drag.mode === 'compassMove' ? this.overlay().compass : this.hoverCompass
+    if (rose) return rose.part === 'tip' ? 'grab' : 'move'
     if (this.tool === 'select') return this.hoverId ? 'move' : 'default'
     return 'crosshair'
   }
@@ -221,6 +233,14 @@ export class Editor {
     }
     if (this.tool === 'run' && this.draft.length) parts.push('Enter/double-click finishes · Backspace removes last point · Esc cancels')
     if (this.tool === 'calibrate') parts.push(this.measurePts.length === 0 ? 'Click the first end of a known dimension' : 'Click the second end')
+    const rose = this.store.sheet.compass
+    if (rose && (this.drag.mode === 'compassTurn' || this.hoverCompass?.part === 'tip')) {
+      const tip = this.drag.mode === 'compassTurn' ? this.drag.tip : (this.hoverCompass as { tip: number }).tip
+      parts.push(`compass rose tip ${tip + 1} at ${Math.round(tipBearing(rose, tip))}° — drag to turn the rose, Shift for 45° steps`)
+    } else if (rose && (this.drag.mode === 'compassMove' || this.hoverCompass?.part === 'hub')) {
+      parts.push('compass rose — drag the centre to move it; name the tips in Properties')
+    }
+    if (this.tool === 'direction') parts.push(this.measurePts.length === 0 ? 'Click a point, then click again toward the direction you mean' : 'Click again, in the direction this points to')
     this.onStatus(parts.join('   ·   '))
   }
 
@@ -289,7 +309,8 @@ export class Editor {
       case 'marker': this.placeMarker(this.resolve(world)); break
       case 'note': this.placeNote(this.resolve(world)); break
       case 'measure':
-      case 'calibrate': this.measurePointerDown(world); break
+      case 'calibrate':
+      case 'direction': this.measurePointerDown(world); break
     }
     this.requestRender()
   }
@@ -305,6 +326,18 @@ export class Editor {
       store.activeVertex = vertex
       store.begin()
       this.drag = { mode: 'vertex', ref: vertex }
+      return
+    }
+
+    // The rose is sheet furniture, not an item: no selecting it first, its tips and hub are
+    // always live in the select tool.
+    const rose = this.hitCompass(world)
+    if (rose && store.sheet.compass) {
+      store.begin()
+      const c = store.sheet.compass
+      this.drag = rose.part === 'tip'
+        ? { mode: 'compassTurn', tip: rose.tip, moved: false }
+        : { mode: 'compassMove', offset: { x: world.x - c.x, y: world.y - c.y }, moved: false }
       return
     }
 
@@ -381,6 +414,13 @@ export class Editor {
       }
       this.onCalibrateRequest?.(lengthPt)
     }
+    if (this.measurePts.length === 2 && this.tool === 'direction') {
+      if (dist(this.measurePts[0], this.measurePts[1]) < 1e-6) {
+        this.measurePts = []
+        return
+      }
+      this.onDirectionRequest?.(bearingBetween(this.measurePts[0], this.measurePts[1]))
+    }
   }
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -456,6 +496,29 @@ export class Editor {
         if (note && note.kind === 'note') note.w = Math.max(NOTE_MIN_WIDTH, world.x - note.x)
         break
       }
+      case 'compassTurn': {
+        const rose = this.store.sheet.compass
+        if (!rose) break
+        const centre = { x: rose.x, y: rose.y }
+        // Anchored at the centre, so Shift locks the turn to 45° steps like any other line.
+        // Snapping to items would drag the tip onto the nearest pipe, which means nothing here.
+        const p = this.resolve(world, { anchor: centre, itemSnap: false })
+        if (p.x === centre.x && p.y === centre.y) break
+        const next = (((bearingBetween(centre, p) - this.drag.tip * 90) % 360) + 360) % 360
+        if (Math.abs(next - rose.rotationDeg) > 1e-9) {
+          rose.rotationDeg = next
+          this.drag.moved = true
+        }
+        break
+      }
+      case 'compassMove': {
+        const rose = this.store.sheet.compass
+        if (!rose) break
+        rose.x = world.x - this.drag.offset.x
+        rose.y = world.y - this.drag.offset.y
+        this.drag.moved = true
+        break
+      }
       case 'rubber': {
         this.drag.current = world
         break
@@ -467,12 +530,13 @@ export class Editor {
       case 'none': {
         if (this.tool === 'run' && this.draft.length) {
           this.draftCursor = this.resolve(world, { anchor: this.draft[this.draft.length - 1] })
-        } else if ((this.tool === 'measure' || this.tool === 'calibrate') && this.measurePts.length === 1) {
+        } else if ((this.tool === 'measure' || this.tool === 'calibrate' || this.tool === 'direction') && this.measurePts.length === 1) {
           this.cursorWorld = this.resolve(world, { anchor: this.measurePts[0] })
         } else if (this.tool === 'select') {
-          const hit = hitTest(this.store, world, this.tol(HIT_TOL_PX))
+          this.hoverCompass = this.hitCompass(world)
+          const hit = this.hoverCompass ? null : hitTest(this.store, world, this.tol(HIT_TOL_PX))
           this.hoverId = hit?.id ?? null
-          this.hoverLockedId = hit ? null : hitTestLocked(this.store, world, this.tol(HIT_TOL_PX))?.id ?? null
+          this.hoverLockedId = hit || this.hoverCompass ? null : hitTestLocked(this.store, world, this.tol(HIT_TOL_PX))?.id ?? null
           this.snap = null
         } else {
           this.resolve(world)
@@ -488,6 +552,9 @@ export class Editor {
     const store = this.store
     switch (this.drag.mode) {
       case 'move':
+      case 'compassTurn':
+      case 'compassMove':
+        // A click that did not move anything leaves no undo step behind.
         if (this.drag.moved) store.commit()
         else store.cancel()
         break
@@ -525,6 +592,7 @@ export class Editor {
       this.snap = null
       this.hoverId = null
       this.hoverLockedId = null
+      this.hoverCompass = null
       this.requestRender()
     }
   }
@@ -685,7 +753,7 @@ export class Editor {
     if (this.tool === 'run' && tool !== 'run') this.cancelDraft()
     this.hoverId = null
     this.hoverLockedId = null
-    if (tool !== 'measure' && tool !== 'calibrate') this.measurePts = []
+    if (tool !== 'measure' && tool !== 'calibrate' && tool !== 'direction') this.measurePts = []
     this.tool = tool
     this.requestRender()
     this.onChange?.()
@@ -707,6 +775,115 @@ export class Editor {
   cancelCalibration(): void {
     this.measurePts = []
     this.requestRender()
+  }
+
+  /**
+   * `names` is whatever the person typed — comma-separated, e.g. "street, north, noord,
+   * straatzijde". The first one becomes the stable id; all of them become aliases, so typing
+   * the id back later still resolves. Re-using a name updates that direction's bearing instead
+   * of adding a duplicate, so clicking again to fix a mistake just works.
+   */
+  applyDirection(bearingDeg: number, names: string): void {
+    const aliases = splitNames(names)
+    if (aliases.length === 0) { this.measurePts = []; return }
+    const id = slugifyDirectionId(aliases[0])
+    this.store.mutate(() => {
+      const list = this.store.sheet.directions ?? (this.store.sheet.directions = [])
+      const existing = list.find((d) => d.id === id)
+      if (existing) { existing.bearingDeg = bearingDeg; existing.aliases = aliases }
+      else list.push({ id, bearingDeg, aliases })
+    })
+    this.measurePts = []
+    this.flash(`Direction "${id}" set: ${aliases.join(', ')}`)
+    this.requestRender()
+    this.onChange?.()
+  }
+
+  cancelDirection(): void {
+    this.measurePts = []
+    this.requestRender()
+  }
+
+  // --- compass rose ----------------------------------------------------------------------
+
+  /**
+   * Drops a compass rose in the middle of whatever is on screen, pointing straight up. A sheet
+   * has at most one: asking again just brings the existing one into view.
+   */
+  placeCompass(): void {
+    const existing = this.store.sheet.compass
+    if (existing) {
+      this.cam.x = existing.x - this.cssWidth / 2 / this.cam.zoom
+      this.cam.y = existing.y - this.cssHeight / 2 / this.cam.zoom
+      this.flash('This sheet already has a compass rose — it is in the middle of the view now')
+      this.requestRender()
+      return
+    }
+    const centre = this.cam.toWorld(this.cssWidth / 2, this.cssHeight / 2)
+    this.store.mutate(() => {
+      this.store.sheet.compass = { x: centre.x, y: centre.y, rotationDeg: 0, tips: ['', '', '', ''] }
+    })
+    this.flash('Compass rose placed — drag a tip to turn it, drag the centre to move it, name the tips in Properties')
+    this.requestRender()
+    this.onChange?.()
+  }
+
+  /** What tip `tip` (0-3) is called, comma-separated as typed. */
+  nameCompassTip(tip: number, names: string): void {
+    const rose = this.store.sheet.compass
+    if (!rose || tip < 0 || tip > 3) return
+    const text = splitNames(names).join(', ')
+    if (rose.tips[tip] === text) return
+    this.store.mutate(() => { rose.tips[tip] = text })
+    this.requestRender()
+    this.onChange?.()
+  }
+
+  /** Types an exact rotation instead of dragging one. */
+  turnCompass(rotationDeg: number): void {
+    const rose = this.store.sheet.compass
+    if (!rose || !isFinite(rotationDeg)) return
+    const next = ((rotationDeg % 360) + 360) % 360
+    if (next === rose.rotationDeg) return
+    this.store.mutate(() => { rose.rotationDeg = next })
+    this.requestRender()
+    this.onChange?.()
+  }
+
+  removeCompass(): void {
+    if (!this.store.sheet.compass) return
+    this.store.mutate(() => { delete this.store.sheet.compass })
+    this.hoverCompass = null
+    this.requestRender()
+    this.onChange?.()
+  }
+
+  /**
+   * The rose is drawn at a fixed size on screen, like a marker, so what counts as "on a tip"
+   * is measured in pixels and converted - otherwise it would be ungrabbable when zoomed out.
+   */
+  private hitCompass(world: Pt): CompassPart | null {
+    const rose = this.store.sheet.compass
+    if (!rose) return null
+    const centre = { x: rose.x, y: rose.y }
+    const tol = this.tol(HIT_TOL_PX)
+    const radius = COMPASS_RADIUS_PX / this.cam.zoom
+    for (let tip = 0; tip < 4; tip++) {
+      if (dist(alongBearing(centre, tipBearing(rose, tip), radius), world) <= tol * 1.3) return { part: 'tip', tip }
+    }
+    if (dist(centre, world) <= tol * 1.3) return { part: 'hub' }
+    return null
+  }
+
+  removeDirection(id: string): void {
+    this.store.mutate(() => {
+      const list = this.store.sheet.directions
+      if (!list) return
+      this.store.sheet.directions = list.filter((d) => d.id !== id)
+      if (this.store.sheet.directions.length === 0) delete this.store.sheet.directions
+    })
+    this.requestRender()
+    this.onChange?.()
   }
 
   /** Length of the current measurement, in mm, or null. */

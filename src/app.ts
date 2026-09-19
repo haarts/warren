@@ -13,7 +13,7 @@ import {
 import { emptyProject, emptySheet, Store } from './model/doc.ts'
 import { newId } from './model/ids.ts'
 import type { Project, Sheet } from './model/types.ts'
-import { alertDialog, askNumber, confirmDialog } from './ui/modal.ts'
+import { alertDialog, askNumber, askText, confirmDialog } from './ui/modal.ts'
 import { openPdfImportDialog } from './ui/pdfImport.ts'
 import { buildPanel } from './ui/panel.ts'
 import { buildToolbar } from './ui/toolbar.ts'
@@ -43,6 +43,7 @@ export class App {
       this.selectionText.textContent = this.editor.selectionSummary()
     }
     this.editor.onCalibrateRequest = () => void this.promptCalibration()
+    this.editor.onDirectionRequest = (bearingDeg) => void this.promptDirection(bearingDeg)
     this.store.subscribe(() => this.refresh())
   }
 
@@ -536,6 +537,24 @@ export class App {
     this.editor.applyCalibration(mm)
   }
 
+  // --- direction -----------------------------------------------------------------------------
+
+  private async promptDirection(bearingDeg: number): Promise<void> {
+    const names = await askText({
+      title: 'Name this direction',
+      label: 'What do you call it?',
+      placeholder: 'street, north, noord, straatzijde',
+      hint: 'Comma-separated — as many names as people actually use for it. Reusing a name ' +
+        'later redefines that direction instead of adding a duplicate. This is entirely ' +
+        'optional; nothing needs one to work.',
+    })
+    if (names === null) {
+      this.editor.cancelDirection()
+      return
+    }
+    this.editor.applyDirection(bearingDeg, names)
+  }
+
   // --- keyboard ------------------------------------------------------------------------------
 
   private attachKeys(): void {
@@ -582,10 +601,12 @@ export class App {
         case 'n': case 'N': this.editor.setTool('note'); return
         case 'd': case 'D': this.editor.setTool('measure'); return
         case 'k': case 'K': this.editor.setTool('calibrate'); return
+        case 'b': case 'B': this.editor.setTool('direction'); return
         case 'Escape':
           if (this.editor.isDrafting) this.editor.cancelDraft()
           else {
             this.editor.cancelCalibration()
+            this.editor.cancelDirection()
             this.store.selection.clear()
             this.store.activeVertex = null
             this.store.touch(false)

@@ -18,7 +18,9 @@ const TOOLS: { id: ToolId; label: string; key: string; title: string }[] = [
   { id: 'marker', label: 'Marker', key: 'M', title: 'Point marker: riser, drain, penetration (M)' },
   { id: 'note', label: 'Note', key: 'N', title: 'Sticky note, tied to the selected system so it hides with that layer (N)' },
   { id: 'measure', label: 'Measure', key: 'D', title: 'Measure a distance (D)' },
-  { id: 'calibrate', label: 'Calibrate', key: 'K', title: 'Set the sheet scale from a known dimension (K)' },
+  // Calibrate and Direction live in the Properties tab (Sheet section) instead of here: both
+  // are set-once-and-forget, not tools reached for repeatedly, so they do not earn a permanent
+  // slot in the bar everything else lives in. `K` and `B` still work as shortcuts.
 ]
 
 export function buildToolbar(app: App, host: HTMLElement): void {

@@ -88,6 +88,50 @@ export function askNumber(opts: {
   })
 }
 
+export function askText(opts: {
+  title: string
+  label: string
+  placeholder?: string
+  hint?: string
+}): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (value: string | null, close: () => void): void => {
+      if (settled) return
+      settled = true
+      close()
+      resolve(value)
+    }
+    openModal((close) => {
+      const input = el('input', {
+        type: 'text',
+        placeholder: opts.placeholder ?? '',
+        style: { width: '100%' },
+      }) as HTMLInputElement
+      const submit = (): void => {
+        const v = input.value.trim()
+        finish(v || null, close)
+      }
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submit() }
+      })
+      setTimeout(() => input.focus(), 0)
+      return {
+        title: opts.title,
+        width: '420px',
+        body: el('div', {},
+          el('div', { class: 'field' }, el('label', {}, opts.label), input),
+          opts.hint ? el('div', { class: 'hint' }, opts.hint) : null,
+        ),
+        footer: el('div', { style: { display: 'flex', gap: '8px' } },
+          el('button', { onclick: () => finish(null, close) }, 'Cancel'),
+          el('button', { class: 'primary', onclick: submit }, 'OK'),
+        ),
+      }
+    })
+  })
+}
+
 export function confirmDialog(title: string, message: string, confirmLabel = 'OK'): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false

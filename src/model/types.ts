@@ -290,12 +290,47 @@ export interface SheetPdf {
   heightPt: number
 }
 
+/**
+ * A physical direction, named however the people (and AIs) working on this plan actually say
+ * it — a compass word, "left", "straatzijde" — all pointing at the same one bearing. Warren
+ * does not know what any of these words mean; it only ever compares the bearing to geometry.
+ */
+export interface Direction {
+  /** Stable slug, used by anything that wants to refer back to this exact direction. */
+  id: string
+  /** Degrees clockwise from "up" in this sheet's own coordinates (0 = up, 90 = right). Not
+   *  true compass north unless the plan happens to be drawn north-up - it is whatever the
+   *  aliases below say it is. */
+  bearingDeg: number
+  /** Case-insensitive labels this direction answers to - as many as people actually use. */
+  aliases: string[]
+}
+
+/**
+ * A compass rose laid over the plan: four tips a quarter-turn apart, turned to match however
+ * the building sits. Each tip carries the names people use for that way. The directions it
+ * implies are derived from it (see directions.ts), never copied into `Sheet.directions`.
+ */
+export interface CompassRose {
+  /** Centre, in sheet points. Only for the eye - no bearing depends on where it stands. */
+  x: number
+  y: number
+  /** Bearing of tip 1, clockwise from up. Tips 2, 3 and 4 follow at +90° each. */
+  rotationDeg: number
+  /** What each tip is called, comma-separated as typed. An empty tip names nothing. */
+  tips: [string, string, string, string]
+}
+
 export interface Sheet {
   id: string
   name: string
   pdf: SheetPdf | null
   /** Real-world millimetres per PDF point. null until calibrated. */
   mmPerPoint: number | null
+  /** Optional. The usual way to orient a sheet: one rose, four named tips. */
+  compass?: CompassRose
+  /** Optional. Named bearings a compass rose does not cover - an off-axis facade, say. */
+  directions?: Direction[]
   items: Item[]
 }
 

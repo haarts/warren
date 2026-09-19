@@ -12,6 +12,7 @@ import { buildGraph, connectionsOf, networkOf, type Contact } from '../topology.
 import { adopt, generatedBy } from '../generate.ts'
 import { symbolsFor } from '../model/systems.ts'
 import { formatMetres } from '../units.ts'
+import { tipBearing } from '../directions.ts'
 import { clear, el, field, swatch } from './dom.ts'
 
 type TabId = 'properties' | 'layers' | 'takeoff' | 'check'
@@ -20,6 +21,11 @@ let takeoffScope: 'sheet' | 'project' = 'sheet'
 
 export function buildPanel(app: App, host: HTMLElement): void {
   const scrollTop = host.querySelector('.tab-body')?.scrollTop ?? 0
+  // The panel is rebuilt from scratch on every change. An input that carries a focus key keeps
+  // the focus (and the caret) across that, so filling in a row of fields is not a fight.
+  const active = document.activeElement
+  const focusKey = active instanceof HTMLInputElement && host.contains(active) ? active.dataset.focusKey : undefined
+  const caret = focusKey && active instanceof HTMLInputElement ? [active.selectionStart, active.selectionEnd] as const : null
   clear(host)
 
   const tabs = el('div', { class: 'tabs' })
@@ -45,6 +51,13 @@ export function buildPanel(app: App, host: HTMLElement): void {
   else buildCheck(app, body)
 
   body.scrollTop = scrollTop
+  if (focusKey) {
+    const again = body.querySelector<HTMLInputElement>(`input[data-focus-key="${focusKey}"]`)
+    if (again) {
+      again.focus()
+      if (caret && again.type === 'text') again.setSelectionRange(caret[0], caret[1])
+    }
+  }
 }
 
 // -------------------------------------------------------------------------- properties
@@ -55,13 +68,16 @@ function buildProperties(app: App, body: HTMLElement): void {
 
   body.appendChild(el('div', { class: 'section-title' }, 'Sheet'))
   const sheet = store.sheet
-  body.appendChild(field('Scale', sheet.mmPerPoint
-    ? el('div', {}, `1 pt = ${sheet.mmPerPoint.toFixed(3)} mm`)
-    : el('button', { onclick: () => editor.setTool('calibrate') }, 'Calibrate this sheet…')))
+  body.appendChild(field('Scale', el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+    sheet.mmPerPoint ? el('span', {}, `1 pt = ${sheet.mmPerPoint.toFixed(3)} mm`) : null,
+    el('button', { onclick: () => editor.setTool('calibrate') }, sheet.mmPerPoint ? 'Recalibrate…' : 'Calibrate this sheet…'),
+  )))
   if (!sheet.mmPerPoint) {
     body.appendChild(el('div', { class: 'hint warn' },
       'Uncalibrated: lengths and the takeoff stay empty. Click Calibrate, then click the two ends of a dimension printed on the plan.'))
   }
+
+  buildOrientation(app, body)
 
   const lockedOnSheet = store.items().filter((i) => i.locked)
   if (lockedOnSheet.length) {
@@ -476,6 +492,63 @@ function sizeInput(
   const datalist = el('datalist', { id: listId })
   for (const size of sizes) datalist.appendChild(el('option', { value: size }))
   return el('div', { style: { display: 'contents' } }, input, datalist)
+}
+
+/**
+ * Which way is which on this sheet: the compass rose and its four tip names, plus any one-off
+ * bearing the rose does not cover. All of it optional - nothing else depends on it.
+ */
+function buildOrientation(app: App, body: HTMLElement): void {
+  const { store, editor } = app
+  const sheet = store.sheet
+  const rose = sheet.compass
+
+  if (!rose) {
+    body.appendChild(field('Compass',
+      el('button', { onclick: () => editor.placeCompass() }, 'Place compass rose'),
+      'Optional. Drops a rose on the plan: drag a tip to turn it, then name each tip here.'))
+  } else {
+    const turned = el('input', {
+      type: 'number', step: '0.5', value: String(Number(rose.rotationDeg.toFixed(1))), style: { width: '70px' },
+      title: 'Where tip 1 points, in degrees clockwise from straight up. Or drag tip 1 on the plan.',
+      dataset: { focusKey: 'compass-rotation' },
+    }) as HTMLInputElement
+    turned.addEventListener('change', () => editor.turnCompass(Number(turned.value)))
+    body.appendChild(field('Compass', el('div', { style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' } },
+      turned, '°',
+      el('button', { title: 'Bring the compass rose into view', onclick: () => editor.placeCompass() }, 'Show'),
+      el('button', { title: 'Take the compass rose off this sheet (undo brings it back)', onclick: () => editor.removeCompass() }, 'Remove'),
+    )))
+    for (let tip = 0; tip < 4; tip++) {
+      const bearing = tipBearing(rose, tip)
+      const input = el('input', {
+        type: 'text',
+        value: rose.tips[tip],
+        placeholder: tip === 0 ? 'e.g. north, straatzijde' : 'comma-separated names',
+        dataset: { focusKey: `compass-tip-${tip}` },
+      }) as HTMLInputElement
+      // Committed after the focus has moved on, so Tab lands in the next tip rather than
+      // being lost to the rebuild this change sets off.
+      input.addEventListener('change', () => { const v = input.value; setTimeout(() => editor.nameCompassTip(tip, v), 0) })
+      body.appendChild(field(`Tip ${tip + 1} · ${Math.round(bearing)}°`, input))
+    }
+  }
+
+  const others = sheet.directions ?? []
+  body.appendChild(field(rose ? 'Other directions' : 'Directions', el('div', {},
+    ...others.map((d) => el('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' } },
+      el('span', {}, `${d.aliases.join(', ') || d.id} · ${Math.round(d.bearingDeg)}°`),
+      el('button', {
+        title: `Remove "${d.id}"`,
+        style: { padding: '0 6px', lineHeight: '1.4' },
+        onclick: () => editor.removeDirection(d.id),
+      }, '✕'),
+    )),
+    el('button', {
+      title: 'A bearing the compass rose does not cover: click two points on the plan, then name it',
+      onclick: () => editor.setTool('direction'),
+    }, others.length ? 'Add another…' : 'Add an off-axis direction…'),
+  )))
 }
 
 function textInput(value: string, onChange: (v: string) => void, placeholder?: string): HTMLElement {

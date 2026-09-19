@@ -5,8 +5,8 @@ import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
   ROOM_USES,
-  type DoorItem, type Item, type Level, type MarkerItem, type MarkerSymbol, type Project, type RoomItem,
-  type RoomUse, type RunItem, type Sheet, type System,
+  type CompassRose, type Direction, type DoorItem, type Item, type Level, type MarkerItem, type MarkerSymbol, type Project,
+  type RoomItem, type RoomUse, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
 export const FILE_EXTENSION = '.warren.json'
@@ -200,6 +200,33 @@ function asSystem(raw: unknown, index: number): System | null {
   return system
 }
 
+function asDirection(raw: unknown): Direction | null {
+  if (!isObj(raw)) return null
+  const id = str(raw.id)
+  if (!id) return null
+  const bearingDeg = num(raw.bearingDeg, NaN)
+  if (!isFinite(bearingDeg)) return null
+  const aliases = Array.isArray(raw.aliases)
+    ? raw.aliases.filter((v): v is string => typeof v === 'string' && v.trim() !== '')
+    : []
+  return { id, bearingDeg: ((bearingDeg % 360) + 360) % 360, aliases }
+}
+
+function asCompass(raw: unknown): CompassRose | undefined {
+  if (!isObj(raw)) return undefined
+  const x = num(raw.x, NaN)
+  const y = num(raw.y, NaN)
+  if (!isFinite(x) || !isFinite(y)) return undefined
+  const tips = Array.isArray(raw.tips) ? raw.tips : []
+  return {
+    x,
+    y,
+    rotationDeg: ((num(raw.rotationDeg, 0) % 360) + 360) % 360,
+    // Always exactly four, whatever the file held - a rose with three tips is not a rose.
+    tips: [0, 1, 2, 3].map((i) => str(tips[i])) as CompassRose['tips'],
+  }
+}
+
 function asSheet(raw: unknown, index: number): Sheet {
   const fallbackId = `sh_recovered_${index}`
   if (!isObj(raw)) return { id: fallbackId, name: `Sheet ${index + 1}`, pdf: null, mmPerPoint: null, items: [] }
@@ -214,11 +241,17 @@ function asSheet(raw: unknown, index: number): Sheet {
       heightPt: num(raw.pdf.heightPt, 842),
     }
   }
+  const directions = Array.isArray(raw.directions)
+    ? (raw.directions.map(asDirection).filter(Boolean) as Direction[])
+    : undefined
+  const compass = asCompass(raw.compass)
   return {
     id: str(raw.id, fallbackId),
     name: str(raw.name, `Sheet ${index + 1}`),
     pdf,
     mmPerPoint: typeof raw.mmPerPoint === 'number' && raw.mmPerPoint > 0 ? raw.mmPerPoint : null,
+    ...(compass ? { compass } : {}),
+    ...(directions?.length ? { directions } : {}),
     items: Array.isArray(raw.items) ? (raw.items.map(asItem).filter(Boolean) as Item[]) : [],
   }
 }
