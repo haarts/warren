@@ -1,5 +1,9 @@
 import type { App } from '../app.ts'
-import type { ToolId } from '../interact/controller.ts'
+import type { ToolId } from '../interact/editor.ts'
+import { zoomBy, zoomToFit } from '../interact/view.ts'
+import { exportBundle, newProject, openProject, renameProject, save, saveAs } from '../app/fileOps.ts'
+import { detachPdf, exportPlanPdf, importPdf, rotateSheet } from '../app/pdfOps.ts'
+import { deleteSheet, renameSheet } from '../app/sheetOps.ts'
 import {
   CATEGORY_LABELS, CATEGORIES, LEVELS, LEVEL_LABELS, MARKER_LABELS,
   type Level, type MarkerSymbol, type RoomItem,
@@ -79,9 +83,9 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   host.appendChild(el('button', { class: 'icon', title: 'Redo (Ctrl+Shift+Z)', disabled: !store.canRedo(), onclick: () => store.redo() }, '↷'))
 
   host.appendChild(el('div', { class: 'sep' }))
-  host.appendChild(el('button', { class: 'icon', title: 'Zoom out (-)', onclick: () => editor.zoomBy(0.8) }, '−'))
-  host.appendChild(el('button', { class: 'icon', title: 'Zoom in (+)', onclick: () => editor.zoomBy(1.25) }, '+'))
-  host.appendChild(el('button', { title: 'Fit the sheet (F)', onclick: () => editor.zoomToFit() }, 'Fit'))
+  host.appendChild(el('button', { class: 'icon', title: 'Zoom out (-)', onclick: () => zoomBy(editor, 0.8) }, '−'))
+  host.appendChild(el('button', { class: 'icon', title: 'Zoom in (+)', onclick: () => zoomBy(editor, 1.25) }, '+'))
+  host.appendChild(el('button', { title: 'Fit the sheet (F)', onclick: () => zoomToFit(editor) }, 'Fit'))
 
   const opacity = el('input', {
     type: 'range', min: '0', max: '1', step: '0.05',
@@ -158,7 +162,7 @@ function brand(app: App): HTMLElement {
     const commit = (): void => {
       if (!renamingProject) return
       renamingProject = false
-      app.renameProject(input.value)
+      renameProject(app, input.value)
     }
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); commit() }
@@ -214,20 +218,20 @@ function fileMenu(app: App): HTMLElement {
     const sheet = app.store.sheet
     const note = saveCapabilityNote()
     menu = el('div', { class: 'menu' },
-      entry('New project', '', () => void app.newProject()),
-      entry('Open…', 'Ctrl+O', () => void app.openProject()),
-      entry('Save', 'Ctrl+S', () => void app.save()),
-      entry('Save as…', 'Ctrl+Shift+S', () => void app.saveAs()),
+      entry('New project', '', () => void newProject(app)),
+      entry('Open…', 'Ctrl+O', () => void openProject(app)),
+      entry('Save', 'Ctrl+S', () => void save(app)),
+      entry('Save as…', 'Ctrl+Shift+S', () => void saveAs(app)),
       el('hr'),
       sheet.pdf ? entry('Save plan PDF beside it', '', () => {
-        if (!app.exportPlanPdf()) alertDialog('Nothing to write', 'This browser does not have the plan PDF yet.')
+        if (!exportPlanPdf(app)) alertDialog('Nothing to write', 'This browser does not have the plan PDF yet.')
       }) : null,
-      entry('Export self-contained bundle…', '', () => void app.exportBundle()),
+      entry('Export self-contained bundle…', '', () => void exportBundle(app)),
       el('hr'),
-      entry('Import PDF page → this sheet', '', () => void app.importPdf('current')),
-      entry('Import PDF page → new sheet', '', () => void app.importPdf('new')),
-      sheet.pdf ? entry('Rotate plan 90°', '', () => app.rotateSheet(90)) : null,
-      sheet.pdf ? entry('Remove plan from sheet', '', () => app.detachPdf()) : null,
+      entry('Import PDF page → this sheet', '', () => void importPdf(app, 'current')),
+      entry('Import PDF page → new sheet', '', () => void importPdf(app, 'new')),
+      sheet.pdf ? entry('Rotate plan 90°', '', () => rotateSheet(app, 90)) : null,
+      sheet.pdf ? entry('Remove plan from sheet', '', () => detachPdf(app)) : null,
       el('hr'),
       entry('Generate from rooms…', '', () => openGenerateDialog(app)),
       el('hr'),
@@ -235,8 +239,8 @@ function fileMenu(app: App): HTMLElement {
       entry('Print / PDF…', '', () => openPrintDialog(app)),
       el('hr'),
       entry('Rename project…', '', () => startProjectRename(app)),
-      entry('Rename sheet…', '', () => void app.renameSheet(app.store.sheet)),
-      entry('Delete sheet…', '', () => void app.deleteSheet(app.store.sheet)),
+      entry('Rename sheet…', '', () => void renameSheet(app, app.store.sheet)),
+      entry('Delete sheet…', '', () => void deleteSheet(app, app.store.sheet)),
       note ? el('hr') : null,
       note ? el('div', { class: 'hint', style: { padding: '2px 8px 4px', maxWidth: '250px' } }, note) : null,
     )

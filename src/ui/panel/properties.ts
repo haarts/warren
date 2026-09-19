@@ -1,5 +1,5 @@
 import type { App } from '../../app.ts'
-import { polygonArea } from '../../geom.ts'
+import { polygonArea, polylineLength } from '../../geom.ts'
 import {
   CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS, ROOM_USES, ROOM_USE_LABELS,
   type Item, type Level, type MarkerSymbol, type RoomUse,
@@ -9,6 +9,7 @@ import { adopt, generatedBy } from '../../generate.ts'
 import { symbolsFor } from '../../model/systems.ts'
 import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
+import { nameCompassTip, placeCompass, removeCompass, removeDirection, turnCompass } from '../../interact/compass.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -182,8 +183,7 @@ export function buildProperties(app: App, body: HTMLElement): void {
 
       const mmPerPoint = sheet.mmPerPoint
       if (mmPerPoint) {
-        const length = first.points.reduce((acc, p, i) => i === 0 ? 0 : acc + Math.hypot(p.x - first.points[i - 1].x, p.y - first.points[i - 1].y), 0)
-        body.appendChild(field('Plan length', el('div', {}, formatMetres(length * mmPerPoint, 2))))
+        body.appendChild(field('Plan length', el('div', {}, formatMetres(polylineLength(first.points) * mmPerPoint, 2))))
       }
       body.appendChild(field('Corners', el('div', {}, String(first.points.length))))
 
@@ -378,7 +378,7 @@ function buildOrientation(app: App, body: HTMLElement): void {
 
   if (!rose) {
     body.appendChild(field('Compass',
-      el('button', { onclick: () => editor.placeCompass() }, 'Place compass rose'),
+      el('button', { onclick: () => placeCompass(editor) }, 'Place compass rose'),
       'Optional. Drops a rose on the plan — one for all sheets. Drag a tip to turn it, then name each tip here.'))
   } else {
     const turned = el('input', {
@@ -386,11 +386,11 @@ function buildOrientation(app: App, body: HTMLElement): void {
       title: 'Where tip 1 points, in degrees clockwise from straight up. Or drag tip 1 on the plan.',
       dataset: { focusKey: 'compass-rotation' },
     }) as HTMLInputElement
-    turned.addEventListener('change', () => editor.turnCompass(Number(turned.value)))
+    turned.addEventListener('change', () => turnCompass(editor, Number(turned.value)))
     body.appendChild(field('Compass', el('div', { style: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' } },
       turned, '°',
-      el('button', { title: 'Bring the compass rose into view', onclick: () => editor.placeCompass() }, 'Show'),
-      el('button', { title: 'Take the compass rose off this sheet (undo brings it back)', onclick: () => editor.removeCompass() }, 'Remove'),
+      el('button', { title: 'Bring the compass rose into view', onclick: () => placeCompass(editor) }, 'Show'),
+      el('button', { title: 'Take the compass rose off this sheet (undo brings it back)', onclick: () => removeCompass(editor) }, 'Remove'),
     )))
     for (let tip = 0; tip < 4; tip++) {
       const bearing = tipBearing(rose, tip)
@@ -402,7 +402,7 @@ function buildOrientation(app: App, body: HTMLElement): void {
       }) as HTMLInputElement
       // Committed after the focus has moved on, so Tab lands in the next tip rather than
       // being lost to the rebuild this change sets off.
-      input.addEventListener('change', () => { const v = input.value; setTimeout(() => editor.nameCompassTip(tip, v), 0) })
+      input.addEventListener('change', () => { const v = input.value; setTimeout(() => nameCompassTip(editor, tip, v), 0) })
       body.appendChild(field(`Tip ${tip + 1} · ${Math.round(bearing)}°`, input))
     }
   }
@@ -414,7 +414,7 @@ function buildOrientation(app: App, body: HTMLElement): void {
       el('button', {
         title: `Remove "${d.id}"`,
         style: { padding: '0 6px', lineHeight: '1.4' },
-        onclick: () => editor.removeDirection(d.id),
+        onclick: () => removeDirection(editor, d.id),
       }, '✕'),
     )),
     el('button', {

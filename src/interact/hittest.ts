@@ -4,6 +4,9 @@ import { pointsOf, type Item } from '../model/types.ts'
 import { noteHeight } from '../render/notes.ts'
 import { boxCorners, itemBounds } from '../render/bounds.ts'
 
+/** Screen pixels within which a click or hover counts as "on" a vertex, handle or item. */
+export const HIT_TOL_PX = 9
+
 /** Closest point to `p` on the closed ring through `points` (a room, or a box/note's corners). */
 function closestOnRing(p: Pt, points: Pt[]): { point: Pt; dist: number } {
   let best: { point: Pt; dist: number } | null = null
