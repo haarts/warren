@@ -40,6 +40,54 @@ export function openModal(build: (close: () => void) => { title: string; body: N
   return { close, element: dialog }
 }
 
+/** Cancel / primary-action footer, the shape every dialog in this app ends with. */
+export function dialogFooter(onCancel: () => void, primaryLabel: string, onPrimary: () => void, disabled = false): HTMLElement {
+  return el('div', { style: { display: 'flex', gap: '8px' } },
+    el('button', { onclick: onCancel }, 'Cancel'),
+    el('button', { class: 'primary', disabled, onclick: onPrimary }, primaryLabel),
+  )
+}
+
+/**
+ * One text/number field, Enter to submit. `askNumber` and `askText` are thin wrappers that
+ * just say how to read and validate the field's value.
+ */
+function promptModal<T>(opts: {
+  title: string
+  width: string
+  label: string
+  hint?: string
+  input: HTMLInputElement
+  wrap?: Node
+  read: () => T | null
+}): Promise<T | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (value: T | null, close: () => void): void => {
+      if (settled) return
+      settled = true
+      close()
+      resolve(value)
+    }
+    openModal((close) => {
+      const submit = (): void => finish(opts.read(), close)
+      opts.input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submit() }
+      })
+      setTimeout(() => { opts.input.focus(); opts.input.select() }, 0)
+      return {
+        title: opts.title,
+        width: opts.width,
+        body: el('div', {},
+          el('div', { class: 'field' }, el('label', {}, opts.label), opts.wrap ?? opts.input),
+          opts.hint ? el('div', { class: 'hint' }, opts.hint) : null,
+        ),
+        footer: dialogFooter(() => finish(null, close), 'OK', submit),
+      }
+    })
+  })
+}
+
 export function askNumber(opts: {
   title: string
   label: string
@@ -48,43 +96,20 @@ export function askNumber(opts: {
   hint?: string
   min?: number
 }): Promise<number | null> {
-  return new Promise((resolve) => {
-    let settled = false
-    const finish = (value: number | null, close: () => void): void => {
-      if (settled) return
-      settled = true
-      close()
-      resolve(value)
-    }
-    openModal((close) => {
-      const input = el('input', {
-        type: 'number',
-        value: opts.value !== undefined ? String(opts.value) : '',
-        step: 'any',
-        min: opts.min !== undefined ? String(opts.min) : undefined,
-        style: { width: '160px' },
-      }) as HTMLInputElement
-      const submit = (): void => {
-        const n = Number(input.value)
-        finish(isFinite(n) && (opts.min === undefined || n >= opts.min) ? n : null, close)
-      }
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); submit() }
-      })
-      setTimeout(() => { input.focus(); input.select() }, 0)
-      return {
-        title: opts.title,
-        width: '380px',
-        body: el('div', {},
-          el('div', { class: 'field' }, el('label', {}, opts.label), el('div', {}, input, opts.unit ? ` ${opts.unit}` : '')),
-          opts.hint ? el('div', { class: 'hint' }, opts.hint) : null,
-        ),
-        footer: el('div', { style: { display: 'flex', gap: '8px' } },
-          el('button', { onclick: () => finish(null, close) }, 'Cancel'),
-          el('button', { class: 'primary', onclick: submit }, 'OK'),
-        ),
-      }
-    })
+  const input = el('input', {
+    type: 'number',
+    value: opts.value !== undefined ? String(opts.value) : '',
+    step: 'any',
+    min: opts.min !== undefined ? String(opts.min) : undefined,
+    style: { width: '160px' },
+  }) as HTMLInputElement
+  return promptModal({
+    title: opts.title, width: '380px', label: opts.label, hint: opts.hint, input,
+    wrap: el('div', {}, input, opts.unit ? ` ${opts.unit}` : ''),
+    read: () => {
+      const n = Number(input.value)
+      return isFinite(n) && (opts.min === undefined || n >= opts.min) ? n : null
+    },
   })
 }
 
@@ -94,43 +119,15 @@ export function askText(opts: {
   placeholder?: string
   hint?: string
 }): Promise<string | null> {
-  return new Promise((resolve) => {
-    let settled = false
-    const finish = (value: string | null, close: () => void): void => {
-      if (settled) return
-      settled = true
-      close()
-      resolve(value)
-    }
-    openModal((close) => {
-      const input = el('input', {
-        type: 'text',
-        placeholder: opts.placeholder ?? '',
-        style: { width: '100%' },
-      }) as HTMLInputElement
-      const submit = (): void => {
-        const v = input.value.trim()
-        finish(v || null, close)
-      }
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); submit() }
-      })
-      setTimeout(() => input.focus(), 0)
-      return {
-        title: opts.title,
-        width: '420px',
-        body: el('div', {},
-          el('div', { class: 'field' }, el('label', {}, opts.label), input),
-          opts.hint ? el('div', { class: 'hint' }, opts.hint) : null,
-        ),
-        footer: el('div', { style: { display: 'flex', gap: '8px' } },
-          el('button', { onclick: () => finish(null, close) }, 'Cancel'),
-          el('button', { class: 'primary', onclick: submit }, 'OK'),
-        ),
-      }
-    })
+  const input = el('input', { type: 'text', placeholder: opts.placeholder ?? '', style: { width: '100%' } }) as HTMLInputElement
+  return promptModal({
+    title: opts.title, width: '420px', label: opts.label, hint: opts.hint, input,
+    read: () => input.value.trim() || null,
   })
 }
+
+const messageBody = (message: string): HTMLElement =>
+  el('div', { class: 'hint', style: { fontSize: '13px', color: 'var(--ink)' } }, message)
 
 export function confirmDialog(title: string, message: string, confirmLabel = 'OK'): Promise<boolean> {
   return new Promise((resolve) => {
@@ -144,11 +141,8 @@ export function confirmDialog(title: string, message: string, confirmLabel = 'OK
     openModal((close) => ({
       title,
       width: '420px',
-      body: el('div', { class: 'hint', style: { fontSize: '13px', color: 'var(--ink)' } }, message),
-      footer: el('div', { style: { display: 'flex', gap: '8px' } },
-        el('button', { onclick: () => finish(false, close) }, 'Cancel'),
-        el('button', { class: 'primary', onclick: () => finish(true, close) }, confirmLabel),
-      ),
+      body: messageBody(message),
+      footer: dialogFooter(() => finish(false, close), confirmLabel, () => finish(true, close)),
     }))
   })
 }
@@ -157,7 +151,17 @@ export function alertDialog(title: string, message: string): void {
   openModal((close) => ({
     title,
     width: '420px',
-    body: el('div', { class: 'hint', style: { fontSize: '13px', color: 'var(--ink)' } }, message),
+    body: messageBody(message),
     footer: el('button', { class: 'primary', onclick: close }, 'Close'),
   }))
+}
+
+/** Runs `fn`; anything it throws becomes an alert dialog instead of an unhandled rejection - the
+ *  shape every "try to do a file thing" in this app ends with. */
+export async function guarded(title: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn()
+  } catch (err) {
+    alertDialog(title, String(err instanceof Error ? err.message : err))
+  }
 }

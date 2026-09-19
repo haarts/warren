@@ -40,6 +40,75 @@ export function field(label: string, control: Node, hint?: string): HTMLElement 
   return wrap
 }
 
+/**
+ * A `<select>` built from `[value, label]` pairs. `value` is the value all selected items agree
+ * on, or `''` for "they disagree" - which this shows as no option picked, the same way a mixed
+ * text field would show blank rather than guess one answer.
+ */
+export function select(
+  options: readonly (readonly [string, string])[], value: string, onChange: (v: string) => void,
+): HTMLSelectElement {
+  const node = el('select', {
+    onchange: (e: Event) => onChange((e.target as HTMLSelectElement).value),
+  }) as HTMLSelectElement
+  for (const [v, text] of options) node.appendChild(el('option', { value: v, selected: v === value }, text))
+  if (!options.some(([v]) => v === value)) node.value = ''
+  return node
+}
+
+/** Same as {@link select}, but grouped into `<optgroup>`s - for pickers organised by category,
+ *  like the system list. */
+export function groupedSelect(
+  groups: readonly { heading: string; options: readonly (readonly [string, string])[] }[],
+  value: string, onChange: (v: string) => void,
+): HTMLSelectElement {
+  const node = el('select', {
+    onchange: (e: Event) => onChange((e.target as HTMLSelectElement).value),
+  }) as HTMLSelectElement
+  for (const g of groups) {
+    if (!g.options.length) continue
+    const group = el('optgroup', { label: g.heading })
+    for (const [v, text] of g.options) group.appendChild(el('option', { value: v, selected: v === value }, text))
+    node.appendChild(group)
+  }
+  if (!groups.some((g) => g.options.some(([v]) => v === value))) node.value = ''
+  return node
+}
+
+export function textInput(value: string, onChange: (v: string) => void, placeholder?: string): HTMLInputElement {
+  const input = el('input', { type: 'text', value, placeholder: placeholder ?? '' }) as HTMLInputElement
+  input.addEventListener('change', () => onChange(input.value))
+  return input
+}
+
+export function numberInput(value: number, onChange: (v: number) => void): HTMLInputElement {
+  const input = el('input', { type: 'number', value: String(value), step: '0.1' }) as HTMLInputElement
+  input.addEventListener('change', () => onChange(Number(input.value) || 0))
+  return input
+}
+
+/**
+ * A text field with a suggestion list attached (`<datalist>`): pick a common value from the
+ * dropdown, or type anything else. Used where a closed list would be wrong - a run's spec is
+ * "usually one of these", never "only ever one of these".
+ */
+export function comboInput(
+  value: string, options: string[], placeholder: string | undefined, key: string, onChange: (v: string) => void,
+): HTMLElement {
+  const input = el('input', {
+    type: 'text', value, placeholder: placeholder ?? '',
+    title: options.length ? 'Pick a common size from the list, or type anything you like' : '',
+  }) as HTMLInputElement
+  input.addEventListener('change', () => onChange(input.value.trim()))
+  if (options.length === 0) return input
+
+  const listId = `sizes-${key.replace(/\W+/g, '-')}`
+  input.setAttribute('list', listId)
+  const datalist = el('datalist', { id: listId })
+  for (const o of options) datalist.appendChild(el('option', { value: o }))
+  return el('div', { style: { display: 'contents' } }, input, datalist)
+}
+
 /** Little preview of a system's colour, dash pattern and width. */
 export function swatch(color: string, dash: number[], width: number): HTMLElement {
   const canvas = document.createElement('canvas')

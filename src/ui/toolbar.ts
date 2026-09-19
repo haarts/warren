@@ -7,7 +7,7 @@ import {
 import { symbolsFor } from '../model/systems.ts'
 import { saveCapabilityNote } from '../io/projectFile.ts'
 import { alertDialog } from './modal.ts'
-import { clear, el } from './dom.ts'
+import { clear, el, groupedSelect, select } from './dom.ts'
 import { openExportDialog, openGenerateDialog, openPrintDialog } from './outputDialogs.ts'
 import { openSystemsEditor } from './systemsEditor.ts'
 
@@ -42,39 +42,26 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   host.appendChild(el('div', { class: 'sep' }))
 
   // System picker - the thing that decides colour, dash, width and default size.
-  const systemSelect = el('select', {
-    title: 'System for new items',
-    style: { maxWidth: '210px' },
-    onchange: (e: Event) => {
-      editor.activeSystemId = (e.target as HTMLSelectElement).value
-      app.refresh()
-    },
-  }) as HTMLSelectElement
-  for (const category of CATEGORIES) {
-    const systems = store.project.systems.filter((s) => s.category === category)
-    if (systems.length === 0) continue
-    const group = el('optgroup', { label: CATEGORY_LABELS[category] })
-    for (const sys of systems) {
-      group.appendChild(el('option', { value: sys.id, selected: sys.id === editor.activeSystemId }, sys.name))
-    }
-    systemSelect.appendChild(group)
-  }
   if (!store.project.systems.some((s) => s.id === editor.activeSystemId)) {
     const first = store.project.systems[0]
-    if (first) {
-      editor.activeSystemId = first.id
-      systemSelect.value = first.id
-    }
+    if (first) editor.activeSystemId = first.id
   }
+  const systemGroups = CATEGORIES.map((c) => ({
+    heading: CATEGORY_LABELS[c],
+    options: store.project.systems.filter((s) => s.category === c).map((s) => [s.id, s.name] as const),
+  }))
+  const systemSelect = groupedSelect(systemGroups, editor.activeSystemId, (v) => {
+    editor.activeSystemId = v
+    app.refresh()
+  })
+  systemSelect.title = 'System for new items'
+  systemSelect.style.maxWidth = '210px'
   host.appendChild(el('label', { class: 'inline', title: 'System for new items' }, 'System', systemSelect))
 
-  const levelSelect = el('select', {
-    title: 'Where new items sit in the building fabric',
-    onchange: (e: Event) => { editor.activeLevel = (e.target as HTMLSelectElement).value as Level },
-  }) as HTMLSelectElement
-  for (const level of LEVELS) {
-    levelSelect.appendChild(el('option', { value: level, selected: level === editor.activeLevel }, LEVEL_LABELS[level]))
-  }
+  const levelSelect = select(LEVELS.map((l) => [l, LEVEL_LABELS[l]] as const), editor.activeLevel, (v) => {
+    editor.activeLevel = v as Level
+  })
+  levelSelect.title = 'Where new items sit in the building fabric'
   host.appendChild(el('label', { class: 'inline', title: 'Where new items sit in the building fabric' }, 'Level', levelSelect))
 
   if (editor.tool === 'marker') {
@@ -82,13 +69,9 @@ export function buildToolbar(app: App, host: HTMLElement): void {
     // Picking a lighting group and being offered a gully is noise, so the list follows the
     // system - and the active symbol follows it too rather than staying somewhere absurd.
     if (!offered.includes(editor.activeMarkerSymbol)) editor.activeMarkerSymbol = offered[0]
-    const symbolSelect = el('select', {
-      onchange: (e: Event) => { editor.activeMarkerSymbol = (e.target as HTMLSelectElement).value as MarkerSymbol },
-    }) as HTMLSelectElement
-    for (const symbol of offered) {
-      symbolSelect.appendChild(el('option', { value: symbol, selected: symbol === editor.activeMarkerSymbol }, MARKER_LABELS[symbol]))
-    }
-    host.appendChild(symbolSelect)
+    host.appendChild(select(offered.map((s) => [s, MARKER_LABELS[s]] as const), editor.activeMarkerSymbol, (v) => {
+      editor.activeMarkerSymbol = v as MarkerSymbol
+    }))
   }
 
   host.appendChild(el('div', { class: 'sep' }))
@@ -112,70 +95,49 @@ export function buildToolbar(app: App, host: HTMLElement): void {
   })
   host.appendChild(el('label', { class: 'inline', title: 'Plan background strength' }, 'Plan', opacity))
 
-  host.appendChild(toggle('Labels', store.project.settings.showLabels, (v) => {
-    store.project.settings.showLabels = v
-    store.touch()
-    editor.requestRender()
-  }))
-  host.appendChild(toggle('Flow', store.project.settings.showFlow, (v) => {
-    store.project.settings.showFlow = v
-    store.touch()
-    editor.requestRender()
-  }))
-  host.appendChild(toggle('Notes', store.project.settings.showNotes, (v) => {
-    store.project.settings.showNotes = v
-    store.touch()
-    editor.requestRender()
-  }))
-  host.appendChild(toggle('Grid', store.project.settings.showGrid, (v) => {
-    store.project.settings.showGrid = v
-    store.touch()
-    editor.requestRender()
-  }))
+  for (const [key, label] of [
+    ['showLabels', 'Labels'], ['showFlow', 'Flow'], ['showNotes', 'Notes'], ['showGrid', 'Grid'],
+  ] as const) {
+    host.appendChild(toggle(label, store.project.settings[key], (v) => {
+      store.project.settings[key] = v
+      store.touch()
+      editor.requestRender()
+    }))
+  }
 
-  const levelFilter = el('select', {
-    title: 'Show only one building level',
-    onchange: (e: Event) => {
-      store.project.settings.levelFilter = (e.target as HTMLSelectElement).value as Level | 'all'
+  // Named "Show" rather than "Level" because the dropdown two along also says Level, and sets a
+  // different thing entirely - what you are about to draw, not what you can see.
+  const levelFilterTitle = 'Show only one building level'
+  const levelFilter = select(
+    [['all', 'all levels'] as const, ...LEVELS.map((l) => [l, LEVEL_LABELS[l]] as const)],
+    store.project.settings.levelFilter,
+    (v) => {
+      store.project.settings.levelFilter = v as Level | 'all'
       store.touch()
       editor.requestRender()
     },
-  }) as HTMLSelectElement
-  // The label carries the meaning, so an option only has to say its own value. Named "Show"
-  // rather than "Level" because the dropdown two along also says Level, and sets a different
-  // thing entirely - what you are about to draw, not what you can see.
-  levelFilter.appendChild(el('option', { value: 'all', selected: store.project.settings.levelFilter === 'all' }, 'all levels'))
-  for (const level of LEVELS) {
-    levelFilter.appendChild(el('option', {
-      value: level, selected: store.project.settings.levelFilter === level,
-    }, LEVEL_LABELS[level]))
-  }
-  host.appendChild(el('label', { class: 'inline', title: 'Show only one building level' }, 'Show', levelFilter))
+  )
+  levelFilter.title = levelFilterTitle
+  host.appendChild(el('label', { class: 'inline', title: levelFilterTitle }, 'Show', levelFilter))
 
   // Work on one room. Everything else greys out but stays reachable — hiding it would break
   // the one thing every circuit must do, which is arrive at a panel somewhere else.
   const roomsHere = store.items().filter((i): i is RoomItem => i.kind === 'room')
   if (roomsHere.length) {
-    const roomFocus = el('select', {
-      title: 'Work on one room: everything else greys out, but stays selectable and snappable',
-      onchange: (e: Event) => {
-        const value = (e.target as HTMLSelectElement).value
-        store.project.settings.roomFocus = value === '' ? null : value
+    const rooms = [...roomsHere].sort((a, b) => a.name.localeCompare(b.name))
+    const roomFocusTitle = 'Work on one room: everything else greys out, but stays selectable and snappable'
+    const roomFocus = select(
+      [['', 'all rooms'] as const, ...rooms.map((r) => [r.id, r.name] as const)],
+      store.project.settings.roomFocus ?? '',
+      (v) => {
+        store.project.settings.roomFocus = v === '' ? null : v
         store.touch()
         editor.requestRender()
         app.refresh()
       },
-    }) as HTMLSelectElement
-    roomFocus.appendChild(el('option', { value: '', selected: !store.project.settings.roomFocus }, 'all rooms'))
-    for (const room of [...roomsHere].sort((a, b) => a.name.localeCompare(b.name))) {
-      roomFocus.appendChild(el('option', {
-        value: room.id, selected: store.project.settings.roomFocus === room.id,
-      }, room.name))
-    }
-    host.appendChild(el('label', {
-      class: 'inline',
-      title: 'Work on one room: everything else greys out, but stays selectable and snappable',
-    }, 'Focus', roomFocus))
+    )
+    roomFocus.title = roomFocusTitle
+    host.appendChild(el('label', { class: 'inline', title: roomFocusTitle }, 'Focus', roomFocus))
   }
 
   host.appendChild(el('div', { class: 'sep' }))

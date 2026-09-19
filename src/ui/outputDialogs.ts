@@ -4,7 +4,7 @@ import { openPrintView } from '../io/print.ts'
 import { CATEGORIES, CATEGORY_LABELS, type Category } from '../model/types.ts'
 import { applyGenerated, generate, rulesOf } from '../generate.ts'
 import { el } from './dom.ts'
-import { alertDialog, openModal } from './modal.ts'
+import { dialogFooter, guarded, openModal } from './modal.ts'
 
 const SCALES: { value: number; label: string }[] = [
   { value: 2, label: '2× (≈144 dpi) — screen' },
@@ -32,7 +32,7 @@ export function openExportDialog(app: App): void {
 
     const run = async (): Promise<void> => {
       close()
-      try {
+      await guarded('Export failed', async () => {
         const canvas = await renderSheetImage(app.store, {
           scale: Number(scale.value),
           includeBackground: bg.input.checked,
@@ -42,9 +42,7 @@ export function openExportDialog(app: App): void {
         const name = `${app.store.project.name}-${app.store.sheet.name}.png`.replace(/[^\w\-. ]+/g, '_')
         downloadBlob(name, blob)
         app.editor.flash(`Exported ${canvas.width}×${canvas.height} px`)
-      } catch (err) {
-        alertDialog('Export failed', String(err instanceof Error ? err.message : err))
-      }
+      })
     }
 
     return {
@@ -55,10 +53,7 @@ export function openExportDialog(app: App): void {
         bg.row, strong.row,
         el('div', { class: 'hint' }, 'Only visible layers are exported — hide what the recipient does not need first.'),
       ),
-      footer: el('div', { style: { display: 'flex', gap: '8px' } },
-        el('button', { onclick: close }, 'Cancel'),
-        el('button', { class: 'primary', onclick: () => void run() }, 'Export'),
-      ),
+      footer: dialogFooter(close, 'Export', () => void run()),
     }
   })
 }
@@ -112,10 +107,7 @@ export function openGenerateDialog(app: App): void {
         el('div', { class: 'hint' },
           'The rules are data, not code — read and replace them with ', el('code', {}, 'warren rules'), '.'),
       ),
-      footer: el('div', { style: { display: 'flex', gap: '8px' } },
-        el('button', { onclick: close }, 'Cancel'),
-        el('button', { class: 'primary', disabled: total === 0, onclick: run }, `Place ${total} item(s)`),
-      ),
+      footer: dialogFooter(close, `Place ${total} item(s)`, run, total === 0),
     }
   })
 }
@@ -141,7 +133,7 @@ export function openPrintDialog(app: App): void {
     const run = async (): Promise<void> => {
       const chosen = CATEGORIES.filter((c) => boxes.get(c)?.checked)
       close()
-      try {
+      await guarded('Could not open the print view', async () => {
         await openPrintView(app.store, {
           scale: Number(scale.value),
           categories: chosen.length === CATEGORIES.length ? null : chosen,
@@ -149,9 +141,7 @@ export function openPrintDialog(app: App): void {
           includeTakeoff: takeoff.input.checked,
           backgroundOpacity: strong.input.checked ? 1 : app.store.project.settings.backgroundOpacity,
         })
-      } catch (err) {
-        alertDialog('Could not open the print view', String(err instanceof Error ? err.message : err))
-      }
+      })
     }
 
     return {
@@ -166,10 +156,7 @@ export function openPrintDialog(app: App): void {
         el('div', { class: 'hint' },
           'Renders the sheet, then opens your browser print dialog — choose "Save as PDF" there. A3 landscape suits most plans.'),
       ),
-      footer: el('div', { style: { display: 'flex', gap: '8px' } },
-        el('button', { onclick: close }, 'Cancel'),
-        el('button', { class: 'primary', onclick: () => void run() }, 'Print'),
-      ),
+      footer: dialogFooter(close, 'Print', () => void run()),
     }
   })
 }
