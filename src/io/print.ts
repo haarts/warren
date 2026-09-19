@@ -16,6 +16,9 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
 }
 
+/** A takeoff length, or an em-dash for nothing to show - never "0 m". */
+const fmtLen = (mm: number): string => (mm ? formatMetres(mm) : '—')
+
 function dashSvg(color: string, dash: number[], width: number): string {
   const d = dash.length ? dash.map((n) => Math.max(1, n * 0.8)).join(' ') : ''
   return `<svg width="42" height="12" viewBox="0 0 42 12">
@@ -72,14 +75,14 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
          ${rows.map((r) => `<tr>
             <td>${dashSvg(r.system.color, r.system.dash, r.system.width)} ${escapeHtml(r.system.name)}</td>
             <td class="num">${r.runs}</td>
-            <td class="num">${r.lengthMm ? formatMetres(r.lengthMm) : '—'}</td>
-            <td class="num"><b>${r.orderMm ? formatMetres(r.orderMm) : '—'}</b></td>
+            <td class="num">${fmtLen(r.lengthMm)}</td>
+            <td class="num"><b>${fmtLen(r.orderMm)}</b></td>
             <td class="num">${r.boxes + r.markers || ''}</td></tr>${
               r.bySize.length > 1
                 ? r.bySize.map((t) => `<tr class="muted"><td style="padding-left:52px">${escapeHtml(t.size)}</td>
                     <td class="num">${t.runs}</td>
-                    <td class="num">${t.lengthMm ? formatMetres(t.lengthMm) : '—'}</td>
-                    <td class="num">${t.orderMm ? formatMetres(t.orderMm) : '—'}</td><td></td></tr>`).join('')
+                    <td class="num">${fmtLen(t.lengthMm)}</td>
+                    <td class="num">${fmtLen(t.orderMm)}</td><td></td></tr>`).join('')
                 : ''
             }`).join('')}
        </table>

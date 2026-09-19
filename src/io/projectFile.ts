@@ -1,3 +1,4 @@
+import type { Pt } from '../geom.ts'
 import { assetData, type AssetRef } from '../model/assets.ts'
 import { emptyProject } from '../model/doc.ts'
 import { NOTE_DEFAULT_WIDTH, NOTE_MIN_WIDTH } from '../render/notes.ts'
@@ -5,8 +6,8 @@ import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
   ROOM_USES,
-  type CompassRose, type Direction, type DoorItem, type Item, type Level, type MarkerItem, type MarkerSymbol, type Project,
-  type RoomItem, type RoomUse, type RunItem, type Sheet, type System,
+  type CompassRose, type Direction, type DoorItem, type Item, type MarkerItem, type MarkerSymbol, type Project,
+  type RoomItem, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
 export const FILE_EXTENSION = '.warren.json'
@@ -57,38 +58,51 @@ const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v : 
 const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && isFinite(v) ? v : fallback)
 const bool = (v: unknown, fallback = false): boolean => (typeof v === 'boolean' ? v : fallback)
 
-function asLevel(v: unknown): Level {
-  return LEVELS.includes(v as Level) ? (v as Level) : 'wall'
+/** `v` if it is one of `list`, else `fallback` - the shape every enum field on the file falls back through. */
+function oneOf<T extends string>(list: readonly T[], v: unknown, fallback: T): T {
+  return list.includes(v as T) ? (v as T) : fallback
 }
 
-function asItem(raw: unknown, index: number): Item | null {
-  if (!isObj(raw)) return null
-  // Optional fields are only written when they carry a value: the project file is meant to be
-  // diffed in git, and a wall of `"locked": false` makes real changes hard to spot.
-  const base = {
+/** A point array with at least `min` entries, or null - shared by runs, rooms and doors. */
+function readPoints(raw: unknown, min: number): Pt[] | null {
+  const pts = Array.isArray(raw) ? raw.filter(isObj).map((p) => ({ x: num(p.x), y: num(p.y) })) : []
+  return pts.length >= min ? pts : null
+}
+
+// Optional fields below are only written when they carry a value: the project file is meant to
+// be diffed in git, and a wall of `"locked": false` makes real changes hard to spot.
+type Base = { id: string; systemId: string; level: Item['level'] }
+type Shared = { colorOverride?: string; locked?: true }
+
+function readBase(raw: Record<string, unknown>, index: number): Base {
+  return {
     id: str(raw.id) || `it_recovered_${index}`,
     systemId: str(raw.systemId, 'water.cold'),
-    level: asLevel(raw.level),
+    level: oneOf(LEVELS, raw.level, 'wall'),
   }
-  const shared: { colorOverride?: string; locked?: true } = {}
+}
+
+function readShared(raw: Record<string, unknown>): Shared {
+  const shared: Shared = {}
   if (typeof raw.colorOverride === 'string') shared.colorOverride = raw.colorOverride
   if (raw.locked === true) shared.locked = true
+  return shared
+}
 
-  const labelled: { label?: string; note?: string } = {}
-  if (typeof raw.label === 'string') labelled.label = raw.label
-  if (typeof raw.note === 'string') labelled.note = raw.note
+function readLabelled(raw: Record<string, unknown>): { label?: string; note?: string } {
+  const out: { label?: string; note?: string } = {}
+  if (typeof raw.label === 'string') out.label = raw.label
+  if (typeof raw.note === 'string') out.note = raw.note
+  return out
+}
 
-  const common = { ...base, ...shared, ...labelled }
-
-  if (raw.kind === 'run') {
-    const pts = Array.isArray(raw.points)
-      ? raw.points.filter(isObj).map((p) => ({ x: num(p.x), y: num(p.y) }))
-      : []
-    if (pts.length === 0) return null
+/** One parser per item kind, sharing the field readers above. `null` means "unrecoverable". */
+const ITEM_PARSERS: { [K in Item['kind']]: (raw: Record<string, unknown>, base: Base, shared: Shared) => Item | null } = {
+  run: (raw, base, shared) => {
+    const points = readPoints(raw.points, 1)
+    if (!points) return null
     const run: RunItem = {
-      ...common,
-      kind: 'run',
-      points: pts,
+      ...base, ...shared, ...readLabelled(raw), kind: 'run', points,
       flow: raw.flow === 'forward' || raw.flow === 'reverse' ? raw.flow : 'none',
     }
     if (raw.flowAssumed === true && run.flow !== 'none') run.flowAssumed = true
@@ -96,70 +110,57 @@ function asItem(raw: unknown, index: number): Item | null {
     if (typeof raw.slope === 'string') run.slope = raw.slope
     if (typeof raw.extraM === 'number' && isFinite(raw.extraM)) run.extraM = raw.extraM
     return run
-  }
-  if (raw.kind === 'box') {
-    return { ...common, kind: 'box', x: num(raw.x), y: num(raw.y), w: num(raw.w, 20), h: num(raw.h, 20) }
-  }
-  if (raw.kind === 'marker') {
-    const symbol = MARKER_SYMBOLS.includes(raw.symbol as MarkerSymbol) ? (raw.symbol as MarkerSymbol) : 'note'
-    const item: MarkerItem = { ...common, kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }
+  },
+  box: (raw, base, shared) => ({
+    ...base, ...shared, ...readLabelled(raw),
+    kind: 'box', x: num(raw.x), y: num(raw.y), w: num(raw.w, 20), h: num(raw.h, 20),
+  }),
+  marker: (raw, base, shared) => {
+    const symbol = oneOf(MARKER_SYMBOLS, raw.symbol, 'note')
+    const item: MarkerItem = { ...base, ...shared, ...readLabelled(raw), kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }
     if (isObj(raw.generated) && typeof raw.generated.rule === 'string' && typeof raw.generated.from === 'string') {
       item.generated = { rule: raw.generated.rule, from: raw.generated.from }
     }
     return item
-  }
-  if (raw.kind === 'room') {
-    const pts = Array.isArray(raw.points)
-      ? raw.points.filter(isObj).map((p) => ({ x: num(p.x), y: num(p.y) }))
-      : []
-    if (pts.length < 3) return null
+  },
+  room: (raw, base, shared) => {
+    const points = readPoints(raw.points, 3)
+    if (!points) return null
     const room: RoomItem = {
-      ...base,
-      ...shared,
-      kind: 'room',
-      name: str(raw.name, 'Room'),
-      use: ROOM_USES.includes(raw.use as RoomUse) ? (raw.use as RoomUse) : 'other',
-      points: pts,
+      ...base, ...shared, kind: 'room', name: str(raw.name, 'Room'), use: oneOf(ROOM_USES, raw.use, 'other'), points,
     }
     if (typeof raw.ref === 'string') room.ref = raw.ref
     if (typeof raw.note === 'string') room.note = raw.note
     return room
-  }
-  if (raw.kind === 'door') {
-    const pts = Array.isArray(raw.points)
-      ? raw.points.filter(isObj).map((p) => ({ x: num(p.x), y: num(p.y) }))
-      : []
-    if (pts.length < 2) return null
+  },
+  door: (raw, base, shared) => {
+    const points = readPoints(raw.points, 2)
+    if (!points) return null
     const door: DoorItem = {
-      ...common,
-      kind: 'door',
-      points: [pts[0], pts[1]],
-      swing: raw.swing === -1 ? -1 : 1,
+      ...base, ...shared, ...readLabelled(raw), kind: 'door', points: [points[0], points[1]], swing: raw.swing === -1 ? -1 : 1,
     }
     if (typeof raw.ref === 'string') door.ref = raw.ref
     return door
-  }
-  if (raw.kind === 'note') {
-    // Notes carry `text`, not `label`/`note` - a sticky whose content lived in a side field
-    // would be a trap.
-    return {
-      ...base,
-      ...shared,
-      kind: 'note',
-      x: num(raw.x),
-      y: num(raw.y),
-      w: Math.max(NOTE_MIN_WIDTH, num(raw.w, NOTE_DEFAULT_WIDTH)),
-      text: str(raw.text),
-    }
-  }
-  return null
+  },
+  // Notes carry `text`, not `label`/`note` - a sticky whose content lived in a side field would
+  // be a trap - so they skip readLabelled.
+  note: (raw, base, shared) => ({
+    ...base, ...shared, kind: 'note', x: num(raw.x), y: num(raw.y),
+    w: Math.max(NOTE_MIN_WIDTH, num(raw.w, NOTE_DEFAULT_WIDTH)), text: str(raw.text),
+  }),
+}
+
+function asItem(raw: unknown, index: number): Item | null {
+  if (!isObj(raw)) return null
+  const parser = ITEM_PARSERS[raw.kind as Item['kind']]
+  return parser ? parser(raw, readBase(raw, index), readShared(raw)) : null
 }
 
 function asSystem(raw: unknown, index: number): System | null {
   if (!isObj(raw)) return null
   const id = str(raw.id)
   if (!id) return null
-  const category = CATEGORIES.includes(raw.category as System['category']) ? (raw.category as System['category']) : 'struct'
+  const category = oneOf(CATEGORIES, raw.category, 'struct')
   const system: System = {
     id,
     category,

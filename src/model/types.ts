@@ -22,45 +22,36 @@ export const CATEGORY_LABELS: Record<Category, string> = {
  * wall, a DHW cylinder stands on the floor, and surface-run conduit is on a wall rather than
  * chased into it.
  */
-export const LEVELS = ['crawl', 'floor', 'on-floor', 'wall', 'on-wall', 'ceiling', 'above', 'roof'] as const
-export type Level = (typeof LEVELS)[number]
+// [long label, short label] per level - one table so the two never drift apart.
+const LEVEL_INFO = {
+  crawl: ['Crawl space', 'CRW'],
+  floor: ['In floor / screed', 'FLR'],
+  'on-floor': ['On floor (standing)', 'ON FLR'],
+  wall: ['In wall', 'WAL'],
+  'on-wall': ['On wall (surface)', 'ON WAL'],
+  ceiling: ['In ceiling', 'CLG'],
+  above: ['Above ceiling / void', 'VOID'],
+  roof: ['Roof / outside', 'ROOF'],
+} as const satisfies Record<string, readonly [string, string]>
 
-export const LEVEL_LABELS: Record<Level, string> = {
-  crawl: 'Crawl space',
-  floor: 'In floor / screed',
-  'on-floor': 'On floor (standing)',
-  wall: 'In wall',
-  'on-wall': 'On wall (surface)',
-  ceiling: 'In ceiling',
-  above: 'Above ceiling / void',
-  roof: 'Roof / outside',
-}
-
-export const LEVEL_SHORT: Record<Level, string> = {
-  crawl: 'CRW',
-  floor: 'FLR',
-  'on-floor': 'ON FLR',
-  wall: 'WAL',
-  'on-wall': 'ON WAL',
-  ceiling: 'CLG',
-  above: 'VOID',
-  roof: 'ROOF',
-}
+export type Level = keyof typeof LEVEL_INFO
+export const LEVELS = Object.keys(LEVEL_INFO) as Level[]
+export const LEVEL_LABELS = Object.fromEntries(
+  Object.entries(LEVEL_INFO).map(([level, [label]]) => [level, label]),
+) as Record<Level, string>
+export const LEVEL_SHORT = Object.fromEntries(
+  Object.entries(LEVEL_INFO).map(([level, [, short]]) => [level, short]),
+) as Record<Level, string>
 
 export type Flow = 'none' | 'forward' | 'reverse'
 
 /**
  * Deliberately short. These are the things that actually get marked on a Dutch installation
  * drawing; anything rarer is best served by the nearest symbol plus a note, rather than by a
- * catalogue nobody can find their way around.
+ * catalogue nobody can find their way around. One table, so the symbol list and its labels
+ * can never drift apart.
  */
-export const MARKER_SYMBOLS = [
-  'socket', 'socket-2', 'socket-3', 'socket-4', 'switch', 'light', 'detector', 'data-outlet', 'air-valve',
-  'riser-up', 'riser-down', 'penetration', 'drain', 'cleanout', 'valve', 'outlet', 'sensor', 'note',
-] as const
-export type MarkerSymbol = (typeof MARKER_SYMBOLS)[number]
-
-export const MARKER_LABELS: Record<MarkerSymbol, string> = {
+const MARKER_LABELS_SRC = {
   socket: 'Wandcontactdoos',
   'socket-2': 'Dubbele wandcontactdoos',
   'socket-3': 'Drievoudige wandcontactdoos',
@@ -79,7 +70,11 @@ export const MARKER_LABELS: Record<MarkerSymbol, string> = {
   outlet: 'Tappunt (draw-off)',
   sensor: 'Sensor',
   note: 'Dot / reference pin',
-}
+} as const
+
+export type MarkerSymbol = keyof typeof MARKER_LABELS_SRC
+export const MARKER_SYMBOLS = Object.keys(MARKER_LABELS_SRC) as MarkerSymbol[]
+export const MARKER_LABELS: Record<MarkerSymbol, string> = MARKER_LABELS_SRC
 
 export interface System {
   id: string
@@ -195,18 +190,16 @@ export interface NoteItem {
  * What a room is for. This is what turns a shape into something rules can act on: a bedroom
  * wants sockets and a smoke detector, a toilet wants neither.
  */
-export const ROOM_USES = [
-  'living', 'kitchen', 'dining', 'bedroom', 'bathroom', 'toilet', 'hall', 'stairs',
-  'utility', 'storage', 'technical', 'workshop', 'garage', 'outdoor', 'other',
-] as const
-export type RoomUse = (typeof ROOM_USES)[number]
-
-export const ROOM_USE_LABELS: Record<RoomUse, string> = {
+const ROOM_USE_LABELS_SRC = {
   living: 'Living room', kitchen: 'Kitchen', dining: 'Dining room', bedroom: 'Bedroom',
   bathroom: 'Bathroom', toilet: 'Toilet', hall: 'Hall / landing', stairs: 'Stairs',
   utility: 'Utility', storage: 'Storage', technical: 'Technical', workshop: 'Workshop',
   garage: 'Garage', outdoor: 'Outdoor', other: 'Other',
-}
+} as const
+
+export type RoomUse = keyof typeof ROOM_USE_LABELS_SRC
+export const ROOM_USES = Object.keys(ROOM_USE_LABELS_SRC) as RoomUse[]
+export const ROOM_USE_LABELS: Record<RoomUse, string> = ROOM_USE_LABELS_SRC
 
 /**
  * A room outline. Architecture rather than a service, so it ignores the level filter - rooms

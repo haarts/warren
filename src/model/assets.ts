@@ -30,10 +30,6 @@ export function hasAsset(id: string): boolean {
   return memory.has(id)
 }
 
-export function forgetAssets(): void {
-  memory.clear()
-}
-
 /** Ids referenced by the project whose bytes we do not have. */
 export function missingAssetIds(assets: Record<string, AssetRef>): string[] {
   return Object.keys(assets).filter((id) => !memory.has(id))

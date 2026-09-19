@@ -82,15 +82,18 @@ export class Session {
     })
   }
 
+  private clearSaveTimer(): void {
+    if (this.saveTimer === null) return
+    clearTimeout(this.saveTimer)
+    this.saveTimer = null
+  }
+
   private async reload(from: string): Promise<void> {
     // Somebody else changed the drawing while this window has edits it has not sent. Send them
     // first: either they land, or the server refuses and this comes back round knowing it is a
     // real conflict. Replacing the project outright would throw the unsent work away.
     if (this.latest && (this.saveTimer !== null || this.saving || this.pending)) {
-      if (this.saveTimer !== null) {
-        clearTimeout(this.saveTimer)
-        this.saveTimer = null
-      }
+      this.clearSaveTimer()
       await this.flush(this.latest)
       return
     }
@@ -109,7 +112,7 @@ export class Session {
    */
   save(project: Project): void {
     this.latest = project
-    if (this.saveTimer !== null) clearTimeout(this.saveTimer)
+    this.clearSaveTimer()
     this.saveTimer = window.setTimeout(() => {
       this.saveTimer = null
       void this.flush(project)
@@ -122,10 +125,7 @@ export class Session {
       this.pending = true
       return
     }
-    if (this.saveTimer !== null) {
-      clearTimeout(this.saveTimer)
-      this.saveTimer = null
-    }
+    this.clearSaveTimer()
     this.saving = true
     try {
       const res = await fetch('/api/project', {

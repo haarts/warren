@@ -160,7 +160,6 @@ export function generate(sheet: Sheet, rule: GenerateRule, scope: GenerateScope 
   if (rule.place === 'at-door-strike') {
     const offset = mmToPt(sheet, rule.offsetMm ?? 200)
     const offWall = mmToPt(sheet, rule.offWallMm ?? 120)
-    const inScope = rooms
     for (const door of sheet.items) {
       if (door.kind !== 'door') continue
       const [hinge, strike] = door.points
@@ -175,7 +174,7 @@ export function generate(sheet: Sheet, rule: GenerateRule, scope: GenerateScope 
       }
       // A door belongs to whichever room the switch would land in, which is the only sense in
       // which "the switches in the kitchen" means anything.
-      if (scope.rooms?.length && !inScope.some((r) => pointInPolygon(at, r.points))) continue
+      if (scope.rooms?.length && !rooms.some((r) => pointInPolygon(at, r.points))) continue
       touched.add(door.id)
       create.push(marker(rule, door.id, 0, at))
     }
