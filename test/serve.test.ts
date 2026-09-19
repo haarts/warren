@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { serve } from '../bin/serve.ts'
-import { planOps } from '../bin/warren.ts'
+import { planOps } from '../bin/ops.ts'
 import { Store } from '../src/model/doc.ts'
 import type { Project } from '../src/model/types.ts'
 
