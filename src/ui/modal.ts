@@ -74,7 +74,13 @@ function promptModal<T>(opts: {
       opts.input.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') { e.preventDefault(); submit() }
       })
-      setTimeout(() => { opts.input.focus(); opts.input.select() }, 0)
+      // Select a prefilled value so typing replaces it - but never text already typed, or the
+      // next keystroke would wipe it.
+      const initial = opts.input.value
+      setTimeout(() => {
+        opts.input.focus()
+        if (opts.input.value === initial) opts.input.select()
+      }, 0)
       return {
         title: opts.title,
         width: opts.width,
