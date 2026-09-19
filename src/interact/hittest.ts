@@ -1,8 +1,18 @@
 import { closestOnPolyline, closestOnSegment, dist, polygonEdges, rectContains, rectsIntersect, segmentIntersectsRect, type Pt, type Rect } from '../geom.ts'
 import type { Store, VertexRef } from '../model/doc.ts'
-import { pointsOf, type BoxItem, type Item } from '../model/types.ts'
+import { pointsOf, type Item } from '../model/types.ts'
 import { noteHeight } from '../render/notes.ts'
 import { boxCorners, itemBounds } from '../render/bounds.ts'
+
+/** Closest point to `p` on the closed ring through `points` (a room, or a box/note's corners). */
+function closestOnRing(p: Pt, points: Pt[]): { point: Pt; dist: number } {
+  let best: { point: Pt; dist: number } | null = null
+  for (const [a, b] of polygonEdges(points)) {
+    const r = closestOnSegment(p, a, b)
+    if (!best || r.dist < best.dist) best = { point: r.point, dist: r.dist }
+  }
+  return best as { point: Pt; dist: number }
+}
 
 /** Draw order is boxes → runs → markers, so we test back to front. */
 function topmost(items: Item[], p: Pt, tol: number): Item | null {
@@ -36,7 +46,7 @@ export function hitsItem(item: Item, p: Pt, tol: number): boolean {
     }
     case 'box': {
       // Edges are the grab target; the interior counts too so small boxes stay clickable.
-      const r = { x: item.x, y: item.y, w: item.w, h: item.h }
+      const r = itemBounds(item)
       if (rectContains({ x: r.x - tol, y: r.y - tol, w: r.w + tol * 2, h: r.h + tol * 2 }, p)) {
         const inner = { x: r.x + tol, y: r.y + tol, w: Math.max(0, r.w - tol * 2), h: Math.max(0, r.h - tol * 2) }
         if (!rectContains(inner, p)) return true
@@ -50,15 +60,10 @@ export function hitsItem(item: Item, p: Pt, tol: number): boolean {
       return rectContains({ x: item.x, y: item.y, w: item.w, h: noteHeight(item) }, p)
     case 'door':
       return closestOnPolyline(p, item.points).dist <= tol * 1.4
-    case 'room': {
+    case 'room':
       // The outline is the grab target; the middle is not, or a room would swallow every
       // click inside it and you could never select the pipes you drew across it.
-      if (item.points.length < 3) return false
-      for (const [a, b] of polygonEdges(item.points)) {
-        if (closestOnSegment(p, a, b).dist <= tol) return true
-      }
-      return false
-    }
+      return item.points.length >= 3 && closestOnRing(p, item.points).dist <= tol
   }
 }
 
@@ -80,7 +85,7 @@ export interface BoxCornerRef { boxId: string; corner: number }
 export function hitBoxCorner(store: Store, p: Pt, tol: number): BoxCornerRef | null {
   for (const item of store.selectedItems()) {
     if (item.kind !== 'box' || !store.isEditable(item)) continue
-    const corners = boxCorners(item as BoxItem)
+    const corners = boxCorners(item)
     for (let i = 0; i < corners.length; i++) {
       if (dist(corners[i], p) <= tol) return { boxId: item.id, corner: i }
     }
@@ -130,35 +135,15 @@ export function hitNoteHandle(store: Store, p: Pt, tol: number): NoteHandleRef |
 }
 
 export function nearestPointOnItem(item: Item, p: Pt): { point: Pt; dist: number } | null {
-  if (item.kind === 'room' && item.points.length >= 3) {
-    let best: { point: Pt; dist: number } | null = null
-    for (const [a, b] of polygonEdges(item.points)) {
-      const r = closestOnSegment(p, a, b)
-      if (!best || r.dist < best.dist) best = { point: r.point, dist: r.dist }
-    }
-    return best
-  }
+  if (item.kind === 'room') return item.points.length >= 3 ? closestOnRing(p, item.points) : null
   const line = pointsOf(item)
   if (line && line.length >= 2) {
     const r = closestOnPolyline(p, line)
     return { point: r.point, dist: r.dist }
   }
   if (item.kind === 'box' || item.kind === 'note') {
-    const rect = item.kind === 'box'
-      ? { x: item.x, y: item.y, w: item.w, h: item.h }
-      : { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }
-    const corners: Pt[] = [
-      { x: rect.x, y: rect.y },
-      { x: rect.x + rect.w, y: rect.y },
-      { x: rect.x + rect.w, y: rect.y + rect.h },
-      { x: rect.x, y: rect.y + rect.h },
-    ]
-    let best: { point: Pt; dist: number } | null = null
-    for (let i = 0; i < 4; i++) {
-      const r = closestOnSegment(p, corners[i], corners[(i + 1) % 4])
-      if (!best || r.dist < best.dist) best = { point: r.point, dist: r.dist }
-    }
-    return best
+    const r = item.kind === 'box' ? itemBounds(item) : { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }
+    return closestOnRing(p, [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }])
   }
   return null
 }

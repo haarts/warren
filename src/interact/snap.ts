@@ -20,6 +20,9 @@ export interface SnapOptions {
   /** When drawing, the previous point - enables ortho lock with Shift. */
   anchor?: Pt | null
   ortho?: boolean
+  /** False skips item-snapping for this call regardless of F3 - used while dragging a shape
+   * or group, where it would snap the cursor, not the shape. Unset (or true) means F3 rules. */
+  itemSnap?: boolean
 }
 
 /**
@@ -29,8 +32,9 @@ export interface SnapOptions {
  */
 export function resolvePoint(store: Store, raw: Pt, tolWorld: number, opts: SnapOptions = {}): SnapResult {
   const settings = store.project.settings
+  const snapItems = (opts.itemSnap ?? true) && settings.snapToItems
 
-  if (settings.snapToItems) {
+  if (snapItems) {
     const vertex = snapToVertices(store, raw, tolWorld, opts)
     if (vertex) return vertex
   }
@@ -40,7 +44,7 @@ export function resolvePoint(store: Store, raw: Pt, tolWorld: number, opts: Snap
     p = orthoConstrain(opts.anchor, raw, 45)
   }
 
-  if (settings.snapToItems) {
+  if (snapItems) {
     const edge = snapToEdges(store, p, tolWorld * 0.7, opts)
     if (edge) return edge
   }

@@ -1,10 +1,21 @@
-import { dist, normalizeRect, type Pt, type Rect } from '../geom.ts'
+import { boundsOf, dist, normalizeRect, polylineLength, type Pt, type Rect } from '../geom.ts'
 import type { Store, VertexRef } from '../model/doc.ts'
 import { newId } from '../model/ids.ts'
 import {
   isPositioned, pointsOf,
   type BoxItem, type Item, type MarkerItem, type MarkerSymbol, type NoteItem, type RunItem,
 } from '../model/types.ts'
+import { Background } from '../render/background.ts'
+import { itemBounds } from '../render/bounds.ts'
+import { Camera } from '../render/camera.ts'
+import { COMPASS_RADIUS_PX, type CompassPart } from '../render/compass.ts'
+import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
+import { drawScene, type Overlay } from '../render/scene.ts'
+import { adopt } from '../generate.ts'
+import { formatMetres } from '../units.ts'
+import { hitBoxCorner, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
+import { resolvePoint } from './snap.ts'
+import { alongBearing, bearingBetween, slugifyDirectionId, splitNames, tipBearing } from '../directions.ts'
 
 /** The fewest points a shape can have and still be that shape. */
 function minPointsFor(item: Item): number {
@@ -20,24 +31,17 @@ function neighbourOf(item: Item, points: Pt[], index: number): Pt | null {
   return points[index - 1] ?? points[index + 1] ?? null
 }
 
-/** Move any item by a delta, whatever shape it is made of. */
-function shiftItem(item: Item, dx: number, dy: number): void {
+/**
+ * Move an item by a delta, whatever shape it is made of, measured from `from`'s coordinates -
+ * which defaults to the item's own (a live nudge) but can be an earlier snapshot (a drag, so
+ * the delta is measured from where the gesture started, not accumulated frame to frame).
+ */
+function shiftItem(item: Item, dx: number, dy: number, from: Item = item): void {
   adopt(item)
-  const points = pointsOf(item)
+  const points = pointsOf(from)
   if (points) (item as { points: Pt[] }).points = points.map((p) => ({ x: p.x + dx, y: p.y + dy }))
-  else if (isPositioned(item)) { item.x += dx; item.y += dy }
+  else if (isPositioned(from) && isPositioned(item)) { item.x = from.x + dx; item.y = from.y + dy }
 }
-import { Background } from '../render/background.ts'
-import { itemBounds } from '../render/bounds.ts'
-import { Camera } from '../render/camera.ts'
-import { COMPASS_RADIUS_PX, type CompassPart } from '../render/compass.ts'
-import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
-import { drawScene, type Overlay } from '../render/scene.ts'
-import { adopt } from '../generate.ts'
-import { formatMetres } from '../units.ts'
-import { hitBoxCorner, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
-import { resolvePoint } from './snap.ts'
-import { alongBearing, bearingBetween, slugifyDirectionId, splitNames, tipBearing } from '../directions.ts'
 
 export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate' | 'direction'
 
@@ -77,16 +81,13 @@ export class Editor {
   private draftCursor: Pt | null = null
   private measurePts: Pt[] = []
   private snap: { point: Pt; label: string | null } | null = null
-  private hoverId: string | null = null
-  private hoverLockedId: string | null = null
-  private hoverCompass: CompassPart | null = null
+  private hover: { id: string | null; locked: string | null; compass: CompassPart | null } =
+    { id: null, locked: null, compass: null }
   private spaceHeld = false
   private shiftHeld = false
   private cursorWorld: Pt | null = null
   private frameQueued = false
-  private flashText: string | null = null
-  private flashUntil = 0
-  private flashHold = 0
+  private flashState: { text: string; hold: number; until: number } | null = null
   /** Set the first time a wheel event looks like a trackpad rather than a wheel mouse. */
   private trackpadSeen = false
   private lastMiddleDown = 0
@@ -174,19 +175,25 @@ export class Editor {
         : this.measurePts.length === 1 && this.cursorWorld
           ? { a: this.measurePts[0], b: this.cursorWorld }
           : null,
-      hoverId: this.hoverId,
-      hoverLockedId: this.hoverLockedId,
-      compass: this.drag.mode === 'compassTurn' ? { part: 'tip', tip: this.drag.tip }
-        : this.drag.mode === 'compassMove' ? { part: 'hub' }
-        : this.hoverCompass,
+      hoverId: this.hover.id,
+      hoverLockedId: this.hover.locked,
+      compass: this.compassPart(),
     }
+  }
+
+  /** The rose part currently being dragged, or - failing that - hovered. Shared by the overlay
+   * (what to highlight) and the cursor (what shape to show). */
+  private compassPart(): CompassPart | null {
+    return this.drag.mode === 'compassTurn' ? { part: 'tip', tip: this.drag.tip }
+      : this.drag.mode === 'compassMove' ? { part: 'hub' }
+      : this.hover.compass
   }
 
   private cursorFor(): string {
     if (this.spaceHeld || this.drag.mode === 'pan') return 'grab'
-    const rose = this.drag.mode === 'compassTurn' || this.drag.mode === 'compassMove' ? this.overlay().compass : this.hoverCompass
+    const rose = this.compassPart()
     if (rose) return rose.part === 'tip' ? 'grab' : 'move'
-    if (this.tool === 'select') return this.hoverId ? 'move' : 'default'
+    if (this.tool === 'select') return this.hover.id ? 'move' : 'default'
     return 'crosshair'
   }
 
@@ -195,26 +202,24 @@ export class Editor {
    * frame, so a message posted straight into it is gone before it can be read.
    */
   flash(text: string): void {
-    this.flashText = text
-    // Long enough to read, but it steps aside the moment you carry on working - a message
+    // Held long enough to read, but it steps aside the moment you carry on working - a message
     // that outstays its welcome starts hiding live feedback, which is worse than not saying it.
-    this.flashHold = Date.now() + 1200
-    this.flashUntil = Date.now() + 6000
+    this.flashState = { text, hold: Date.now() + 1200, until: Date.now() + 6000 }
     this.onStatus?.(text)
     this.requestRender()
   }
 
   private clearFlashIfStale(): void {
-    if (this.flashText && Date.now() > this.flashHold) this.flashText = null
+    if (this.flashState && Date.now() > this.flashState.hold) this.flashState = null
   }
 
   private publishStatus(): void {
     if (!this.onStatus) return
-    if (this.flashText && Date.now() < this.flashUntil) {
-      this.onStatus(this.flashText)
+    if (this.flashState && Date.now() < this.flashState.until) {
+      this.onStatus(this.flashState.text)
       return
     }
-    this.flashText = null
+    this.flashState = null
     const mmPerPoint = this.store.sheet.mmPerPoint
     const parts: string[] = []
     if (this.cursorWorld) {
@@ -227,18 +232,18 @@ export class Editor {
     parts.push(`zoom ${(this.cam.zoom * 100).toFixed(0)}%`)
     if (this.trackpadSeen) parts.push('two fingers pan · pinch or ⌥scroll zooms')
     if (this.snap?.label) parts.push(`snap: ${this.snap.label}`)
-    if (this.hoverLockedId) {
-      const item = this.store.item(this.hoverLockedId)
+    if (this.hover.locked) {
+      const item = this.store.item(this.hover.locked)
       if (item?.locked) parts.push('locked item — use "Unlock all" in the Properties tab')
       else if (item) parts.push(`"${this.store.system(item.systemId).name}" is locked — unlock it in the Layers tab`)
     }
     if (this.tool === 'run' && this.draft.length) parts.push('Enter/double-click finishes · Backspace removes last point · Esc cancels')
     if (this.tool === 'calibrate') parts.push(this.measurePts.length === 0 ? 'Click the first end of a known dimension' : 'Click the second end')
     const rose = this.store.project.compass
-    if (rose && (this.drag.mode === 'compassTurn' || this.hoverCompass?.part === 'tip')) {
-      const tip = this.drag.mode === 'compassTurn' ? this.drag.tip : (this.hoverCompass as { tip: number }).tip
-      parts.push(`compass rose tip ${tip + 1} at ${Math.round(tipBearing(rose, tip))}° — drag to turn the rose, Shift for 45° steps`)
-    } else if (rose && (this.drag.mode === 'compassMove' || this.hoverCompass?.part === 'hub')) {
+    const part = this.compassPart()
+    if (rose && part?.part === 'tip') {
+      parts.push(`compass rose tip ${part.tip + 1} at ${Math.round(tipBearing(rose, part.tip))}° — drag to turn the rose, Shift for 45° steps`)
+    } else if (rose && part?.part === 'hub') {
       parts.push('compass rose — drag the centre to move it; name the tips in Properties')
     }
     if (this.tool === 'direction') parts.push(this.measurePts.length === 0 ? 'Click a point, then click again toward the direction you mean' : 'Click again, in the direction this points to')
@@ -257,21 +262,31 @@ export class Editor {
   }
 
   private resolve(raw: Pt, opts: { anchor?: Pt | null; excludeRunId?: string; excludeIndex?: number; itemSnap?: boolean } = {}): Pt {
-    const settings = this.store.project.settings
-    const itemSnap = opts.itemSnap ?? true
-    const prevItems = settings.snapToItems
-    if (!itemSnap) settings.snapToItems = false
     const res = resolvePoint(this.store, raw, this.tol(SNAP_TOL_PX), {
       anchor: opts.anchor ?? null,
+      itemSnap: opts.itemSnap,
       // Latched ortho with Shift as a temporary override, which is how a CAD user expects
       // F8 and Shift to interact.
       ortho: this.store.project.settings.orthoLock !== this.shiftHeld,
       excludeRunId: opts.excludeRunId,
       excludeIndex: opts.excludeIndex,
     })
-    settings.snapToItems = prevItems
     this.snap = res.label ? res : null
     return res.point
+  }
+
+  /** Mutates the project, notifies whoever is listening, and optionally announces what
+   * happened - the shape every compass/calibration/direction/vertex command here follows. */
+  private edit(msg: string | null, fn: () => void): void {
+    this.store.mutate(fn)
+    if (msg) this.flash(msg)
+    this.onChange?.()
+  }
+
+  /** Adds a freshly drawn item and selects it - shared by every tool that places one. */
+  private place(item: Item): void {
+    this.store.addItem(item)
+    this.onChange?.()
   }
 
   // --- pointer ------------------------------------------------------------------------
@@ -330,36 +345,10 @@ export class Editor {
       return
     }
 
-    // The rose is project furniture, not an item: no selecting it first, its tips and hub are
-    // always live in the select tool.
-    const rose = this.hitCompass(world)
-    if (rose && store.project.compass) {
+    const handle = this.hitHandle(world)
+    if (handle) {
       store.begin()
-      const c = store.project.compass
-      this.drag = rose.part === 'tip'
-        ? { mode: 'compassTurn', tip: rose.tip, moved: false }
-        : { mode: 'compassMove', offset: { x: world.x - c.x, y: world.y - c.y }, moved: false }
-      return
-    }
-
-    const corner = hitBoxCorner(store, world, this.tol(HIT_TOL_PX))
-    if (corner) {
-      const box = store.item(corner.boxId) as BoxItem | undefined
-      if (box) {
-        const anchor = {
-          x: corner.corner === 0 || corner.corner === 3 ? box.x + box.w : box.x,
-          y: corner.corner === 0 || corner.corner === 1 ? box.y + box.h : box.y,
-        }
-        store.begin()
-        this.drag = { mode: 'boxCorner', boxId: box.id, anchor }
-        return
-      }
-    }
-
-    const noteHandle = hitNoteHandle(store, world, this.tol(HIT_TOL_PX))
-    if (noteHandle) {
-      store.begin()
-      this.drag = { mode: 'noteWidth', noteId: noteHandle.noteId }
+      this.drag = handle
       return
     }
 
@@ -395,6 +384,35 @@ export class Editor {
     this.drag = { mode: 'rubber', start: world, additive: e.shiftKey, current: world }
   }
 
+  /**
+   * The one grab handle under `world` that isn't a shape's own vertex: a compass rose tip or
+   * hub, a selected box's corner, or a selected note's resize handle - tried in that order,
+   * since the rose floats above everything else on the sheet.
+   */
+  private hitHandle(world: Pt): Drag | null {
+    const store = this.store
+    const rose = this.hitCompass(world)
+    if (rose && store.project.compass) {
+      const c = store.project.compass
+      return rose.part === 'tip'
+        ? { mode: 'compassTurn', tip: rose.tip, moved: false }
+        : { mode: 'compassMove', offset: { x: world.x - c.x, y: world.y - c.y }, moved: false }
+    }
+
+    const corner = hitBoxCorner(store, world, this.tol(HIT_TOL_PX))
+    const box = corner ? store.item(corner.boxId) : undefined
+    if (corner && box && box.kind === 'box') {
+      const anchor = {
+        x: corner.corner === 0 || corner.corner === 3 ? box.x + box.w : box.x,
+        y: corner.corner === 0 || corner.corner === 1 ? box.y + box.h : box.y,
+      }
+      return { mode: 'boxCorner', boxId: box.id, anchor }
+    }
+
+    const noteHandle = hitNoteHandle(store, world, this.tol(HIT_TOL_PX))
+    return noteHandle ? { mode: 'noteWidth', noteId: noteHandle.noteId } : null
+  }
+
   private runPointerDown(world: Pt): void {
     const anchor = this.draft.length ? this.draft[this.draft.length - 1] : null
     const p = this.resolve(world, { anchor })
@@ -407,21 +425,11 @@ export class Editor {
     const p = this.resolve(world, { anchor })
     if (this.measurePts.length >= 2) this.measurePts = []
     this.measurePts.push(p)
-    if (this.measurePts.length === 2 && this.tool === 'calibrate') {
-      const lengthPt = dist(this.measurePts[0], this.measurePts[1])
-      if (lengthPt < 1e-6) {
-        this.measurePts = []
-        return
-      }
-      this.onCalibrateRequest?.(lengthPt)
-    }
-    if (this.measurePts.length === 2 && this.tool === 'direction') {
-      if (dist(this.measurePts[0], this.measurePts[1]) < 1e-6) {
-        this.measurePts = []
-        return
-      }
-      this.onDirectionRequest?.(bearingBetween(this.measurePts[0], this.measurePts[1]))
-    }
+    if (this.measurePts.length !== 2) return
+    const [a, b] = this.measurePts
+    if (dist(a, b) < 1e-6) { this.measurePts = []; return }
+    if (this.tool === 'calibrate') this.onCalibrateRequest?.(dist(a, b))
+    else if (this.tool === 'direction') this.onDirectionRequest?.(bearingBetween(a, b))
   }
 
   private onPointerMove = (e: PointerEvent): void => {
@@ -459,16 +467,7 @@ export class Editor {
         if (Math.abs(dx) > 1e-9 || Math.abs(dy) > 1e-9) this.drag.moved = true
         for (const [id, original] of this.drag.originals) {
           const live = this.store.item(id)
-          if (!live) continue
-          adopt(live)
-          const from = pointsOf(original)
-          const live2 = pointsOf(live)
-          if (from && live2) {
-            ;(live as { points: Pt[] }).points = from.map((p) => ({ x: p.x + dx, y: p.y + dy }))
-          } else if (isPositioned(live) && isPositioned(original)) {
-            live.x = original.x + dx
-            live.y = original.y + dy
-          }
+          if (live) shiftItem(live, dx, dy, original)
         }
         break
       }
@@ -486,9 +485,8 @@ export class Editor {
       case 'boxCorner': {
         const box = this.store.item(this.drag.boxId)
         if (box && box.kind === 'box') {
-          const p = this.resolve(world, { anchor: this.drag.anchor, itemSnap: true })
-          const r = normalizeRect(this.drag.anchor, p)
-          box.x = r.x; box.y = r.y; box.w = r.w; box.h = r.h
+          const p = this.resolve(world, { anchor: this.drag.anchor })
+          Object.assign(box, normalizeRect(this.drag.anchor, p))
         }
         break
       }
@@ -534,10 +532,10 @@ export class Editor {
         } else if ((this.tool === 'measure' || this.tool === 'calibrate' || this.tool === 'direction') && this.measurePts.length === 1) {
           this.cursorWorld = this.resolve(world, { anchor: this.measurePts[0] })
         } else if (this.tool === 'select') {
-          this.hoverCompass = this.hitCompass(world)
-          const hit = this.hoverCompass ? null : hitTest(this.store, world, this.tol(HIT_TOL_PX))
-          this.hoverId = hit?.id ?? null
-          this.hoverLockedId = hit || this.hoverCompass ? null : hitTestLocked(this.store, world, this.tol(HIT_TOL_PX))?.id ?? null
+          this.hover.compass = this.hitCompass(world)
+          const hit = this.hover.compass ? null : hitTest(this.store, world, this.tol(HIT_TOL_PX))
+          this.hover.id = hit?.id ?? null
+          this.hover.locked = hit || this.hover.compass ? null : hitTestLocked(this.store, world, this.tol(HIT_TOL_PX))?.id ?? null
           this.snap = null
         } else {
           this.resolve(world)
@@ -591,9 +589,7 @@ export class Editor {
     if (this.drag.mode === 'none') {
       this.cursorWorld = null
       this.snap = null
-      this.hoverId = null
-      this.hoverLockedId = null
-      this.hoverCompass = null
+      this.hover = { id: null, locked: null, compass: null }
       this.requestRender()
     }
   }
@@ -648,8 +644,7 @@ export class Editor {
       x: rect.x, y: rect.y, w: rect.w, h: rect.h,
       label: '',
     }
-    this.store.addItem(box)
-    this.onChange?.()
+    this.place(box)
   }
 
   private placeMarker(p: Pt): void {
@@ -662,8 +657,7 @@ export class Editor {
       symbol: this.activeMarkerSymbol,
       label: '',
     }
-    this.store.addItem(marker)
-    this.onChange?.()
+    this.place(marker)
   }
 
   private placeNote(p: Pt): void {
@@ -677,8 +671,7 @@ export class Editor {
       w: defaultNoteWidth(this.store.sheet.pdf?.widthPt ?? 595),
       text: '',
     }
-    this.store.addItem(note)
-    this.onChange?.()
+    this.place(note)
   }
 
   finishDraft(): void {
@@ -701,9 +694,7 @@ export class Editor {
     }
     this.draft = []
     this.draftCursor = null
-    this.store.addItem(run)
-    this.onChange?.()
-    this.requestRender()
+    this.place(run)
   }
 
   cancelDraft(): void {
@@ -717,7 +708,7 @@ export class Editor {
     if (item.kind === 'door' || !pointsOf(item)) return
     const hit = hitSegment(item, world, this.tol(HIT_TOL_PX * 1.5))
     if (!hit) return
-    this.store.mutate(() => {
+    this.edit(null, () => {
       const live = this.store.item(item.id)
       const points = live ? pointsOf(live) : null
       if (live && points) {
@@ -728,14 +719,13 @@ export class Editor {
       this.store.selection.add(item.id)
       this.store.activeVertex = { itemId: item.id, index: hit.index + 1 }
     })
-    this.onChange?.()
   }
 
   private deleteVertex(ref: VertexRef): void {
     const item = this.store.item(ref.itemId)
     const points = item ? pointsOf(item) : null
     if (!item || !points || points.length <= minPointsFor(item)) return
-    this.store.mutate(() => {
+    this.edit(null, () => {
       const live = this.store.item(ref.itemId)
       const livePoints = live ? pointsOf(live) : null
       if (live && livePoints) {
@@ -744,16 +734,15 @@ export class Editor {
       }
       this.store.activeVertex = null
     })
-    this.onChange?.()
   }
 
   // --- public commands ------------------------------------------------------------------
 
   setTool(tool: ToolId): void {
-    this.flashText = null
+    this.flashState = null
     if (this.tool === 'run' && tool !== 'run') this.cancelDraft()
-    this.hoverId = null
-    this.hoverLockedId = null
+    this.hover.id = null
+    this.hover.locked = null
     if (tool !== 'measure' && tool !== 'calibrate' && tool !== 'direction') this.measurePts = []
     this.tool = tool
     this.requestRender()
@@ -764,18 +753,13 @@ export class Editor {
     if (this.measurePts.length !== 2 || realMm <= 0) return
     const lengthPt = dist(this.measurePts[0], this.measurePts[1])
     if (lengthPt < 1e-6) return
-    this.store.mutate(() => {
-      this.store.sheet.mmPerPoint = realMm / lengthPt
-    })
+    const mmPerPoint = realMm / lengthPt
     this.measurePts = []
-    this.flash(`Calibrated: 1 pt = ${(realMm / lengthPt).toFixed(3)} mm`)
-    this.requestRender()
-    this.onChange?.()
+    this.edit(`Calibrated: 1 pt = ${mmPerPoint.toFixed(3)} mm`, () => { this.store.sheet.mmPerPoint = mmPerPoint })
   }
 
   cancelCalibration(): void {
-    this.measurePts = []
-    this.requestRender()
+    this.cancelMeasurement()
   }
 
   /**
@@ -786,21 +770,22 @@ export class Editor {
    */
   applyDirection(bearingDeg: number, names: string): void {
     const aliases = splitNames(names)
-    if (aliases.length === 0) { this.measurePts = []; return }
+    this.measurePts = []
+    if (aliases.length === 0) return
     const id = slugifyDirectionId(aliases[0])
-    this.store.mutate(() => {
+    this.edit(`Direction "${id}" set: ${aliases.join(', ')}`, () => {
       const list = this.store.project.directions ?? (this.store.project.directions = [])
       const existing = list.find((d) => d.id === id)
       if (existing) { existing.bearingDeg = bearingDeg; existing.aliases = aliases }
       else list.push({ id, bearingDeg, aliases })
     })
-    this.measurePts = []
-    this.flash(`Direction "${id}" set: ${aliases.join(', ')}`)
-    this.requestRender()
-    this.onChange?.()
   }
 
   cancelDirection(): void {
+    this.cancelMeasurement()
+  }
+
+  private cancelMeasurement(): void {
     this.measurePts = []
     this.requestRender()
   }
@@ -818,16 +803,13 @@ export class Editor {
       this.cam.x = existing.x - this.cssWidth / 2 / this.cam.zoom
       this.cam.y = existing.y - this.cssHeight / 2 / this.cam.zoom
       this.flash('The project already has a compass rose — it is in the middle of the view now')
-      this.requestRender()
       return
     }
     const centre = this.cam.toWorld(this.cssWidth / 2, this.cssHeight / 2)
-    this.store.mutate(() => {
-      this.store.project.compass = { x: centre.x, y: centre.y, rotationDeg: 0, tips: ['', '', '', ''] }
-    })
-    this.flash('Compass rose placed — drag a tip to turn it, drag the centre to move it, name the tips in Properties')
-    this.requestRender()
-    this.onChange?.()
+    this.edit(
+      'Compass rose placed — drag a tip to turn it, drag the centre to move it, name the tips in Properties',
+      () => { this.store.project.compass = { x: centre.x, y: centre.y, rotationDeg: 0, tips: ['', '', '', ''] } },
+    )
   }
 
   /** What tip `tip` (0-3) is called, comma-separated as typed. */
@@ -836,9 +818,7 @@ export class Editor {
     if (!rose || tip < 0 || tip > 3) return
     const text = splitNames(names).join(', ')
     if (rose.tips[tip] === text) return
-    this.store.mutate(() => { rose.tips[tip] = text })
-    this.requestRender()
-    this.onChange?.()
+    this.edit(null, () => { rose.tips[tip] = text })
   }
 
   /** Types an exact rotation instead of dragging one. */
@@ -847,17 +827,13 @@ export class Editor {
     if (!rose || !isFinite(rotationDeg)) return
     const next = ((rotationDeg % 360) + 360) % 360
     if (next === rose.rotationDeg) return
-    this.store.mutate(() => { rose.rotationDeg = next })
-    this.requestRender()
-    this.onChange?.()
+    this.edit(null, () => { rose.rotationDeg = next })
   }
 
   removeCompass(): void {
     if (!this.store.project.compass) return
-    this.store.mutate(() => { delete this.store.project.compass })
-    this.hoverCompass = null
-    this.requestRender()
-    this.onChange?.()
+    this.edit(null, () => { delete this.store.project.compass })
+    this.hover.compass = null
   }
 
   /**
@@ -878,14 +854,12 @@ export class Editor {
   }
 
   removeDirection(id: string): void {
-    this.store.mutate(() => {
+    this.edit(null, () => {
       const list = this.store.project.directions
       if (!list) return
       this.store.project.directions = list.filter((d) => d.id !== id)
       if (this.store.project.directions.length === 0) delete this.store.project.directions
     })
-    this.requestRender()
-    this.onChange?.()
   }
 
   /** Length of the current measurement, in mm, or null. */
@@ -954,7 +928,6 @@ export class Editor {
     if (id === 'snap') s.snapToItems = !s.snapToItems
     if (id === 'grid') s.showGrid = !s.showGrid
     this.store.touch()
-    this.requestRender()
   }
 
   setSpaceHeld(v: boolean): void {
@@ -972,34 +945,23 @@ export class Editor {
   }
 
   zoomToFit(): void {
-    const sheet = this.store.sheet
-    const size = this.bg.size
-    if (size) {
-      this.cam.fit({ x: 0, y: 0, w: size.w, h: size.h }, this.cssWidth, this.cssHeight)
-    } else if (sheet.pdf) {
-      this.cam.fit({ x: 0, y: 0, w: sheet.pdf.widthPt, h: sheet.pdf.heightPt }, this.cssWidth, this.cssHeight)
-    } else {
-      this.cam.fit({ x: 0, y: 0, w: 595, h: 842 }, this.cssWidth, this.cssHeight)
-    }
+    const pdf = this.store.sheet.pdf
+    const { w, h } = this.bg.size ?? (pdf ? { w: pdf.widthPt, h: pdf.heightPt } : { w: 595, h: 842 })
+    this.cam.fit({ x: 0, y: 0, w, h }, this.cssWidth, this.cssHeight)
     this.requestRender()
   }
 
   zoomToSelection(): void {
     const items = this.store.selectedItems()
     if (items.length === 0) return this.zoomToFit()
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    for (const it of items) {
+    const corners = (it: Item): Pt[] => {
+      if (it.kind === 'run') return it.points
       const b = itemBounds(it)
-      const pts: Pt[] = it.kind === 'run'
-        ? it.points
-        : [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y + b.h }]
-      for (const p of pts) {
-        minX = Math.min(minX, p.x); minY = Math.min(minY, p.y)
-        maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y)
-      }
+      return [{ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y + b.h }]
     }
-    const pad = Math.max(20, (maxX - minX) * 0.15)
-    this.cam.fit({ x: minX - pad, y: minY - pad, w: maxX - minX + pad * 2, h: maxY - minY + pad * 2 }, this.cssWidth, this.cssHeight)
+    const b = boundsOf(items.flatMap(corners))
+    const pad = Math.max(20, b.w * 0.15)
+    this.cam.fit({ x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 }, this.cssWidth, this.cssHeight)
     this.requestRender()
   }
 
@@ -1012,9 +974,7 @@ export class Editor {
       const sys = this.store.system(it.systemId)
       if (it.kind === 'run') {
         const mmPerPoint = this.store.sheet.mmPerPoint
-        const len = mmPerPoint
-          ? formatMetres(it.points.reduce((acc, p, i) => (i === 0 ? 0 : acc + dist(it.points[i - 1], p)), 0) * mmPerPoint, 2)
-          : '—'
+        const len = mmPerPoint ? formatMetres(polylineLength(it.points) * mmPerPoint, 2) : '—'
         return `${sys.name} · ${it.points.length} points · ${len}`
       }
       if (it.kind === 'note') return `Note · ${sys.name}`
