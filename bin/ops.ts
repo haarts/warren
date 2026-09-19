@@ -12,7 +12,8 @@ import { polygonArea } from '../src/geom.ts'
 import { adopt } from '../src/generate.ts'
 import { newId } from '../src/model/ids.ts'
 import type { Store } from '../src/model/doc.ts'
-import { isPositioned, pointsOf, ROOM_USES, LEVELS, type Item, type Level, type Project, type RoomUse, type Sheet } from '../src/model/types.ts'
+import { isPositioned, pointsOf, ROOM_USES, LEVELS, type Item, type Level, type Project, type Sheet } from '../src/model/types.ts'
+import { oneOf } from '../src/io/projectFile.ts'
 import { findSheets, pointsFromMetres } from './units.ts'
 
 export interface SetOp { op: 'set'; id: string; patch: Record<string, unknown> }
@@ -106,7 +107,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
   if (typeof raw.systemId !== 'string' || !systemIds.has(raw.systemId)) {
     return void problems.push(`${at}: item.systemId must be one of this project's systems`)
   }
-  const level = typeof raw.level === 'string' && LEVELS.includes(raw.level as Level) ? raw.level as Level : 'wall'
+  const level = oneOf(LEVELS, raw.level, 'wall')
   const shaped = raw.kind === 'run' || raw.kind === 'room' || raw.kind === 'door'
   if (shaped) {
     const source = Array.isArray(raw.pointsM) ? raw.pointsM : Array.isArray(raw.points) ? raw.points : null
@@ -137,7 +138,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
         sheet.items.push({
           kind: 'room', id: newId('room'), systemId: raw.systemId as string, level, points,
           name: String(raw.name ?? 'Room'),
-          use: ROOM_USES.includes(raw.use as RoomUse) ? (raw.use as RoomUse) : 'other',
+          use: oneOf(ROOM_USES, raw.use, 'other'),
           ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
         })
       } else if (raw.kind === 'door') {
