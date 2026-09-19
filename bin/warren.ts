@@ -472,6 +472,23 @@ async function cmdSystems(args: Args): Promise<void> {
     return
   }
 
+  if (typeof args.flags['set-sizes'] === 'string') {
+    const id = args.flags['set-sizes']
+    const sys = project.systems.find((s) => s.id === id)
+    if (!sys) fail(`no system called ${id} — see \`warren systems ${loaded.path}\` for the ones this project has`)
+    const sizesArg = typeof args.flags.sizes === 'string' ? args.flags.sizes : null
+    if (!sizesArg) fail('usage: warren systems <file> --set-sizes <id> --sizes "a,b,c"')
+    const sizes = sizesArg.split(',').map((v) => v.trim()).filter(Boolean)
+    if (sizes.length === 0) fail('--sizes needs at least one value')
+    // The suggestion list, not a constraint — an item can still carry any size text. This only
+    // changes what the combo box offers and which one is pre-selected (always the first).
+    sys.sizes = sizes
+    sys.defaultSize = sizes[0]
+    await persist(loaded)
+    console.log(`${id}: sizes set to ${sizes.join(', ')} (default: ${sizes[0]})`)
+    return
+  }
+
   if (typeof args.flags.merge === 'string') {
     const into = typeof args.flags.into === 'string' ? args.flags.into : null
     if (!into) fail('usage: warren systems <file> --merge a,b --into c')
@@ -1070,16 +1087,23 @@ const MANUAL = {
       'warren systems <file>',
       'warren systems <file> --add-missing',
       'warren systems <file> --merge <a,b> --into <c>',
+      'warren systems <file> --set-sizes <id> --sizes "a,b,c"',
     ],
     flags: [
       ['--add-missing', 'add built-in systems this project predates'],
       ['--merge <a,b,...>', 'system ids to fold away'],
       ['--into <id>', 'the system their items move to'],
+      ['--set-sizes <id>', 'replace a system\'s size list — first entry becomes the default'],
+      ['--sizes <a,b,...>', 'the new list, used with --set-sizes'],
     ],
-    examples: ['warren systems house.warren.json --merge power.light,power.socket --into power.230v'],
+    examples: [
+      'warren systems house.warren.json --merge power.light,power.socket --into power.230v',
+      'warren systems house.warren.json --set-sizes power.smoke --sizes "2×1.5mm² + interlink,4×1.5mm²"',
+    ],
     notes: [
       'Style belongs to the system, not to the shape: colour, dash, width and default size all come from here. That is why a drawing made over two years still agrees with itself, and why the takeoff can add anything up.',
       'Every item must name a system that exists. `--add-missing` is the usual first move on an older project.',
+      '--set-sizes only changes the suggestion list and its default — items already drawn keep whatever size text they have; fix those with `apply`\'s `set` op if the wording changed.',
     ],
     writes: true,
   },

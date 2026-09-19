@@ -96,7 +96,7 @@ const SEEDS: Seed[] = [
   { id: 'power.earth', category: 'power', name: 'Earthing / bonding', color: '#16a34a', dash: D.solid, width: 1.9, sizes: ['6mm²', '4mm²', '10mm²', '16mm²'], symbols: ['outlet', 'penetration', 'note'] },
   { id: 'power.pv', category: 'power', name: 'PV DC string', color: '#dc2626', dash: D.dot, width: 1.5, sizes: ['2×6mm²', '2×4mm²', '2×10mm²'], symbols: ['outlet', 'penetration', 'note'] },
   { id: 'power.conduit', category: 'power', name: 'Empty conduit (loze leiding)', color: '#475569', dash: D.dot, width: 1.8, sizes: ['Ø19', 'Ø16', 'Ø25', 'Ø40', 'Ø50'], symbols: ['outlet', 'riser-up', 'riser-down', 'penetration', 'note'] },
-  { id: 'power.smoke', category: 'power', name: 'Smoke detectors (interlinked)', color: '#db2777', dash: D.dashdotdot, width: 1.4, sizes: ['3×1.5mm² + interlink', '4×1.5mm²', '3×1.5mm² (RF interlink)'], symbols: ['detector', 'penetration', 'note'] },
+  { id: 'power.smoke', category: 'power', name: 'Smoke detectors (interlinked)', color: '#db2777', dash: D.dashdotdot, width: 1.4, sizes: ['2×1.5mm² + interlink', '4×1.5mm²', '3×1.5mm² (RF interlink)'], symbols: ['detector', 'penetration', 'note'] },
   { id: 'power.outdoor', category: 'power', name: 'Outdoor / outbuilding feed', color: '#4d7c0f', dash: D.dash, width: 2.0, sizes: ['XMvK 4×6mm²', 'XMvK 3×2.5mm²', 'XMvK 5×2.5mm²', 'XMvK 5×6mm²', 'XMvK 5×10mm²'], symbols: ['socket', 'switch', 'penetration', 'note'] },
 
   // --- Data / low voltage --------------------------------------------------------------

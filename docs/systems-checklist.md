@@ -102,7 +102,7 @@ what is missing, and keep the two in step.
 - [ ] Doorbell transformer
 - [ ] Motorised blinds and screens, garage door, gate
 - [ ] ⚠ Mains-powered, **interlinked smoke detectors** — a 230 V circuit, not alarm wiring.
-      Wired interlink needs a conductor between every detector (`3×1.5mm² + interlink`), so the
+      Wired interlink needs a conductor between every detector (`2×1.5mm² + interlink`), so the
       cable and the route have to be decided now; RF-interlinked detectors need only 230 V at
       each position. One per storey and on every escape route, at minimum
 - [ ] Kitchen: a **heat** detector rather than a smoke detector, or a smoke detector kept well
