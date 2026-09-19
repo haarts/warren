@@ -28,15 +28,16 @@ function shiftItem(item: Item, dx: number, dy: number): void {
   else if (isPositioned(item)) { item.x += dx; item.y += dy }
 }
 import { Background } from '../render/background.ts'
+import { itemBounds } from '../render/bounds.ts'
 import { Camera } from '../render/camera.ts'
+import { COMPASS_RADIUS_PX, type CompassPart } from '../render/compass.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
-import { drawScene, itemBounds, type Overlay } from '../render/scene.ts'
+import { drawScene, type Overlay } from '../render/scene.ts'
 import { adopt } from '../generate.ts'
 import { formatMetres } from '../units.ts'
 import { hitBoxCorner, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { resolvePoint } from './snap.ts'
 import { alongBearing, bearingBetween, slugifyDirectionId, splitNames, tipBearing } from '../directions.ts'
-import { COMPASS_RADIUS_PX, type CompassPart } from '../render/scene.ts'
 
 export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate' | 'direction'
 

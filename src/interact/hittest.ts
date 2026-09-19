@@ -2,7 +2,7 @@ import { closestOnPolyline, closestOnSegment, dist, polygonEdges, rectContains, 
 import type { Store, VertexRef } from '../model/doc.ts'
 import { pointsOf, type BoxItem, type Item } from '../model/types.ts'
 import { noteHeight } from '../render/notes.ts'
-import { boxCorners, itemBounds } from '../render/scene.ts'
+import { boxCorners, itemBounds } from '../render/bounds.ts'
 
 /** Draw order is boxes → runs → markers, so we test back to front. */
 function topmost(items: Item[], p: Pt, tol: number): Item | null {

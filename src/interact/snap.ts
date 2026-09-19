@@ -1,7 +1,7 @@
 import { dist, orthoConstrain, roundTo, type Pt } from '../geom.ts'
 import type { Store } from '../model/doc.ts'
 import { isPositioned, pointsOf } from '../model/types.ts'
-import { boxCorners } from '../render/scene.ts'
+import { boxCorners } from '../render/bounds.ts'
 import { nearestPointOnItem } from './hittest.ts'
 
 export interface SnapResult {
