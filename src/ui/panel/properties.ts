@@ -10,7 +10,7 @@ import { symbolsFor } from '../../model/systems.ts'
 import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
 import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
-import { setBoxRotation } from '../../interact/arrange.ts'
+import { alignItems, distributeItems, setBoxRotation, type AlignEdge } from '../../interact/arrange.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -370,6 +370,8 @@ export function buildProperties(app: App, body: HTMLElement): void {
   )
   body.appendChild(actions)
 
+  buildArrange(app, body)
+
   const otherSheets = store.project.sheets.filter((s) => s.id !== store.project.activeSheetId)
   if (otherSheets.length) {
     const copySelect: HTMLSelectElement = select(
@@ -383,6 +385,33 @@ export function buildProperties(app: App, body: HTMLElement): void {
     body.appendChild(el('div', { class: 'hint' },
       'Copies land at the same coordinates on the other floor — the quick way to line a riser up between storeys.'))
   }
+}
+
+const ALIGN_BUTTONS: [AlignEdge, string, string][] = [
+  ['left', '⇤', 'Align left edges'], ['centre', '↔', 'Align centres, left to right'], ['right', '⇥', 'Align right edges'],
+  ['top', '⤒', 'Align top edges'], ['middle', '↕', 'Align middles, top to bottom'], ['bottom', '⤓', 'Align bottom edges'],
+]
+
+/** Align and distribute, as in Slides or Illustrator - only once there is more than one thing to line up. */
+function buildArrange(app: App, body: HTMLElement): void {
+  const { store } = app
+  const movable = store.selectedItems().filter((i) => store.isEditable(i))
+  if (movable.length < 2) return
+  const run = (fn: (items: Item[]) => void): void => store.mutate(() => fn(store.selectedItems().filter((i) => store.isEditable(i))))
+  const row = el('div', { class: 'arrange' },
+    ...ALIGN_BUTTONS.map(([edge, glyph, title]) => el('button', { title, onclick: () => run((it) => alignItems(it, edge)) }, glyph)),
+  )
+  if (movable.length >= 3) {
+    row.appendChild(el('button', {
+      title: 'Distribute horizontally: equal gaps left to right, the outer two stay put',
+      onclick: () => run((it) => distributeItems(it, 'horizontal')),
+    }, '⇹ Even'))
+    row.appendChild(el('button', {
+      title: 'Distribute vertically: equal gaps top to bottom, the outer two stay put',
+      onclick: () => run((it) => distributeItems(it, 'vertical')),
+    }, '⇳ Even'))
+  }
+  body.appendChild(field('Arrange', row, movable.length < 3 ? 'Select three or more to space them evenly.' : undefined))
 }
 
 /** Enough to recognise an item by, in as few words as possible. */

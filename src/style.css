@@ -285,3 +285,5 @@ table.data tr.cat td { background: #f7f8fa; font-weight: 650; padding-top: 6px; 
 .systems-table input[type="color"] { width: 34px; height: 22px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
 .palette { display: flex; flex-wrap: wrap; gap: 3px; }
 .palette button { width: 18px; height: 18px; padding: 0; border-radius: 3px; border: 1px solid rgba(0,0,0,0.18); }
+.arrange { display: flex; flex-wrap: wrap; gap: 3px; }
+.arrange button { min-width: 26px; padding: 2px 6px; font-size: 13px; line-height: 1.2; }

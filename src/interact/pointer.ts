@@ -9,10 +9,10 @@ import { BOX_ROTATE_OFFSET_PX, boxCentre, boxCorners, rotateAbout } from '../ren
 import { buildGraph } from '../topology.ts'
 import type { VertexRef } from '../model/doc.ts'
 import { idPrefix, newId } from '../model/ids.ts'
-import { coordsOf, isPositioned, pointsOf, type BoxItem, type Item, type MarkerItem, type NoteItem, type RunItem } from '../model/types.ts'
+import { coordsOf, pointsOf, type BoxItem, type Item, type MarkerItem, type NoteItem, type RunItem } from '../model/types.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { adopt } from '../generate.ts'
-import { setBoxRotation } from './arrange.ts'
+import { setBoxRotation, shiftItem } from './arrange.ts'
 import { bearingBetween } from '../directions.ts'
 import { HIT_TOL_PX, hitBoxCorner, hitBoxRotate, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { hitCompass } from './compass.ts'
@@ -31,18 +31,6 @@ function neighbourOf(item: Item, points: Pt[], index: number): Pt | null {
     return points[(index - 1 + n) % n] ?? null
   }
   return points[index - 1] ?? points[index + 1] ?? null
-}
-
-/**
- * Move an item by a delta, whatever shape it is made of, measured from `from`'s coordinates -
- * which defaults to the item's own (a live nudge) but can be an earlier snapshot (a drag, so
- * the delta is measured from where the gesture started, not accumulated frame to frame).
- */
-function shiftItem(item: Item, dx: number, dy: number, from: Item = item): void {
-  adopt(item)
-  const points = pointsOf(from)
-  if (points) (item as { points: Pt[] }).points = points.map((p) => ({ x: p.x + dx, y: p.y + dy }))
-  else if (isPositioned(from) && isPositioned(item)) { item.x = from.x + dx; item.y = from.y + dy }
 }
 
 export type Drag =
