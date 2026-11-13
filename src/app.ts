@@ -4,7 +4,7 @@ import { cancelDraft, cancelMeasurement, finishDraft, removeLastDraftPoint } fro
 import { selectionSummary, zoomBy, zoomToFit } from './interact/view.ts'
 import { attachUnloadGuard, autosave, offerRestore, openProject, save, saveAs } from './app/fileOps.ts'
 import { attachPage as attachPageOp, refit } from './app/pdfOps.ts'
-import { addSheet as addSheetOp, duplicateSelectionToSheet as duplicateSelectionToSheetOp, renameSheet } from './app/sheetOps.ts'
+import { addSheet as addSheetOp, duplicateSelectionToSheet as duplicateSelectionToSheetOp, renameSheet, riseToSheet as riseToSheetOp } from './app/sheetOps.ts'
 import { isServed, Session } from './io/session.ts'
 import { Store } from './model/doc.ts'
 import { clear, el } from './ui/dom.ts'
@@ -186,6 +186,7 @@ export class App {
 
   addSheet(): void { addSheetOp(this) }
   duplicateSelectionToSheet(sheetId: string): void { duplicateSelectionToSheetOp(this, sheetId) }
+  riseToSheet(sheetId: string, way: 'up' | 'down'): void { riseToSheetOp(this, sheetId, way) }
   attachPage(assetId: string, page: number, target: 'current' | 'new', sourceName: string): Promise<void> {
     return attachPageOp(this, assetId, page, target, sourceName)
   }

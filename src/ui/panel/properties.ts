@@ -371,20 +371,7 @@ export function buildProperties(app: App, body: HTMLElement): void {
   body.appendChild(actions)
 
   buildArrange(app, body)
-
-  const otherSheets = store.project.sheets.filter((s) => s.id !== store.project.activeSheetId)
-  if (otherSheets.length) {
-    const copySelect: HTMLSelectElement = select(
-      [['', 'Copy to sheet…'] as const, ...otherSheets.map((s) => [s.id, s.name] as const)], '',
-      (v) => {
-        if (v) app.duplicateSelectionToSheet(v)
-        copySelect.value = ''
-      },
-    )
-    body.appendChild(el('div', { style: { marginTop: '8px' } }, copySelect))
-    body.appendChild(el('div', { class: 'hint' },
-      'Copies land at the same coordinates on the other floor — the quick way to line a riser up between storeys.'))
-  }
+  buildBetweenFloors(app, body)
 }
 
 const ALIGN_BUTTONS: [AlignEdge, string, string][] = [
@@ -412,6 +399,41 @@ function buildArrange(app: App, body: HTMLElement): void {
     }, '⇳ Even'))
   }
   body.appendChild(field('Arrange', row, movable.length < 3 ? 'Select three or more to space them evenly.' : undefined))
+}
+
+/**
+ * Other sheets are other floors, and a pipe gets there through a riser. That is what this
+ * section is for, so it says so in those words, ahead of the plain copy.
+ */
+function buildBetweenFloors(app: App, body: HTMLElement): void {
+  const { store } = app
+  const otherSheets = store.project.sheets.filter((s) => s.id !== store.project.activeSheetId)
+  const items = store.selectedItems()
+  body.appendChild(el('div', { class: 'section-title' }, 'Other floors'))
+  if (!otherSheets.length) {
+    body.appendChild(el('div', { class: 'hint' },
+      'Add a sheet per floor (the + by the sheet tabs) and a run can rise or drop to it from here.'))
+    return
+  }
+  const options = otherSheets.map((s) => [s.id, s.name] as const)
+  const sheetPicker = (prompt: string, onPick: (id: string) => void): HTMLSelectElement => {
+    const picker: HTMLSelectElement = select([['', prompt] as const, ...options], '', (v) => {
+      picker.value = ''
+      if (v) onPick(v)
+    })
+    return picker
+  }
+  const only = items.length === 1 ? items[0] : null
+  if (only && (only.kind === 'run' || only.kind === 'marker')) {
+    body.appendChild(field('Riser', el('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } },
+      sheetPicker('↑ Rise to…', (id) => app.riseToSheet(id, 'up')),
+      sheetPicker('↓ Drop to…', (id) => app.riseToSheet(id, 'down')),
+    ), only.kind === 'run'
+      ? 'Through the floor at the end of this run (or the end corner you picked): a riser here, its partner at the same spot on the other sheet, and you follow it there.'
+      : 'A riser at this spot, its partner at the same spot on the other sheet, and you follow it there.'))
+  }
+  body.appendChild(field('Copy', sheetPicker('Copy to sheet…', (id) => app.duplicateSelectionToSheet(id)),
+    'Copies land at the same coordinates on the other sheet.'))
 }
 
 /** Enough to recognise an item by, in as few words as possible. */

@@ -1104,6 +1104,31 @@ try {
   })
   check('copy-to-sheet duplicates at the same coordinates', copied === 8, `${copied} items`)
 
+  // --- a run rises through the floor to another sheet ----------------------------------------------
+  const rose = await page.evaluate(() => {
+    const app = window.warren
+    const [first, second] = app.store.project.sheets
+    app.store.setActiveSheet(first.id)
+    const run = app.store.items().find((i) => i.kind === 'run')
+    app.store.selection.clear()
+    app.store.selection.add(run.id)
+    const end = run.points[run.points.length - 1]
+    app.store.activeVertex = { itemId: run.id, index: run.points.length - 1 }
+    app.riseToSheet(second.id, 'up')
+    const here = first.items.filter((i) => i.kind === 'marker' && i.symbol === 'riser-up' && i.x === end.x && i.y === end.y)
+    const there = app.store.selectedItems()[0]
+    const result = {
+      onSecond: app.store.project.activeSheetId === second.id,
+      here: here.map((m) => m.label), there: there && { symbol: there.symbol, label: there.label, x: there.x === end.x, y: there.y === end.y },
+    }
+    app.store.undo()
+    app.store.setActiveSheet(first.id)
+    return result
+  })
+  check('rising a run puts a riser on both sheets and follows it up',
+    rose.onSecond && rose.here.length === 1 && rose.there?.symbol === 'riser-down' && rose.there.x && rose.there.y,
+    JSON.stringify(rose))
+
   // --- autosave round trip through IndexedDB -------------------------------------------------------------
   const autosave = await page.evaluate(async () => {
     const { writeAutosave, readAutosave, clearAutosave } = await import('/src/io/autosave.ts')
