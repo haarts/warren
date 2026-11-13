@@ -214,8 +214,9 @@ const MANUAL = {
       ['--port <n>', 'port to listen on (default 5170)'],
       ['--root <dir>', 'the built app to serve (default dist/)'],
     ],
-    examples: ['warren serve house.warren.json'],
+    examples: ['warren serve house.warren.json', 'warren serve new-house.warren.json   # creates it if it does not exist'],
     notes: [
+      'If the file does not exist yet, it is created as an empty project — one sheet, the default systems — so starting a new house is just `warren serve <new name>.warren.json`. The name must end in .warren.json.',
       'Without this the app holds the project in memory and the command line holds a file on disk, so every exchange between a person and a model is a manual save, apply and reopen — and pointing at something has to be done by writing a label into the file, which is an absurd price for a gesture.',
       'While it runs, every other command routes through it instead of touching the file, so both see the same drawing. Writes reach the disk on a short delay; the file is always a real file.',
       'The app still runs as static files with no server at all. This is an additional mode, not a replacement.',

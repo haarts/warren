@@ -315,3 +315,33 @@ test('items reports which symbol a marker draws with', async () => {
   assert.deepEqual(rows.map((r) => [r.id, r.symbol]), [['m1', 'detector'], ['m2', 'sensor']])
   assert.match(warren(['items', file, '--kind', 'marker'], dir).out, /detector/)
 })
+
+test('a new project starts from a file that does not exist yet', async () => {
+  const { createProjectFile } = await import('../bin/project.ts')
+  const dir = mkdtempSync(join(tmpdir(), 'warren-new-'))
+  const file = join(dir, 'Kerkstraat 4.warren.json')
+  createProjectFile(file)
+  const out = JSON.parse(warren(['summary', file, '--json'], dir).out) as { name?: string }
+  assert.ok(existsSync(file))
+  assert.equal(out.name, 'Kerkstraat 4')
+  assert.equal(warren(['check', file], dir).code, 0)
+})
+
+test('calibrate sets one sheet\'s scale, from a printed scale or from another sheet', async () => {
+  const { createProjectFile } = await import('../bin/project.ts')
+  const dir = mkdtempSync(join(tmpdir(), 'warren-cal-'))
+  const file = join(dir, 'two.warren.json')
+  createProjectFile(file)
+  const project = JSON.parse(readFileSync(file, 'utf8'))
+  project.sheets.push({ ...project.sheets[0], id: 'sh_second', name: 'First floor', mmPerPoint: 34.7 })
+  writeFileSync(file, JSON.stringify(project))
+
+  assert.equal(warren(['calibrate', file, '--sheet', '1', '--scale', '1:100'], dir).code, 0)
+  assert.equal(warren(['calibrate', file, '--sheet', 'first', '--like', '1'], dir).code, 0)
+  const sheets = JSON.parse(readFileSync(file, 'utf8')).sheets
+  assert.ok(Math.abs(sheets[0].mmPerPoint - 35.2778) < 1e-4, String(sheets[0].mmPerPoint))
+  assert.equal(sheets[1].mmPerPoint, sheets[0].mmPerPoint)
+
+  assert.equal(warren(['calibrate', file, '--scale', '1:50'], dir).code, 2, 'two sheets: which one is required')
+  assert.equal(warren(['calibrate', file, '--sheet', '1'], dir).code, 2, 'a scale is required')
+})
