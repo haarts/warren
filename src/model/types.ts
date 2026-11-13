@@ -393,6 +393,12 @@ export interface Settings {
   showLevels: boolean
   /** Percentage added to every takeoff total for drops, slack and verticals. */
   takeoffSlackPct: number
+  /**
+   * Runs drawn alongside another snap to this clearance from it, in real millimetres - so a
+   * parallel run lands a deliberate gap away rather than on top or at a random hair apart.
+   * 0 turns it off.
+   */
+  runSpacingMm: number
   levelFilter: Level | 'all'
   /**
    * Show only items whose label, size or note contains this. Rooms and doors are exempt, so
@@ -442,6 +448,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showNotes: true,
   showLevels: true,
   takeoffSlackPct: 10,
+  runSpacingMm: 50,
   levelFilter: 'all',
   labelFilter: '',
   roomFocus: null,

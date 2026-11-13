@@ -30,6 +30,13 @@ export function buildProperties(app: App, body: HTMLElement): void {
       'Uncalibrated: lengths and the takeoff stay empty. Click Calibrate, then click the two ends of a dimension printed on the plan.'))
   }
 
+  body.appendChild(field('Run spacing', el('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } },
+    numberInput(store.project.settings.runSpacingMm, (v) => {
+      store.project.settings.runSpacingMm = Math.max(0, v)
+      store.touch()
+    }), 'mm'),
+  'A run drawn alongside another snaps to this gap from it, once you are zoomed in far enough to see it. 0 turns it off.'))
+
   const lockedOnSheet = store.items().filter((i) => i.locked)
   if (lockedOnSheet.length) {
     body.appendChild(field('Locked', el('button', {

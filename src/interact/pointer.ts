@@ -240,7 +240,7 @@ function onPointerMove(ed: Editor, e: PointerEvent): void {
       if (item && points) {
         const i = ed.drag.ref.index
         const anchor = neighbourOf(item, points, i)
-        points[i] = ed.resolve(world, { anchor, excludeRunId: item.id, excludeIndex: i })
+        points[i] = ed.resolve(world, { anchor, excludeRunId: item.id, excludeIndex: i, spacing: item.kind === 'run' })
         adopt(item)
       }
       break
@@ -443,7 +443,7 @@ function onWheel(ed: Editor, e: WheelEvent): void {
 
 function runPointerDown(ed: Editor, world: Pt, separate: boolean): void {
   const anchor = ed.draft.length ? ed.draft[ed.draft.length - 1] : null
-  let p = ed.resolve(world, { anchor })
+  let p = ed.resolve(world, { anchor, spacing: true })
   if (ed.draft.length === 0 && !separate) {
     const end = freeEndAt(ed, p)
     if (end) {
@@ -475,7 +475,7 @@ function freeEndAt(ed: Editor, p: Pt): { runId: string; end: 'start' | 'end'; at
 }
 
 function updateDraftCursor(ed: Editor, world: Pt): void {
-  ed.draftCursor = ed.resolve(world, { anchor: ed.draft[ed.draft.length - 1] })
+  ed.draftCursor = ed.resolve(world, { anchor: ed.draft[ed.draft.length - 1], spacing: true })
 }
 
 export function finishDraft(ed: Editor): void {

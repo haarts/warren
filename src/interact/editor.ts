@@ -89,10 +89,11 @@ export class Editor {
     return px / this.cam.zoom
   }
 
-  resolve(raw: Pt, opts: { anchor?: Pt | null; excludeRunId?: string; excludeIndex?: number; itemSnap?: boolean } = {}): Pt {
+  resolve(raw: Pt, opts: { anchor?: Pt | null; excludeRunId?: string; excludeIndex?: number; itemSnap?: boolean; spacing?: boolean } = {}): Pt {
     const res = resolvePoint(this.store, raw, this.tol(SNAP_TOL_PX), {
       anchor: opts.anchor ?? null,
       itemSnap: opts.itemSnap,
+      spacing: opts.spacing,
       // Latched ortho with Shift as a temporary override, which is how a CAD user expects
       // F8 and Shift to interact.
       ortho: this.store.project.settings.orthoLock !== this.shiftHeld,
