@@ -14,6 +14,7 @@ import { isDimmed, type DrawCtx } from './draw.ts'
 import { drawBoxLabel, drawMarkerLabel, drawRoomLabel, drawRunLabel, labelTextFor } from './labels.ts'
 import { drawMarker } from './markers.ts'
 import { drawNote, noteHeight } from './notes.ts'
+import type { DetailPatch } from './background.ts'
 import { drawGhost, type GhostLayer } from './ghost.ts'
 import { drawGrid, drawScaleBar } from './gridScale.ts'
 import { drawRun } from './runs.ts'
@@ -49,6 +50,8 @@ export interface SceneOptions {
   height: number
   background: CanvasImageSource | null
   backgroundSize: { w: number; h: number } | null
+  /** A sharper rendering of the part of the page on screen, drawn over the background. */
+  backgroundDetail?: DetailPatch | null
   /** Multiplies label/handle sizes. 1 on screen; the export scale when rasterising. */
   uiScale?: number
   interactive?: boolean
@@ -88,6 +91,8 @@ export function drawScene(opts: SceneOptions): void {
     // needs to look good at screen resolution; save the expensive filter for the export render.
     ctx.imageSmoothingQuality = interactive ? 'medium' : 'high'
     ctx.drawImage(opts.background, cam.toScreenX(0), cam.toScreenY(0), w * cam.zoom, h * cam.zoom)
+    const d = opts.backgroundDetail
+    if (d) ctx.drawImage(d.canvas, cam.toScreenX(d.x), cam.toScreenY(d.y), d.w * cam.zoom, d.h * cam.zoom)
     ctx.restore()
     ctx.save()
     ctx.strokeStyle = '#c9ced8'

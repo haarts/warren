@@ -46,7 +46,8 @@ export function requestRender(ed: Editor): void {
 
 function render(ed: Editor): void {
   const dpr = window.devicePixelRatio || 1
-  ed.bg.sync(ed.store.sheet, ed.cam.zoom, dpr)
+  const { cam } = ed
+  ed.bg.sync(ed.store.sheet, cam.zoom, dpr, { x: cam.x, y: cam.y, w: ed.cssWidth / cam.zoom, h: ed.cssHeight / cam.zoom })
   const ghost = ghostLayer(ed, dpr)
   ed.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   drawScene({
@@ -57,6 +58,7 @@ function render(ed: Editor): void {
     height: ed.cssHeight,
     background: ed.bg.canvas,
     backgroundSize: ed.bg.size,
+    backgroundDetail: ed.bg.detail,
     interactive: true,
     overlay: overlay(ed),
     ghost,

@@ -67,14 +67,24 @@ const viewportCanvas = (viewport: { width: number; height: number }): HTMLCanvas
  */
 export async function renderPage(
   assetId: string, base64: string, spec: Pick<SheetPdf, 'page' | 'rotation'>, scale: number,
+  /** Only this part of the page, in points - for zooming in, where the whole page would be
+   *  hundreds of megapixels and the screen shows a few of them. */
+  region?: { x: number; y: number; w: number; h: number },
 ): Promise<PageRender> {
   const doc = await loadDocument(assetId, base64)
   const pg = await doc.getPage(spec.page)
   const rotation = normalizeRotation(pg.rotate + spec.rotation)
   const base = pg.getViewport({ scale: 1, rotation })
   const viewport = pg.getViewport({ scale, rotation })
-  const canvas = viewportCanvas(viewport)
-  await pg.render({ canvas, viewport, background: '#ffffff' }).promise
+  if (!region) {
+    const canvas = viewportCanvas(viewport)
+    await pg.render({ canvas, viewport, background: '#ffffff' }).promise
+    return { canvas, widthPt: base.width, heightPt: base.height, scale }
+  }
+  const canvas = viewportCanvas({ width: region.w * scale, height: region.h * scale })
+  // Shifts the page so the region's corner lands on the canvas origin; pdf.js clips the rest.
+  const transform = [1, 0, 0, 1, -region.x * scale, -region.y * scale]
+  await pg.render({ canvas, viewport, transform, background: '#ffffff' }).promise
   return { canvas, widthPt: base.width, heightPt: base.height, scale }
 }
 

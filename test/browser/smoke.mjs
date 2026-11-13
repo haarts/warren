@@ -102,6 +102,29 @@ try {
   })
   check('the plan is painted on the canvas', darkSamples > 20, `${darkSamples} dark samples`)
 
+  // Zoomed far in, the whole page must not be rasterised at that scale - at 12x this one would
+  // be 72 Mpx - only the part on screen, sharply; and zooming back out lets that patch go.
+  const deep = await page.evaluate(async () => {
+    const ed = window.warren.editor
+    const before = { x: ed.cam.x, y: ed.cam.y, zoom: ed.cam.zoom }
+    ed.cam.zoomAt(ed.cssWidth / 2, ed.cssHeight / 2, 12 / ed.cam.zoom)
+    ed.requestRender()
+    const t0 = performance.now()
+    while (!ed.bg.detail && performance.now() - t0 < 10_000) {
+      await new Promise((r) => setTimeout(r, 100))
+      ed.requestRender()
+    }
+    const base = ed.bg.canvas.width * ed.bg.canvas.height
+    const detail = ed.bg.detail ? { scale: ed.bg.detail.scale, px: ed.bg.detail.canvas.width * ed.bg.detail.canvas.height } : null
+    Object.assign(ed.cam, before)
+    ed.requestRender()
+    await new Promise((r) => setTimeout(r, 100))
+    return { base, detail, dropped: ed.bg.detail === null }
+  })
+  check('zoomed far in, the plan is sharpened on screen only, not as a whole-page raster',
+    deep.base <= 16e6 && deep.detail?.scale >= 12 && deep.detail.px <= 24e6 && deep.dropped,
+    JSON.stringify(deep))
+
   const rect = await page.evaluate(() => {
     const r = document.getElementById('canvas').getBoundingClientRect()
     return { x: r.x, y: r.y, w: r.width, h: r.height }

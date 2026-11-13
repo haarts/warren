@@ -19,6 +19,28 @@ export interface GhostLayer {
 const GHOST_PLAN_ALPHA = 0.28
 const GHOST_ITEM_ALPHA = 0.4
 
+const tints = new WeakMap<CanvasImageSource, CanvasImageSource>()
+
+/**
+ * The other floor's plan, tinted so it never reads as part of this one. Done once per raster:
+ * a canvas filter over a whole page on every frame is what a pan would otherwise pay for.
+ * Browsers without canvas filters just get it faint and grey.
+ */
+function tinted(source: CanvasImageSource): CanvasImageSource {
+  const cached = tints.get(source)
+  if (cached) return cached
+  const { width, height } = source as HTMLCanvasElement
+  const out = document.createElement('canvas')
+  out.width = width
+  out.height = height
+  const c = out.getContext('2d')
+  if (!c) return source
+  c.filter = 'sepia(1) hue-rotate(170deg) saturate(3)'
+  c.drawImage(source, 0, 0)
+  tints.set(source, out)
+  return out
+}
+
 export function drawGhost(dc: DrawCtx, ghost: GhostLayer): void {
   const { ctx, cam, store, ui } = dc
   const m = ghost.mapping
@@ -35,11 +57,8 @@ export function drawGhost(dc: DrawCtx, ghost: GhostLayer): void {
   if (ghost.background && ghost.backgroundSize) {
     ctx.save()
     ctx.globalAlpha = GHOST_PLAN_ALPHA
-    // Tinted, so the other floor never reads as part of this one. Browsers without canvas
-    // filters just get it faint and grey.
-    ctx.filter = 'sepia(1) hue-rotate(170deg) saturate(3)'
     ctx.globalCompositeOperation = 'multiply'
-    ctx.drawImage(ghost.background, 0, 0, ghost.backgroundSize.w, ghost.backgroundSize.h)
+    ctx.drawImage(tinted(ghost.background), 0, 0, ghost.backgroundSize.w, ghost.backgroundSize.h)
     ctx.restore()
   }
 
