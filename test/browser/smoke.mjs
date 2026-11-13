@@ -358,7 +358,8 @@ try {
     topo.networks >= 2 && topo.freeEnds > 0 && topo.tolerance < 1,
     `${topo.networks} networks, ${topo.freeEnds} free ends, tol ${topo.tolerance.toFixed(2)} pt`)
 
-  // Draw one run that deliberately starts exactly where another ends.
+  // Draw one run that deliberately starts exactly where another ends - as a separate run, which
+  // is what Alt on the first click asks for (without it, that would carry the first run on).
   const joinPoint = await page.evaluate(() => {
     const app = window.warren
     const run = app.store.items().find((i) => i.kind === 'run')
@@ -368,7 +369,9 @@ try {
   })
   await page.keyboard.press('l')
   await page.mouse.move(joinPoint.x, joinPoint.y)
+  await page.keyboard.down('Alt')
   await page.mouse.click(joinPoint.x, joinPoint.y)
+  await page.keyboard.up('Alt')
   await page.mouse.move(joinPoint.x + 90, joinPoint.y + 60)
   await page.mouse.click(joinPoint.x + 90, joinPoint.y + 60)
   await page.keyboard.press('Enter')
@@ -381,6 +384,39 @@ try {
   }, joinPoint.id)
   check('snapping to an end makes a real connection', joined.joins >= 1 && joined.network >= 2,
     `${joined.joins} joined, network of ${joined.network}`)
+
+  // --- starting a run on a loose end carries that run on, rather than adding a second ---------
+  const extended = await (async () => {
+    const before = await page.evaluate((firstRunId) => {
+      const app = window.warren
+      const runs = app.store.items().filter((i) => i.kind === 'run')
+      const run = runs.find((i) => i.id !== firstRunId)
+      app.editor.activeSystemId = run.systemId
+      const end = run.points[run.points.length - 1]
+      const r = document.getElementById('canvas').getBoundingClientRect()
+      return { id: run.id, count: runs.length, corners: run.points.length, x: r.x + app.editor.cam.toScreenX(end.x), y: r.y + app.editor.cam.toScreenY(end.y) }
+    }, joinPoint.id)
+    await page.keyboard.press('l')
+    await page.mouse.move(before.x + 3, before.y - 2)
+    await page.mouse.click(before.x + 3, before.y - 2)
+    await page.mouse.move(before.x + 60, before.y - 40)
+    await page.mouse.click(before.x + 60, before.y - 40)
+    await page.mouse.move(before.x + 60, before.y - 90)
+    await page.mouse.click(before.x + 60, before.y - 90)
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('v')
+    const after = await page.evaluate((id) => {
+      const app = window.warren
+      return { count: app.store.items().filter((i) => i.kind === 'run').length, corners: app.store.item(id).points.length, selected: [...app.store.selection] }
+    }, before.id)
+    // Undo it again: the rest of this script was written against the drawing without it.
+    await page.evaluate(() => window.warren.store.undo())
+    return { before, after }
+  })()
+  check('a run started on a loose end of the same system extends that run',
+    extended.after.count === extended.before.count && extended.after.corners === extended.before.corners + 2
+    && extended.after.selected[0] === extended.before.id,
+    `${extended.before.count}→${extended.after.count} runs, ${extended.before.corners}→${extended.after.corners} corners`)
 
   // --- dragging a marker onto a run's free end attaches it: a lamp on a stub mid-room -----------
   const stub = await page.evaluate((firstRunId) => {

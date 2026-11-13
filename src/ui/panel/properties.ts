@@ -61,7 +61,8 @@ export function buildProperties(app: App, body: HTMLElement): void {
     body.appendChild(el('div', { class: 'section-title' }, 'Nothing selected'))
     body.appendChild(el('div', { class: 'hint' },
       'Draw a run with L, then click it to select the whole thing — corners and all. ' +
-      'Drag a corner handle to fix one corner; Alt+click a segment adds a corner; Alt+click a corner removes it.'))
+      'Drag a corner handle to fix one corner; Alt+click a segment adds a corner; Alt+click a corner removes it. ' +
+      'Start a new run on the loose end of one to carry it on. Ctrl+drag copies whatever you drag.'))
     return
   }
 

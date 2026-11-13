@@ -43,6 +43,8 @@ export class Editor {
   drag: Drag = { mode: 'none' }
   draft: Pt[] = []
   draftCursor: Pt | null = null
+  /** The run the draft is carrying on from, when it was started on one of that run's loose ends. */
+  extending: { runId: string; end: 'start' | 'end' } | null = null
   measurePts: Pt[] = []
   snap: { point: Pt; label: string | null } | null = null
   hover: { id: string | null; locked: string | null; compass: CompassPart | null } =

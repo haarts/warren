@@ -54,7 +54,7 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 
 | | |
 |---|---|
-| **Draw a run** | `L`, then click each corner. `Enter` or double-click finishes, `Backspace` removes the last corner, `Esc` cancels. Hold `Shift` for 45° lock |
+| **Draw a run** | `L`, then click each corner. `Enter` or double-click finishes, `Backspace` removes the last corner, `Esc` cancels. Hold `Shift` for 45° lock. Starting on the loose end of a run in the same system carries that run on; `Alt`+click the first point to start a separate one there instead |
 | **Select** | `V`. Click a run to select all of it. Shift-click to add. Drag on empty space for a rubber band |
 | **Move** | Drag the selection. Arrow keys nudge (`Shift` = 10×). `Ctrl`+drag (`Cmd` on a Mac) leaves the original and drags a copy |
 | **Edit corners** | Drag a corner handle to move it. `Alt`+click a segment to insert a corner, `Alt`+click a corner to remove it. Double-click a segment also inserts. Works the same on a room outline — a room is closed, so the edge back to the first corner takes a corner too |

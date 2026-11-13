@@ -6,6 +6,7 @@
  */
 import { dist, normalizeRect, type Pt, type Rect } from '../geom.ts'
 import { BOX_ROTATE_OFFSET_PX, boxCentre, boxCorners, rotateAbout } from '../render/bounds.ts'
+import { buildGraph } from '../topology.ts'
 import type { VertexRef } from '../model/doc.ts'
 import { idPrefix, newId } from '../model/ids.ts'
 import { coordsOf, isPositioned, pointsOf, type BoxItem, type Item, type MarkerItem, type NoteItem, type RunItem } from '../model/types.ts'
@@ -99,7 +100,7 @@ function onPointerDown(ed: Editor, e: PointerEvent): void {
 
   switch (ed.tool) {
     case 'select': selectPointerDown(ed, e, world); break
-    case 'run': runPointerDown(ed, world); break
+    case 'run': runPointerDown(ed, world, e.altKey); break
     case 'box': ed.drag = { mode: 'newBox', start: ed.resolve(world), current: ed.resolve(world) }; break
     case 'marker': placeMarker(ed, ed.resolve(world)); break
     case 'note': placeNote(ed, ed.resolve(world)); break
@@ -452,11 +453,37 @@ function onWheel(ed: Editor, e: WheelEvent): void {
 
 // --- drafts and two-point tools ---------------------------------------------------------------
 
-function runPointerDown(ed: Editor, world: Pt): void {
+function runPointerDown(ed: Editor, world: Pt, separate: boolean): void {
   const anchor = ed.draft.length ? ed.draft[ed.draft.length - 1] : null
-  const p = ed.resolve(world, { anchor })
+  let p = ed.resolve(world, { anchor })
+  if (ed.draft.length === 0 && !separate) {
+    const end = freeEndAt(ed, p)
+    if (end) {
+      ed.extending = end
+      p = end.at
+      ed.flash('Continuing that run — Enter or double-click to finish. Alt+click starts a separate run instead.')
+    }
+  }
   ed.draft.push(p)
   ed.draftCursor = p
+}
+
+/**
+ * A loose end of a run in the system you are drawing, under `p`. Starting a run there means
+ * carrying on with that run, not starting a second one that happens to touch it. An end that
+ * already meets something - another run, a box, a marker - is a junction, and a new run from
+ * there is a new branch.
+ */
+function freeEndAt(ed: Editor, p: Pt): { runId: string; end: 'start' | 'end'; at: Pt } | null {
+  const tol = ed.tol(HIT_TOL_PX)
+  let best: { runId: string; end: 'start' | 'end'; at: Pt } | null = null
+  for (const f of buildGraph(ed.store.sheet).freeEnds) {
+    const run = ed.store.item(f.itemId)
+    if (!run || run.kind !== 'run' || run.systemId !== ed.activeSystemId || !ed.store.isEditable(run)) continue
+    if (dist(f.at, p) > tol) continue
+    if (!best || dist(f.at, p) < dist(best.at, p)) best = { runId: f.itemId, end: f.end, at: { ...f.at } }
+  }
+  return best
 }
 
 function updateDraftCursor(ed: Editor, world: Pt): void {
@@ -468,6 +495,26 @@ export function finishDraft(ed: Editor): void {
     cancelDraft(ed)
     return
   }
+  const extending = ed.extending
+  const target = extending ? ed.store.item(extending.runId) : undefined
+  if (extending && target && target.kind === 'run') {
+    const added = ed.draft.slice(1).map((p) => ({ ...p }))
+    ed.draft = []
+    ed.draftCursor = null
+    ed.extending = null
+    ed.edit(null, () => {
+      // Grown at whichever end you started from, keeping the order it was drawn in so a flow
+      // direction still means the same thing afterwards.
+      if (extending.end === 'end') target.points.push(...added)
+      else target.points.unshift(...added.reverse())
+      adopt(target)
+      ed.store.selection.clear()
+      ed.store.selection.add(target.id)
+      ed.store.activeVertex = null
+    })
+    return
+  }
+  ed.extending = null
   const sys = ed.store.system(ed.activeSystemId)
   const run: RunItem = {
     kind: 'run',
@@ -487,6 +534,7 @@ export function finishDraft(ed: Editor): void {
 }
 
 export function cancelDraft(ed: Editor): void {
+  ed.extending = null
   ed.draft = []
   ed.draftCursor = null
   ed.requestRender()
@@ -495,6 +543,7 @@ export function cancelDraft(ed: Editor): void {
 export function removeLastDraftPoint(ed: Editor): void {
   if (ed.draft.length === 0) return
   ed.draft.pop()
+  if (ed.draft.length === 0) ed.extending = null
   ed.requestRender()
 }
 
