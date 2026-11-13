@@ -8,7 +8,9 @@ import { idPrefix, newId } from '../model/ids.ts'
 import { emptySheet } from '../model/doc.ts'
 import type { Item, MarkerItem, Sheet } from '../model/types.ts'
 import { buildGraph, toleranceFor } from '../topology.ts'
-import { alertDialog, confirmDialog } from '../ui/modal.ts'
+import { floorMapping, mapItem } from '../align.ts'
+import { startAlign } from './alignOps.ts'
+import { alertDialog, chooseDialog, confirmDialog } from '../ui/modal.ts'
 import { refit } from './pdfOps.ts'
 import type { App } from '../app.ts'
 
@@ -51,14 +53,19 @@ export function duplicateSelectionToSheet(app: App, sheetId: string): void {
   if (items.length === 0) return
   const target = app.store.project.sheets.find((s) => s.id === sheetId)
   if (!target) return
+  // Aligned floors carry each copy to the same spot in the building; otherwise all there is to
+  // go on is the page, and the message says so.
+  const mapping = floorMapping(app.store.sheet, target)
   app.store.mutate(() => {
     for (const item of items) {
-      const copy = structuredClone(item)
+      const copy = mapping ? mapItem(item, mapping) : structuredClone(item)
       copy.id = newId(idPrefix(item.kind))
       target.items.push(copy)
     }
   })
-  app.editor.flash(`Copied ${items.length} item(s) to ${target.name} at the same position`)
+  app.editor.flash(mapping
+    ? `Copied ${items.length} item(s) to the same place on ${target.name}`
+    : `Copied ${items.length} item(s) to ${target.name} at the same page position — align the floors to place them by the building instead`)
 }
 
 /**
@@ -82,7 +89,9 @@ export function riserPointFor(app: App, item: Item): Pt | null {
  * labelled with the other sheet's name. Then it follows the pipe there, with the partner
  * selected, so the next thing you draw carries on from it.
  *
- * Sheets do not know which floor is above which, so `way` is said, not worked out.
+ * Sheets do not know which floor is above which, so `way` is said, not worked out. Nor do
+ * they know where the other floor's drawing sits on its page: that is what the alignment is
+ * for, and without it this refuses rather than put a riser in the wrong room.
  */
 export function riseToSheet(app: App, sheetId: string, way: 'up' | 'down'): void {
   const { store } = app
@@ -92,25 +101,31 @@ export function riseToSheet(app: App, sheetId: string, way: 'up' | 'down'): void
   const source = store.sheet
   const target = store.project.sheets.find((s) => s.id === sheetId)
   if (!item || !at || !target || target.id === source.id) return
+  const mapping = floorMapping(source, target)
+  if (!mapping) {
+    void offerAlignment(app, source, target)
+    return
+  }
+  const there = mapping.apply(at)
 
-  const here: MarkerItem['symbol'] = way === 'up' ? 'riser-up' : 'riser-down'
-  const there: MarkerItem['symbol'] = way === 'up' ? 'riser-down' : 'riser-up'
-  const riser = (symbol: MarkerItem['symbol'], label: string): MarkerItem => ({
+  const hereSymbol: MarkerItem['symbol'] = way === 'up' ? 'riser-up' : 'riser-down'
+  const thereSymbol: MarkerItem['symbol'] = way === 'up' ? 'riser-down' : 'riser-up'
+  const riser = (p: Pt, symbol: MarkerItem['symbol'], label: string): MarkerItem => ({
     kind: 'marker', id: newId('mk'), systemId: item.systemId, level: item.level,
-    x: at.x, y: at.y, symbol, label,
+    x: p.x, y: p.y, symbol, label,
   })
   // A riser already standing on that spot is the one you meant, not a reason for a second.
-  const existing = (sheet: Sheet, symbol: MarkerItem['symbol']): MarkerItem | undefined =>
+  const existing = (sheet: Sheet, p: Pt, symbol: MarkerItem['symbol']): MarkerItem | undefined =>
     sheet.items.find((i): i is MarkerItem =>
-      i.kind === 'marker' && i.symbol === symbol && i.systemId === item.systemId && dist(i, at) <= toleranceFor(sheet))
+      i.kind === 'marker' && i.symbol === symbol && i.systemId === item.systemId && dist(i, p) <= toleranceFor(sheet))
 
-  let arrival = existing(target, there)
+  let arrival = existing(target, there, thereSymbol)
   store.mutate(() => {
-    if (!(item.kind === 'marker' && item.symbol === here) && !existing(source, here)) {
-      source.items.push(riser(here, target.name))
+    if (!(item.kind === 'marker' && item.symbol === hereSymbol) && !existing(source, at, hereSymbol)) {
+      source.items.push(riser(at, hereSymbol, target.name))
     }
     if (!arrival) {
-      arrival = riser(there, source.name)
+      arrival = riser(there, thereSymbol, source.name)
       target.items.push(arrival)
     }
     store.project.activeSheetId = target.id
@@ -119,8 +134,25 @@ export function riseToSheet(app: App, sheetId: string, way: 'up' | 'down'): void
     store.activeVertex = null
   })
   app.editor.activeSystemId = item.systemId
+  app.editor.ghostSheetId = source.id
   // The camera stays put: the riser is at the same coordinates up there, so it lands right
   // where your eye already is.
   app.editor.invalidateBackground()
   app.editor.flash(`${way === 'up' ? 'Up' : 'Down'} to ${target.name} — the riser is selected here; press L and start on it to carry on`)
+}
+
+/** Rise/Drop needs both floors aligned. Says which is not, and offers to go and do it. */
+async function offerAlignment(app: App, source: Sheet, target: Sheet): Promise<void> {
+  const missing = [source, target].filter((s) => !s.align)
+  const go = await chooseDialog('Align the floors first',
+    `Every floor plan sits differently on its page, so a riser cannot be carried to ${target.name} ` +
+    `by page position alone. Click the same two spots - a grid-line crossing, a stair corner - on ` +
+    `${missing.map((s) => s.name).join(' and ')}, and Warren lines the floors up.`,
+    [{ label: `Align ${missing[0].name} now`, value: true, primary: true }])
+  if (!go) return
+  if (missing[0].id !== app.store.sheet.id) {
+    app.store.setActiveSheet(missing[0].id)
+    refit(app)
+  }
+  startAlign(app)
 }

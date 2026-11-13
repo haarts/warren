@@ -4,6 +4,7 @@ import { cancelDraft, cancelMeasurement, finishDraft, removeLastDraftPoint } fro
 import { selectionSummary, zoomBy, zoomToFit } from './interact/view.ts'
 import { attachUnloadGuard, autosave, offerRestore, openProject, save, saveAs } from './app/fileOps.ts'
 import { attachPage as attachPageOp, refit } from './app/pdfOps.ts'
+import { completeAlignment } from './app/alignOps.ts'
 import { addSheet as addSheetOp, duplicateSelectionToSheet as duplicateSelectionToSheetOp, renameSheet, riseToSheet as riseToSheetOp } from './app/sheetOps.ts'
 import { isServed, Session } from './io/session.ts'
 import { Store } from './model/doc.ts'
@@ -41,6 +42,7 @@ export class App {
     }
     this.editor.onCalibrateRequest = () => void this.promptCalibration()
     this.editor.onDirectionRequest = (bearingDeg) => void this.promptDirection(bearingDeg)
+    this.editor.onAlignRequest = (a, b) => void completeAlignment(this, a, b)
     this.store.subscribe(() => this.refresh())
   }
 
@@ -293,7 +295,7 @@ const KEY_ACTIONS: Record<string, KeyAction> = {
   Escape: (app) => {
     if (app.editor.isDrafting) { cancelDraft(app.editor); return }
     // Calibrate and direction are one-shot commands; Esc backs out of them entirely.
-    if (app.editor.tool === 'calibrate' || app.editor.tool === 'direction') app.editor.setTool('select')
+    if (app.editor.tool === 'calibrate' || app.editor.tool === 'direction' || app.editor.tool === 'align') app.editor.setTool('select')
     cancelMeasurement(app.editor)
     app.store.selection.clear()
     app.store.activeVertex = null

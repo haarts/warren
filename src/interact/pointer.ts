@@ -17,7 +17,7 @@ import { bearingBetween } from '../directions.ts'
 import { HIT_TOL_PX, hitBoxCorner, hitBoxRotate, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { hitCompass } from './compass.ts'
 import { clearFlashIfStale, zoomToFit } from './view.ts'
-import type { Editor } from './editor.ts'
+import { TWO_CLICK_TOOLS, type Editor } from './editor.ts'
 
 /** The fewest points a shape can have and still be that shape. */
 function minPointsFor(item: Item): number {
@@ -94,7 +94,8 @@ function onPointerDown(ed: Editor, e: PointerEvent): void {
     case 'note': placeNote(ed, ed.resolve(world)); break
     case 'measure':
     case 'calibrate':
-    case 'direction': measurePointerDown(ed, world); break
+    case 'direction':
+    case 'align': measurePointerDown(ed, world); break
   }
   ed.requestRender()
 }
@@ -312,7 +313,7 @@ function onPointerMove(ed: Editor, e: PointerEvent): void {
     case 'none': {
       if (ed.tool === 'run' && ed.draft.length) {
         updateDraftCursor(ed, world)
-      } else if ((ed.tool === 'measure' || ed.tool === 'calibrate' || ed.tool === 'direction') && ed.measurePts.length === 1) {
+      } else if (TWO_CLICK_TOOLS.includes(ed.tool) && ed.measurePts.length === 1) {
         updateMeasureCursor(ed, world)
       } else if (ed.tool === 'select') {
         updateHover(ed, world)
@@ -545,6 +546,7 @@ function measurePointerDown(ed: Editor, world: Pt): void {
   if (dist(a, b) < 1e-6) { ed.measurePts = []; return }
   if (ed.tool === 'calibrate') ed.onCalibrateRequest?.(dist(a, b))
   else if (ed.tool === 'direction') ed.onDirectionRequest?.(bearingBetween(a, b))
+  else if (ed.tool === 'align') ed.onAlignRequest?.(a, b)
 }
 
 function updateMeasureCursor(ed: Editor, world: Pt): void {

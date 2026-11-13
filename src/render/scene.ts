@@ -14,6 +14,7 @@ import { isDimmed, type DrawCtx } from './draw.ts'
 import { drawBoxLabel, drawMarkerLabel, drawRoomLabel, drawRunLabel, labelTextFor } from './labels.ts'
 import { drawMarker } from './markers.ts'
 import { drawNote, noteHeight } from './notes.ts'
+import { drawGhost, type GhostLayer } from './ghost.ts'
 import { drawGrid, drawScaleBar } from './gridScale.ts'
 import { drawRun } from './runs.ts'
 import { drawHandles, drawItemOutline, drawOverlay } from './selection.ts'
@@ -53,6 +54,8 @@ export interface SceneOptions {
   interactive?: boolean
   overlay?: Overlay
   paper?: boolean
+  /** Another floor drawn faintly underneath, through the alignment. Screen only. */
+  ghost?: GhostLayer | null
 }
 
 export function drawScene(opts: SceneOptions): void {
@@ -93,6 +96,7 @@ export function drawScene(opts: SceneOptions): void {
     ctx.restore()
   }
 
+  if (opts.ghost) drawGhost(dc, opts.ghost)
   if (settings.showGrid) drawGrid(dc, width, height)
 
   // --- items ------------------------------------------------------------------------

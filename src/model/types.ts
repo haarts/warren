@@ -370,12 +370,24 @@ export interface CompassRose {
   tips: [string, string, string, string]
 }
 
+/**
+ * Where two reference points sit on this sheet, in its own points: the same two physical spots
+ * on every floor (a grid-line crossing, a stair corner). That is all it takes to carry a point
+ * from one floor's drawing to another's, however each page was placed, turned or scaled.
+ */
+export interface SheetAlignment {
+  a: Pt
+  b: Pt
+}
+
 export interface Sheet {
   id: string
   name: string
   pdf: SheetPdf | null
   /** Real-world millimetres per PDF point. null until calibrated. */
   mmPerPoint: number | null
+  /** Absent until aligned; see `SheetAlignment` and align.ts. */
+  align?: SheetAlignment
   items: Item[]
 }
 
@@ -425,6 +437,11 @@ export interface Project {
   compass?: CompassRose
   /** Named bearings the compass rose does not cover - an off-axis facade, say. */
   directions?: Direction[]
+  /**
+   * What the two alignment points are, e.g. ["A1", "C4"], so the next floor can say what to
+   * click. Optional: the points themselves live on each sheet.
+   */
+  alignNames?: [string, string]
   systems: System[]
   sheets: Sheet[]
   /**

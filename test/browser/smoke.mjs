@@ -1104,10 +1104,80 @@ try {
   })
   check('copy-to-sheet duplicates at the same coordinates', copied === 8, `${copied} items`)
 
-  // --- a run rises through the floor to another sheet ----------------------------------------------
+  // --- rise/drop needs aligned floors, and then lands by the building, not the page --------------
+  const refused = await page.evaluate(async () => {
+    const app = window.warren
+    const [first, second] = app.store.project.sheets
+    app.store.setActiveSheet(first.id)
+    const run = app.store.items().find((i) => i.kind === 'run')
+    app.store.selection.clear()
+    app.store.selection.add(run.id)
+    const before = second.items.length
+    app.riseToSheet(second.id, 'up')
+    await new Promise((r) => setTimeout(r, 100))
+    return { title: document.querySelector('.dialog header')?.textContent ?? '', placed: second.items.length - before }
+  })
+  await page.keyboard.press('Escape')
+  check('rising to a floor that is not aligned asks for the alignment instead of guessing',
+    /Align the floors first/.test(refused.title) && refused.placed === 0, JSON.stringify(refused))
+
+  // Align the first floor through the tool: two clicks on the canvas, then name the two spots.
+  const alignClicks = await page.evaluate(() => {
+    const app = window.warren
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    const screen = (p) => ({ x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) })
+    app.store.project.settings.snapToItems = false
+    return { a: screen({ x: 120, y: 140 }), b: screen({ x: 420, y: 140 }) }
+  })
+  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Align with other floors/.test(b.textContent))?.click())
+  await page.mouse.click(alignClicks.a.x, alignClicks.a.y)
+  await page.mouse.click(alignClicks.b.x, alignClicks.b.y)
+  await page.waitForSelector('.dialog input[type=text]', { timeout: 5000 })
+  await page.type('.dialog input[type=text]', 'A1, D1')
+  await page.keyboard.press('Enter')
+  await new Promise((r) => setTimeout(r, 200))
+  const firstAligned = await page.evaluate(() => {
+    const app = window.warren
+    const s = app.store.project.sheets[0]
+    return { align: s.align, names: app.store.project.alignNames, tool: app.editor.tool }
+  })
+  check('the Align tool records two points and what they are called',
+    firstAligned.align && Math.abs(firstAligned.align.b.x - firstAligned.align.a.x - 300) < 1 && firstAligned.names?.[0] === 'A1'
+    && firstAligned.tool === 'select', JSON.stringify(firstAligned))
+
+  // The second floor's plan sits 50 pt right and 20 pt down on its page, and has no scale yet:
+  // aligning it offers the first floor's scale.
+  const secondClicks = await page.evaluate(() => {
+    const app = window.warren
+    app.store.setActiveSheet(app.store.project.sheets[1].id)
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    const screen = (p) => ({ x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) })
+    return { a: screen({ x: 170, y: 160 }), b: screen({ x: 470, y: 160 }) }
+  })
+  await page.evaluate(() => {
+    window.warren.refresh()
+  })
+  await new Promise((r) => setTimeout(r, 100))
+  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Align with other floors/.test(b.textContent))?.click())
+  await page.mouse.click(secondClicks.a.x, secondClicks.a.y)
+  await page.mouse.click(secondClicks.b.x, secondClicks.b.y)
+  await page.waitForSelector('.dialog footer button.primary', { timeout: 5000 })
+  const scaleQuestion = await page.evaluate(() => document.querySelector('.dialog header')?.textContent ?? '')
+  await page.click('.dialog footer button.primary')
+  await new Promise((r) => setTimeout(r, 300))
+  const secondAligned = await page.evaluate(() => {
+    const app = window.warren
+    const [first, second] = app.store.project.sheets
+    return { scale: second.mmPerPoint, firstScale: first.mmPerPoint, ghost: app.editor.ghostSheetId === first.id }
+  })
+  check('aligning an uncalibrated floor offers the other floor\'s scale, then shows that floor underneath',
+    /Calibrate from the other floor/.test(scaleQuestion) && Math.abs(secondAligned.scale / secondAligned.firstScale - 1) < 1e-3 && secondAligned.ghost,
+    `${scaleQuestion} ${JSON.stringify(secondAligned)}`)
+
   const rose = await page.evaluate(() => {
     const app = window.warren
     const [first, second] = app.store.project.sheets
+    app.store.project.settings.snapToItems = true
     app.store.setActiveSheet(first.id)
     const run = app.store.items().find((i) => i.kind === 'run')
     app.store.selection.clear()
@@ -1119,15 +1189,26 @@ try {
     const there = app.store.selectedItems()[0]
     const result = {
       onSecond: app.store.project.activeSheetId === second.id,
-      here: here.map((m) => m.label), there: there && { symbol: there.symbol, label: there.label, x: there.x === end.x, y: there.y === end.y },
+      here: here.map((m) => m.label),
+      there: there && { symbol: there.symbol, label: there.label, dx: there.x - end.x, dy: there.y - end.y },
     }
     app.store.undo()
     app.store.setActiveSheet(first.id)
     return result
   })
-  check('rising a run puts a riser on both sheets and follows it up',
-    rose.onSecond && rose.here.length === 1 && rose.there?.symbol === 'riser-down' && rose.there.x && rose.there.y,
+  check('rising a run puts a riser on both floors at the same spot in the building and follows it up',
+    rose.onSecond && rose.here.length === 1 && rose.there?.symbol === 'riser-down'
+    && Math.abs(rose.there.dx - 50) < 0.5 && Math.abs(rose.there.dy - 20) < 0.5,
     JSON.stringify(rose))
+  // The rest of the script was written against unaligned floors.
+  await page.evaluate(() => {
+    const app = window.warren
+    for (const s of app.store.project.sheets) delete s.align
+    delete app.store.project.alignNames
+    app.store.project.sheets[1].mmPerPoint = null
+    app.editor.ghostSheetId = null
+    app.store.touch()
+  })
 
   // --- autosave round trip through IndexedDB -------------------------------------------------------------
   const autosave = await page.evaluate(async () => {

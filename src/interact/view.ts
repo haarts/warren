@@ -3,6 +3,8 @@
  * frame - the background PDF, the scene, an overlay of whatever gesture is in progress, and the
  * status line, which is just that same state read back out as words instead of pixels.
  */
+import { floorMapping } from '../align.ts'
+import type { GhostLayer } from '../render/ghost.ts'
 import { boundsOf, normalizeRect, polylineLength, type Pt } from '../geom.ts'
 import type { Item } from '../model/types.ts'
 import { itemBounds } from '../render/bounds.ts'
@@ -45,6 +47,7 @@ export function requestRender(ed: Editor): void {
 function render(ed: Editor): void {
   const dpr = window.devicePixelRatio || 1
   ed.bg.sync(ed.store.sheet, ed.cam.zoom, dpr)
+  const ghost = ghostLayer(ed, dpr)
   ed.ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   drawScene({
     ctx: ed.ctx,
@@ -56,9 +59,22 @@ function render(ed: Editor): void {
     backgroundSize: ed.bg.size,
     interactive: true,
     overlay: overlay(ed),
+    ghost,
   })
   ed.canvas.style.cursor = cursorFor(ed)
   publishStatus(ed)
+}
+
+/** The other floor, if one is ghosted and both are aligned - its plan raster kept warm alongside ours. */
+function ghostLayer(ed: Editor, dpr: number): GhostLayer | null {
+  const other = ed.ghostSheetId ? ed.store.project.sheets.find((s) => s.id === ed.ghostSheetId) : undefined
+  const mapping = other && other.id !== ed.store.sheet.id ? floorMapping(other, ed.store.sheet) : null
+  if (!other || !mapping) {
+    if (ed.ghostBg.canvas) ed.ghostBg.clear()
+    return null
+  }
+  ed.ghostBg.sync(other, ed.cam.zoom * mapping.scale, dpr)
+  return { sheet: other, mapping, background: ed.ghostBg.canvas, backgroundSize: ed.ghostBg.size }
 }
 
 function overlay(ed: Editor): Overlay {
@@ -164,6 +180,13 @@ function publishStatus(ed: Editor): void {
     parts.push('compass rose — drag the centre to move it; name the tips in Properties')
   }
   if (ed.tool === 'direction') parts.push(ed.measurePts.length === 0 ? 'Click a point, then click again toward the direction you mean' : 'Click again, in the direction this points to')
+  if (ed.tool === 'align') {
+    const names = ed.store.project.alignNames
+    const name = (i: 0 | 1): string => names?.[i] || (i === 0 ? 'A' : 'B')
+    parts.push(ed.measurePts.length === 0
+      ? `Click ${name(0)} — a spot you can find on every floor`
+      : `Click ${name(1)} — a second such spot, the further from ${name(0)} the better · Esc cancels`)
+  }
   ed.onStatus(parts.join('   ·   '))
 }
 

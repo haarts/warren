@@ -16,7 +16,10 @@ import {
 } from './pointer.ts'
 import { attachView, requestRender as viewRequestRender, zoomToSelection as viewZoomToSelection } from './view.ts'
 
-export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate' | 'direction'
+export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate' | 'direction' | 'align'
+
+/** The tools that are two clicks and a question - measure, and the one-shot commands. */
+export const TWO_CLICK_TOOLS: ToolId[] = ['measure', 'calibrate', 'direction', 'align']
 
 /** Real distance the raw cursor snaps a point in, at 1:1 zoom; see `Editor.resolve`. */
 const SNAP_TOL_PX = 11
@@ -32,12 +35,17 @@ export class Editor {
   onCalibrateRequest: ((lengthPt: number) => void) | null = null
   /** Fired when the user has picked two direction points; UI asks what to call this bearing. */
   onDirectionRequest: ((bearingDeg: number) => void) | null = null
+  /** Fired when the user has clicked both alignment points on this sheet. */
+  onAlignRequest: ((a: Pt, b: Pt) => void) | null = null
   onChange: (() => void) | null = null
   onStatus: ((text: string) => void) | null = null
 
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
   bg: Background
+  /** The other floor drawn faintly under this one, through the alignment; not saved. */
+  ghostSheetId: string | null = null
+  ghostBg: Background
   store: Store
 
   drag: Drag = { mode: 'none' }
@@ -74,6 +82,7 @@ export class Editor {
     if (!ctx) throw new Error('Canvas 2D unavailable')
     this.ctx = ctx
     this.bg = new Background(() => this.requestRender())
+    this.ghostBg = new Background(() => this.requestRender())
     attachPointer(this)
     attachView(this)
     store.subscribe(() => this.requestRender())
@@ -139,7 +148,7 @@ export class Editor {
     if (this.tool === 'run' && tool !== 'run') cancelDraft(this)
     this.hover.id = null
     this.hover.locked = null
-    if (tool !== 'measure' && tool !== 'calibrate' && tool !== 'direction') this.measurePts = []
+    if (!TWO_CLICK_TOOLS.includes(tool) || tool !== this.tool) this.measurePts = []
     this.tool = tool
     this.requestRender()
     this.onChange?.()
@@ -173,7 +182,7 @@ export class Editor {
 
   setSpaceHeld(v: boolean): void { this.spaceHeld = v; this.requestRender() }
   setShiftHeld(v: boolean): void { this.shiftHeld = v }
-  invalidateBackground(): void { this.bg.clear(); this.requestRender() }
+  invalidateBackground(): void { this.bg.clear(); this.ghostBg.clear(); this.requestRender() }
 
   get isDrafting(): boolean { return this.draft.length > 0 }
 }

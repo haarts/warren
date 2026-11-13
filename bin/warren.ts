@@ -19,6 +19,7 @@ import { cmdCheck, cmdGraph, cmdItems, cmdSummary, cmdTakeoff, cmdTrace } from '
 import { cmdRules, cmdSystems } from './commands/catalogue.ts'
 import { cmdDirections } from './commands/directions.ts'
 import { cmdCalibrate } from './commands/calibrate.ts'
+import { cmdAlign } from './commands/align.ts'
 import { cmdGenerate } from './commands/generate.ts'
 import { cmdSplit, cmdBundle } from './commands/split-bundle.ts'
 import { cmdApply } from './commands/apply.ts'
@@ -33,6 +34,7 @@ const commands: Record<Command, (a: Args) => Promise<void>> = {
   check: cmdCheck,
   systems: cmdSystems,
   calibrate: cmdCalibrate,
+  align: cmdAlign,
   directions: cmdDirections,
   generate: cmdGenerate,
   rules: cmdRules,

@@ -1,6 +1,7 @@
 import type { Store } from './model/doc.ts'
 import { coordsOf, LEVELS, type Item, type Project, type Sheet } from './model/types.ts'
 import { buildGraph, connectionsOf, type Graph } from './topology.ts'
+import { CALIBRATION_TOLERANCE, calibrationAgreement } from './align.ts'
 import type { Pt } from './geom.ts'
 
 /**
@@ -57,6 +58,19 @@ export function runChecks(store: Store, opts: CheckOptions = {}): Finding[] {
     assumed = assumed.concat(
       sheet.items.filter((i) => i.kind === 'run' && i.flowAssumed).map((i) => i.id),
     )
+  }
+
+  // Aligned floors share two physical spots, so their calibrations have to agree about how far
+  // apart those are. When they do not, one of them is wrong - and every length on it with it.
+  const aligned = project.sheets.filter((s) => s.align && s.mmPerPoint)
+  for (let i = 0; i < aligned.length; i++) {
+    for (let j = i + 1; j < aligned.length; j++) {
+      const agree = calibrationAgreement(aligned[i], aligned[j])
+      if (!agree || agree.off <= CALIBRATION_TOLERANCE) continue
+      add('warning', 'floors-disagree', `${aligned[i].name} / ${aligned[j].name}`,
+        `the alignment points are ${(agree.aMm / 1000).toFixed(2)} m apart by one floor's scale and ` +
+        `${(agree.bMm / 1000).toFixed(2)} m by the other's (${(agree.off * 100).toFixed(1)}% off) — one calibration is wrong`)
+    }
   }
 
   if (assumed.length) {

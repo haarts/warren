@@ -11,7 +11,10 @@ export interface ModalHandle {
   element: HTMLElement
 }
 
-export function openModal(build: (close: () => void) => { title: string; body: Node; footer?: Node; width?: string }): ModalHandle {
+export function openModal(
+  build: (close: () => void) => { title: string; body: Node; footer?: Node; width?: string },
+  onDismiss?: () => void,
+): ModalHandle {
   const host = root()
   clear(host)
   let backdrop: HTMLElement
@@ -23,6 +26,7 @@ export function openModal(build: (close: () => void) => { title: string; body: N
     if (e.key === 'Escape') {
       e.stopPropagation()
       close()
+      onDismiss?.()
     }
   }
   const { title, body, footer, width } = build(close)
@@ -33,7 +37,7 @@ export function openModal(build: (close: () => void) => { title: string; body: N
   )
   backdrop = el('div', {
     class: 'backdrop',
-    onclick: (e: MouseEvent) => { if (e.target === backdrop) close() },
+    onclick: (e: MouseEvent) => { if (e.target === backdrop) { close(); onDismiss?.() } },
   }, dialog)
   host.appendChild(backdrop)
   document.addEventListener('keydown', onKey, true)
@@ -170,4 +174,29 @@ export async function guarded(title: string, fn: () => Promise<void>): Promise<v
   } catch (err) {
     alertDialog(title, String(err instanceof Error ? err.message : err))
   }
+}
+
+/**
+ * A question with a few named answers, one button each. Resolves to the chosen value, or null
+ * when it is dismissed - Escape, the backdrop, or Cancel.
+ */
+export function chooseDialog<T>(title: string, message: string, choices: { label: string; value: T; primary?: boolean }[]): Promise<T | null> {
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (v: T | null, close?: () => void): void => {
+      if (settled) return
+      settled = true
+      close?.()
+      resolve(v)
+    }
+    openModal((close) => ({
+      title,
+      width: '460px',
+      body: messageBody(message),
+      footer: el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' } },
+        el('button', { onclick: () => finish(null, close) }, 'Cancel'),
+        ...choices.map((c) => el('button', { class: c.primary ? 'primary' : '', onclick: () => finish(c.value, close) }, c.label)),
+      ),
+    }), () => finish(null))
+  })
 }

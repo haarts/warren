@@ -11,6 +11,7 @@ interface Snapshot {
   activeSheetId: string
   compass: Project['compass']
   directions: Project['directions']
+  alignNames: Project['alignNames']
 }
 
 export function emptySheet(name = 'Sheet 1'): Sheet {
@@ -128,8 +129,8 @@ export class Store {
 
   // --- undo -------------------------------------------------------------------------
   private snapshot(): Snapshot {
-    const { name, systems, sheets, settings, activeSheetId, compass, directions } = this.project
-    return structuredClone({ name, systems, sheets, settings, activeSheetId, compass, directions })
+    const { name, systems, sheets, settings, activeSheetId, compass, directions, alignNames } = this.project
+    return structuredClone({ name, systems, sheets, settings, activeSheetId, compass, directions, alignNames })
   }
 
   private restore(snap: Snapshot): void {
@@ -142,6 +143,8 @@ export class Store {
     else delete this.project.compass
     if (snap.directions) this.project.directions = snap.directions
     else delete this.project.directions
+    if (snap.alignNames) this.project.alignNames = snap.alignNames
+    else delete this.project.alignNames
     this.invalidateSystems()
     for (const id of [...this.selection]) if (!this.item(id)) this.selection.delete(id)
     this.activeVertex = null

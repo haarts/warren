@@ -11,6 +11,8 @@ import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
 import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
 import { acrossAxis, alignItems, distributeItems, runAxis, setBoxRotation, type AlignEdge } from '../../interact/arrange.ts'
+import { alignedOthers, alignPointNames, startAlign } from '../../app/alignOps.ts'
+import { CALIBRATION_TOLERANCE, calibrationAgreement } from '../../align.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -29,6 +31,8 @@ export function buildProperties(app: App, body: HTMLElement): void {
     body.appendChild(el('div', { class: 'hint warn' },
       'Uncalibrated: lengths and the takeoff stay empty. Click Calibrate, then click the two ends of a dimension printed on the plan.'))
   }
+
+  buildFloorAlignment(app, body)
 
   body.appendChild(field('Run spacing', el('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } },
     numberInput(store.project.settings.runSpacingMm, (v) => {
@@ -456,7 +460,8 @@ function buildBetweenFloors(app: App, body: HTMLElement): void {
       'Add a sheet per floor (the + by the sheet tabs) and a run can rise or drop to it from here.'))
     return
   }
-  const options = otherSheets.map((s) => [s.id, s.name] as const)
+  const here = store.sheet
+  const options = otherSheets.map((s) => [s.id, s.align && here.align ? s.name : `${s.name} (not aligned)`] as const)
   const sheetPicker = (prompt: string, onPick: (id: string) => void): HTMLSelectElement => {
     const picker: HTMLSelectElement = select([['', prompt] as const, ...options], '', (v) => {
       picker.value = ''
@@ -470,11 +475,11 @@ function buildBetweenFloors(app: App, body: HTMLElement): void {
       sheetPicker('↑ Rise to…', (id) => app.riseToSheet(id, 'up')),
       sheetPicker('↓ Drop to…', (id) => app.riseToSheet(id, 'down')),
     ), only.kind === 'run'
-      ? 'Through the floor at the end of this run (or the end corner you picked): a riser here, its partner at the same spot on the other sheet, and you follow it there.'
-      : 'A riser at this spot, its partner at the same spot on the other sheet, and you follow it there.'))
+      ? 'Through the floor at the end of this run (or the end corner you picked): a riser here, its partner at the same spot in the building on the other floor, and you follow it there.'
+      : 'A riser at this spot, its partner at the same spot in the building on the other floor, and you follow it there.'))
   }
   body.appendChild(field('Copy', sheetPicker('Copy to sheet…', (id) => app.duplicateSelectionToSheet(id)),
-    'Copies land at the same coordinates on the other sheet.'))
+    'Copies land at the same spot in the building - or, until both floors are aligned, at the same page position.'))
 }
 
 /** Enough to recognise an item by, in as few words as possible. */
@@ -571,4 +576,37 @@ function buildOrientation(app: App, body: HTMLElement): void {
       title: 'A bearing the compass rose does not cover: click two points on the plan, then name it',
       onclick: () => editor.setTool('direction'),
     }, others.length ? 'Add another…' : 'Add an off-axis direction…')))
+}
+
+/**
+ * Lining this floor up with the others: two clicks at spots every floor shares. Then the other
+ * floor can be shown underneath, which is both the proof that it worked and the reason to do it.
+ */
+function buildFloorAlignment(app: App, body: HTMLElement): void {
+  const { store, editor } = app
+  const sheet = store.sheet
+  if (store.project.sheets.length < 2) return
+  const [a, b] = alignPointNames(app)
+  const others = alignedOthers(app)
+  body.appendChild(field('Floors', el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } },
+    sheet.align ? el('span', {}, `aligned on ${a} and ${b}`) : null,
+    el('button', { onclick: () => startAlign(app) }, sheet.align ? 'Realign…' : 'Align with other floors…'),
+  ), sheet.align ? undefined
+    : 'Click two spots every floor shares - grid-line crossings are ideal. Risers and copies then land in the same place in the building on every floor.'))
+
+  if (sheet.align && others.length) {
+    const picker = select(
+      [['', 'nothing'] as const, ...others.map((s) => [s.id, s.name] as const)],
+      editor.ghostSheetId && others.some((s) => s.id === editor.ghostSheetId) ? editor.ghostSheetId : '',
+      (v) => { editor.ghostSheetId = v || null; editor.requestRender() },
+    )
+    body.appendChild(field('Underneath', picker, 'Another floor, drawn faintly through the alignment - walls landing on walls means it is right.'))
+    const off = others.map((o) => ({ o, agree: calibrationAgreement(sheet, o) }))
+      .find((x) => x.agree && x.agree.off > CALIBRATION_TOLERANCE)
+    if (off) {
+      body.appendChild(el('div', { class: 'hint warn' },
+        `This floor's scale and ${off.o.name}'s disagree by ${(off.agree!.off * 100).toFixed(1)}% about the distance from ${a} to ${b}. ` +
+        'One of the two calibrations is off - Realign to choose which one to trust.'))
+    }
+  }
 }
