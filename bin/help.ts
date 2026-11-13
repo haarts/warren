@@ -112,6 +112,26 @@ const MANUAL = {
     ],
     writes: true,
   },
+  calibrate: {
+    summary: 'set a sheet\'s scale: a number, the printed 1:n, or another sheet\'s',
+    usage: [
+      'warren calibrate <file> --sheet <n|name> --mm-per-point <n>',
+      'warren calibrate <file> --sheet <n|name> --scale 1:<n>',
+      'warren calibrate <file> --sheet <n|name> --like <n|name>',
+    ],
+    flags: [
+      ['--sheet <n|name>', 'the sheet to set; required when there is more than one'],
+      ['--mm-per-point <n>', 'real millimetres per PDF point'],
+      ['--scale 1:<n>', 'the scale printed on the page — right only if the PDF is at its true paper size, not fitted to a printer'],
+      ['--like <n|name>', 'copy another sheet\'s scale: pages of one set printed at one scale should agree'],
+    ],
+    examples: ['warren calibrate house.warren.json --sheet p10 --like p9', 'warren calibrate house.warren.json --sheet 2 --scale 1:100'],
+    notes: [
+      'The app calibrates by clicking two ends of a printed dimension, which is the safer check. This is for when the answer is already known.',
+      'Items are stored in points, so they stay where they are drawn; their lengths in metres change with the scale.',
+    ],
+    writes: true,
+  },
   directions: {
     summary: 'which way is which — one compass rose with named tips, plus one-off bearings',
     usage: [

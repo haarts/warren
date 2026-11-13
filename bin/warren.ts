@@ -18,6 +18,7 @@ import { commandHelp, isCommand, manifest, nearest, overview, type Command } fro
 import { cmdCheck, cmdGraph, cmdItems, cmdSummary, cmdTakeoff, cmdTrace } from './commands/read.ts'
 import { cmdRules, cmdSystems } from './commands/catalogue.ts'
 import { cmdDirections } from './commands/directions.ts'
+import { cmdCalibrate } from './commands/calibrate.ts'
 import { cmdGenerate } from './commands/generate.ts'
 import { cmdSplit, cmdBundle } from './commands/split-bundle.ts'
 import { cmdApply } from './commands/apply.ts'
@@ -31,6 +32,7 @@ const commands: Record<Command, (a: Args) => Promise<void>> = {
   takeoff: cmdTakeoff,
   check: cmdCheck,
   systems: cmdSystems,
+  calibrate: cmdCalibrate,
   directions: cmdDirections,
   generate: cmdGenerate,
   rules: cmdRules,
