@@ -173,7 +173,7 @@ function brand(app: App): HTMLElement {
     return el('div', { class: 'brand' }, 'Warren', input)
   }
   return el('div', { class: 'brand' },
-    'Warren',
+    el('span', { title: `Warren ${__WARREN_RELEASE__}` }, 'Warren'),
     el('small', {
       title: 'Click to rename the project — this also becomes the file name',
       style: { cursor: 'text', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px' },
@@ -243,6 +243,10 @@ function fileMenu(app: App): HTMLElement {
       entry('Delete sheet…', '', () => void deleteSheet(app, app.store.sheet)),
       note ? el('hr') : null,
       note ? el('div', { class: 'hint', style: { padding: '2px 8px 4px', maxWidth: '250px' } }, note) : null,
+      el('hr'),
+      // Which build this is - what to quote when something is wrong with it.
+      el('div', { class: 'hint', style: { padding: '2px 8px 4px', userSelect: 'all' }, title: 'The commit this was built from' },
+        `Version ${__WARREN_RELEASE__}`),
     )
     wrap.appendChild(menu)
     document.addEventListener('pointerdown', onOutside, true)

@@ -10,9 +10,13 @@ HOST=${WARREN_HOST:-racknerd}
 cd "$(dirname "$0")/.."
 
 npm run --silent build
+RELEASE=$(cat dist/version.txt)
+case "$RELEASE" in *-dirty) echo "warning: building $RELEASE — there are uncommitted changes in it";; esac
 rsync -a --delete dist/ "$HOST:warren-deploy/dist/"
+echo "uploaded $RELEASE"
 if [[ "${1:-}" == "--upload" ]]; then
   echo "uploaded; install with: ssh -t $HOST sudo ~/warren-deploy/install.sh"
   exit 0
 fi
 ssh -t "$HOST" sudo ~/warren-deploy/install.sh
+echo "live: $RELEASE (check: curl -su friend https://warren.sentientmilieu.com/version.txt)"
