@@ -1,4 +1,4 @@
-import { dist, orthoConstrain, roundTo, type Pt } from '../geom.ts'
+import { dist, orthoConstrain, roundTo, thickOutline, type Pt } from '../geom.ts'
 import type { Store } from '../model/doc.ts'
 import { isPositioned, pointsOf } from '../model/types.ts'
 import { boxCorners } from '../render/bounds.ts'
@@ -69,6 +69,11 @@ function snapToVertices(store: Store, raw: Pt, tol: number, opts: SnapOptions): 
   for (const item of store.items()) {
     if (!store.isVisible(item)) continue
     const points = pointsOf(item)
+    if (item.kind === 'wall' && item.id !== opts.excludeRunId) {
+      // The corners of its faces, where things meet a wall - and its centreline points, so
+      // one wall can be joined to the next while editing either.
+      for (const c of thickOutline(item.points, item.thickness / 2)) consider(c, 'wall corner')
+    }
     if (points) {
       for (let i = 0; i < points.length; i++) {
         if (item.id === opts.excludeRunId && i === opts.excludeIndex) continue
@@ -88,13 +93,15 @@ function snapToVertices(store: Store, raw: Pt, tol: number, opts: SnapOptions): 
 }
 
 function snapToEdges(store: Store, p: Pt, tol: number, opts: SnapOptions): SnapResult | null {
-  let best: { point: Pt; d: number } | null = null
+  let best: { point: Pt; d: number; label: string } | null = null
   for (const item of store.items()) {
     if (!store.isVisible(item)) continue
     if (item.id === opts.excludeRunId) continue
     const r = nearestPointOnItem(item, p)
-    if (r && r.dist <= tol && (best === null || r.dist < best.d)) best = { point: r.point, d: r.dist }
+    if (r && r.dist <= tol && (best === null || r.dist < best.d)) {
+      best = { point: r.point, d: r.dist, label: item.kind === 'wall' ? 'on wall face' : 'on run' }
+    }
   }
-  const found = best as { point: Pt; d: number } | null
-  return found ? { point: found.point, label: 'on run' } : null
+  const found = best as { point: Pt; d: number; label: string } | null
+  return found ? { point: found.point, label: found.label } : null
 }

@@ -87,6 +87,31 @@ export function removeDirection(ed: Editor, id: string): void {
   })
 }
 
+/**
+ * Renames an off-axis direction, the way a compass tip is renamed: the names are whatever was
+ * typed, and the first one is the id. Refused rather than merged when that id already belongs
+ * to another direction - two bearings under one name is a question for the person, not us.
+ */
+export function renameDirection(ed: Editor, id: string, names: string): void {
+  const list = ed.store.project.directions ?? []
+  const d = list.find((x) => x.id === id)
+  if (!d) return
+  const aliases = splitNames(names)
+  if (aliases.length === 0) {
+    ed.flash('A direction needs a name — use ✕ to remove it instead')
+    ed.onChange?.()
+    return
+  }
+  const next = slugifyDirectionId(aliases[0])
+  if (next !== id && list.some((x) => x.id === next)) {
+    ed.flash(`There is already a direction called "${next}"`)
+    ed.onChange?.()
+    return
+  }
+  if (next === id && aliases.join(', ') === d.aliases.join(', ')) return
+  ed.edit(null, () => { d.id = next; d.aliases = aliases })
+}
+
 export function applyCalibration(ed: Editor, realMm: number): void {
   if (ed.measurePts.length !== 2 || realMm <= 0) return
   const lengthPt = dist(ed.measurePts[0], ed.measurePts[1])

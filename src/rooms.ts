@@ -19,6 +19,9 @@ function anchorsOf(item: Item): Pt[] {
     case 'door':
       return item.points
     case 'room':
+    case 'wall':
+    case 'window':
+      // A wall is between rooms, not in one - and so is a window in it.
       return []
     case 'box':
       return [{ x: item.x + item.w / 2, y: item.y + item.h / 2 }]

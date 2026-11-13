@@ -824,6 +824,8 @@ try {
   await page.waitForFunction(() => window.warren.store.sheet.mmPerPoint !== null, { timeout: 5000 })
   const mmPerPoint = await page.evaluate(() => window.warren.store.sheet.mmPerPoint)
   check('calibration resolves to 20 mm per point', Math.abs(mmPerPoint - 20) < 0.5, mmPerPoint.toFixed(3))
+  check('a finished calibration hands the cursor back to Select',
+    await page.evaluate(() => window.warren.editor.tool) === 'select')
 
   // --- name a direction from two clicks, the same two-click-then-type shape as calibrate -----------
   await page.keyboard.press('b')
@@ -850,6 +852,8 @@ try {
     return resolveDirection(window.warren.store.project, 'straatzijde')?.id
   })
   check('any of the aliases resolves back to the same direction', resolved === 'street', resolved)
+  check('a named direction hands the cursor back to Select',
+    await page.evaluate(() => window.warren.editor.tool) === 'select')
   await page.keyboard.press('Escape')
 
   // --- Calibrate and Direction live in Properties now, not as permanent toolbar buttons ------------
@@ -950,6 +954,17 @@ try {
 
   check('Properties offers an off-axis direction as well', await page.evaluate(() =>
     [...document.querySelectorAll('.tab-body button')].some((b) => b.textContent.startsWith('Add another'))))
+  // An off-axis direction is named in a box just like a tip, and renamed the same way.
+  await page.click('input[data-focus-key="direction-0"]', { clickCount: 3 })
+  await page.keyboard.type('voorkant, street side')
+  await page.keyboard.press('Tab')
+  await page.waitForFunction(() => window.warren.store.project.directions?.[0]?.id === 'voorkant', { timeout: 5000 })
+  const renamed = await page.evaluate(() => window.warren.store.project.directions[0])
+  check('an off-axis direction is renamed in place, bearing kept',
+    renamed.aliases.join(', ') === 'voorkant, street side' && Math.abs(renamed.bearingDeg) < 1, JSON.stringify(renamed))
+  await page.keyboard.down('Control'); await page.keyboard.press('z'); await page.keyboard.up('Control')
+  check('and undo gives it its old names back',
+    (await page.evaluate(() => window.warren.store.project.directions[0].id)) === 'street')
   check('the compass rose can be removed from Properties', await panelButton('Remove'))
   await page.waitForFunction(() => !window.warren.store.project.compass, { timeout: 5000 })
   // 'street' is the one-off named by the two-click Direction check further up; move that block

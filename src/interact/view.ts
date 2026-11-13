@@ -28,6 +28,8 @@ function resize(ed: Editor): void {
   ed.canvas.height = Math.floor(ed.cssHeight * dpr)
   ed.canvas.style.width = `${ed.cssWidth}px`
   ed.canvas.style.height = `${ed.cssHeight}px`
+  // The canvas fills its host exactly, so the host's rect - already read above - is its rect too.
+  ed.canvasRect = { left: rect.left, top: rect.top }
   ed.requestRender()
 }
 
@@ -148,6 +150,11 @@ function publishStatus(ed: Editor): void {
     else if (item) parts.push(`"${ed.store.system(item.systemId).name}" is locked — unlock it in the Layers tab`)
   }
   if (ed.tool === 'run' && ed.draft.length) parts.push('Enter/double-click finishes · Backspace removes last point · Esc cancels')
+  if (ed.tool === 'measure') {
+    parts.push(ed.measurePts.length === 1 ? 'Click the other end'
+      : ed.measurePts.length === 2 ? 'Click to start a new measurement · Esc clears · nothing is saved'
+      : 'Click one end of what you want to measure')
+  }
   if (ed.tool === 'calibrate') parts.push(ed.measurePts.length === 0 ? 'Click the first end of a known dimension' : 'Click the second end')
   const rose = ed.store.project.compass
   const part = compassPart(ed)

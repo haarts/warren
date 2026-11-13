@@ -57,6 +57,13 @@ export class Editor {
   lastMiddleDown = 0
   cssWidth = 0
   cssHeight = 0
+  /**
+   * Cached from the ResizeObserver in view.ts, not read fresh per event: `getBoundingClientRect`
+   * is a synchronous layout read, and calling it on every pointer move - right after a frame that
+   * just wrote the status line's text - forces a layout flush on every gesture. The canvas has no
+   * scrolling ancestor, so its screen position only changes when it actually resizes.
+   */
+  canvasRect: { left: number; top: number } = { left: 0, top: 0 }
 
   constructor(canvas: HTMLCanvasElement, store: Store) {
     this.canvas = canvas
@@ -73,8 +80,7 @@ export class Editor {
   // --- coordinate + mutation primitives, shared by every cluster below ---------------------
 
   eventPoint(e: PointerEvent | MouseEvent): Pt {
-    const rect = this.canvas.getBoundingClientRect()
-    return this.cam.toWorld(e.clientX - rect.left, e.clientY - rect.top)
+    return this.cam.toWorld(e.clientX - this.canvasRect.left, e.clientY - this.canvasRect.top)
   }
 
   tol(px: number): number {

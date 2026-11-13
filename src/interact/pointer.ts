@@ -130,7 +130,7 @@ function selectPointerDown(ed: Editor, e: PointerEvent, world: Pt): void {
 
   const hit = hitTest(store, world, ed.tol(HIT_TOL_PX))
   if (hit) {
-    if (e.altKey && pointsOf(hit) && hit.kind !== 'door') {
+    if (e.altKey && pointsOf(hit) && hit.kind !== 'door' && hit.kind !== 'window') {
       insertVertex(ed, hit, world)
       return
     }
@@ -365,7 +365,7 @@ function onDoubleClick(ed: Editor, e: MouseEvent): void {
   }
   if (ed.tool !== 'select') return
   const hit = hitTest(ed.store, world, ed.tol(HIT_TOL_PX))
-  if (hit && pointsOf(hit) && hit.kind !== 'door') insertVertex(ed, hit, world)
+  if (hit && pointsOf(hit) && hit.kind !== 'door' && hit.kind !== 'window') insertVertex(ed, hit, world)
 }
 
 /**
@@ -388,9 +388,8 @@ function onWheel(ed: Editor, e: WheelEvent): void {
   if (pans) {
     ed.cam.panByScreen(-e.deltaX, -e.deltaY)
   } else {
-    const rect = ed.canvas.getBoundingClientRect()
     const factor = Math.pow(0.999, e.deltaY * (e.deltaMode === 1 ? 16 : 1) * (pinch ? 2 : 1))
-    ed.cam.zoomAt(e.clientX - rect.left, e.clientY - rect.top, factor)
+    ed.cam.zoomAt(e.clientX - ed.canvasRect.left, e.clientY - ed.canvasRect.top, factor)
   }
   ed.requestRender()
 }
@@ -509,8 +508,8 @@ function placeNote(ed: Editor, p: Pt): void {
 }
 
 function insertVertex(ed: Editor, item: Item, world: Pt): void {
-  // A door is two jambs and stays two jambs; everything else made of points can grow a corner.
-  if (item.kind === 'door' || !pointsOf(item)) return
+  // A door or window is two jambs and stays two jambs; everything else made of points can grow a corner.
+  if (item.kind === 'door' || item.kind === 'window' || !pointsOf(item)) return
   const hit = hitSegment(item, world, ed.tol(HIT_TOL_PX * 1.5))
   if (!hit) return
   ed.edit(null, () => {

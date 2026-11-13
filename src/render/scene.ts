@@ -6,7 +6,7 @@
  */
 import type { Pt, Rect } from '../geom.ts'
 import type { Store } from '../model/doc.ts'
-import type { BoxItem, DoorItem, MarkerItem, NoteItem, RoomItem, RunItem } from '../model/types.ts'
+import type { BoxItem, DoorItem, MarkerItem, NoteItem, RoomItem, RunItem, WallItem, WindowItem } from '../model/types.ts'
 import { itemsInRoom } from '../rooms.ts'
 import type { Camera } from './camera.ts'
 import { drawCompass, COMPASS_RADIUS_PX, type CompassPart } from './compass.ts'
@@ -17,7 +17,7 @@ import { drawNote, noteHeight } from './notes.ts'
 import { drawGrid, drawScaleBar } from './gridScale.ts'
 import { drawRun } from './runs.ts'
 import { drawHandles, drawItemOutline, drawOverlay } from './selection.ts'
-import { drawBox, drawDoor, drawRoom } from './shapes.ts'
+import { drawBox, drawDoor, drawRoom, drawWall, drawWindow } from './shapes.ts'
 
 // `COMPASS_RADIUS_PX` lives in compass.ts and `labelTextFor` in labels.ts, next to the code
 // that uses them - both are re-exported here only because test/browser/smoke.mjs imports them
@@ -80,7 +80,10 @@ export function drawScene(opts: SceneOptions): void {
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(cam.toScreenX(0), cam.toScreenY(0), w * cam.zoom, h * cam.zoom)
     ctx.globalAlpha = settings.backgroundOpacity
-    ctx.imageSmoothingQuality = 'high'
+    // 'high' filters a cached raster that can be tens of megapixels once zoomed in, and doing
+    // that on every frame is what makes panning and dragging feel janky. Screen editing only
+    // needs to look good at screen resolution; save the expensive filter for the export render.
+    ctx.imageSmoothingQuality = interactive ? 'medium' : 'high'
     ctx.drawImage(opts.background, cam.toScreenX(0), cam.toScreenY(0), w * cam.zoom, h * cam.zoom)
     ctx.restore()
     ctx.save()
@@ -96,6 +99,8 @@ export function drawScene(opts: SceneOptions): void {
   const items = store.items().filter((i) => store.isVisible(i))
   // Rooms are the backdrop: painted first, under everything they give context to.
   const rooms = items.filter((i): i is RoomItem => i.kind === 'room')
+  const walls = items.filter((i): i is WallItem => i.kind === 'wall')
+  const windows = items.filter((i): i is WindowItem => i.kind === 'window')
   const doors = items.filter((i): i is DoorItem => i.kind === 'door')
   const boxes = items.filter((i): i is BoxItem => i.kind === 'box')
   const runs = items.filter((i): i is RunItem => i.kind === 'run')
@@ -103,6 +108,9 @@ export function drawScene(opts: SceneOptions): void {
   const notes = items.filter((i): i is NoteItem => i.kind === 'note')
 
   for (const room of rooms) drawRoom(dc, room)
+  for (const wall of walls) drawWall(dc, wall)
+  // Over the walls, which run on unbroken behind them.
+  for (const win of windows) drawWindow(dc, win)
   for (const door of doors) drawDoor(dc, door)
   for (const box of boxes) drawBox(dc, box)
   for (const run of runs) drawRun(dc, run)

@@ -1,4 +1,4 @@
-import { closestOnPolyline, closestOnSegment, dist, polygonEdges, rectContains, rectsIntersect, segmentIntersectsRect, type Pt, type Rect } from '../geom.ts'
+import { closestOnPolyline, closestOnSegment, dist, polygonEdges, thickOutline, rectContains, rectsIntersect, segmentIntersectsRect, type Pt, type Rect } from '../geom.ts'
 import type { Store, VertexRef } from '../model/doc.ts'
 import { pointsOf, type Item } from '../model/types.ts'
 import { noteHeight } from '../render/notes.ts'
@@ -19,7 +19,7 @@ function closestOnRing(p: Pt, points: Pt[]): { point: Pt; dist: number } {
 
 /** Draw order is boxes → runs → markers, so we test back to front. */
 function topmost(items: Item[], p: Pt, tol: number): Item | null {
-  for (const kind of ['note', 'marker', 'run', 'door', 'box', 'room'] as const) {
+  for (const kind of ['note', 'marker', 'run', 'door', 'window', 'box', 'wall', 'room'] as const) {
     for (let i = items.length - 1; i >= 0; i--) {
       if (items[i].kind === kind && hitsItem(items[i], p, tol)) return items[i]
     }
@@ -63,6 +63,11 @@ export function hitsItem(item: Item, p: Pt, tol: number): boolean {
       return rectContains({ x: item.x, y: item.y, w: item.w, h: noteHeight(item) }, p)
     case 'door':
       return closestOnPolyline(p, item.points).dist <= tol * 1.4
+    case 'window':
+      return closestOnPolyline(p, item.points).dist <= Math.max(tol, item.depth / 2)
+    case 'wall':
+      // The whole thickness is the target: a wall is something you click on, not a hairline.
+      return closestOnPolyline(p, item.points).dist <= Math.max(tol, item.thickness / 2)
     case 'room':
       // The outline is the grab target; the middle is not, or a room would swallow every
       // click inside it and you could never select the pipes you drew across it.
@@ -139,6 +144,8 @@ export function hitNoteHandle(store: Store, p: Pt, tol: number): NoteHandleRef |
 
 export function nearestPointOnItem(item: Item, p: Pt): { point: Pt; dist: number } | null {
   if (item.kind === 'room') return item.points.length >= 3 ? closestOnRing(p, item.points) : null
+  // A wall's faces, not its centreline: a pipe is fixed to the face it runs along.
+  if (item.kind === 'wall') return item.points.length >= 2 ? closestOnRing(p, thickOutline(item.points, item.thickness / 2)) : null
   const line = pointsOf(item)
   if (line && line.length >= 2) {
     const r = closestOnPolyline(p, line)

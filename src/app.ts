@@ -206,6 +206,9 @@ export class App {
       return
     }
     applyCalibration(this.editor, mm)
+    // A command, not a mode: once the sheet has its scale, the next click should select and
+    // drag again rather than start another calibration line.
+    this.editor.setTool('select')
   }
 
   // --- direction -----------------------------------------------------------------------------
@@ -224,6 +227,7 @@ export class App {
       return
     }
     applyDirection(this.editor, bearingDeg, names)
+    this.editor.setTool('select')
   }
 
   // --- keyboard ------------------------------------------------------------------------------
@@ -287,6 +291,8 @@ const KEY_ACTIONS: Record<string, KeyAction> = {
   '-': (app) => zoomBy(app.editor, 0.8), '_': (app) => zoomBy(app.editor, 0.8),
   Escape: (app) => {
     if (app.editor.isDrafting) { cancelDraft(app.editor); return }
+    // Calibrate and direction are one-shot commands; Esc backs out of them entirely.
+    if (app.editor.tool === 'calibrate' || app.editor.tool === 'direction') app.editor.setTool('select')
     cancelMeasurement(app.editor)
     app.store.selection.clear()
     app.store.activeVertex = null

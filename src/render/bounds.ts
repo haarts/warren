@@ -6,6 +6,11 @@ import { noteHeight } from './notes.ts'
 /** World-space bounding box of an item, for framing, culling and rubber-band selection. */
 export function itemBounds(item: Item): Rect {
   const points = pointsOf(item)
+  if (item.kind === 'wall' || item.kind === 'window') {
+    const b = boundsOf(item.points)
+    const t = item.kind === 'wall' ? item.thickness : item.depth
+    return { x: b.x - t / 2, y: b.y - t / 2, w: b.w + t, h: b.h + t }
+  }
   if (points) return boundsOf(points)
   if (item.kind === 'box') return { x: item.x, y: item.y, w: item.w, h: item.h }
   if (item.kind === 'note') return { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }

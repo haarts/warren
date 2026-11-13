@@ -207,3 +207,33 @@ export function inwardNormal(a: Pt, b: Pt, points: Pt[]): Pt {
 export function roundTo(value: number, step: number): number {
   return step > 0 ? Math.round(value / step) * step : value
 }
+
+/**
+ * The outline of a polyline drawn `half` thick on each side - a wall from its centreline. The
+ * left side runs forward and the right side back, so the result is one closed polygon. Corners
+ * are mitred, which is how walls meet; a mitre longer than four half-widths (a hairpin) is cut
+ * back to that, so a near-reversal cannot throw a spike across the drawing.
+ */
+export function thickOutline(points: Pt[], half: number): Pt[] {
+  const n = points.length
+  if (n < 2) return []
+  const normals: Pt[] = []
+  for (let i = 0; i < n - 1; i++) {
+    const dx = points[i + 1].x - points[i].x
+    const dy = points[i + 1].y - points[i].y
+    const len = Math.hypot(dx, dy) || 1
+    normals.push({ x: -dy / len, y: dx / len })
+  }
+  const side = (sign: 1 | -1): Pt[] => points.map((p, i) => {
+    const a = normals[Math.max(0, i - 1)]
+    const b = normals[Math.min(n - 2, i)]
+    let mx = a.x + b.x
+    let my = a.y + b.y
+    const ml = Math.hypot(mx, my)
+    if (ml < 1e-9) { mx = b.x; my = b.y } else { mx /= ml; my /= ml }
+    const cos = mx * b.x + my * b.y
+    const reach = Math.min(half / Math.max(cos, 1e-9), half * 4)
+    return { x: p.x + sign * mx * reach, y: p.y + sign * my * reach }
+  })
+  return [...side(1), ...side(-1).reverse()]
+}

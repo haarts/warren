@@ -8,11 +8,11 @@
  * caller can validate everything before applying any of it.
  */
 import type { Pt } from '../src/geom.ts'
-import { polygonArea } from '../src/geom.ts'
+import { closestOnSegment, polygonArea } from '../src/geom.ts'
 import { adopt } from '../src/generate.ts'
 import { newId } from '../src/model/ids.ts'
 import type { Store } from '../src/model/doc.ts'
-import { isPositioned, pointsOf, ROOM_USES, LEVELS, type Item, type Level, type Project, type Sheet } from '../src/model/types.ts'
+import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet } from '../src/model/types.ts'
 import { oneOf } from '../src/io/projectFile.ts'
 import { findSheets, pointsFromMetres } from './units.ts'
 
@@ -23,11 +23,11 @@ export interface AddOp { op: 'add'; sheet?: string; item: Record<string, unknown
 export type Op = SetOp | DeleteOp | MoveOp | AddOp
 
 /** The kinds `add` knows how to build. Named once, so the manifest cannot promise more. */
-export const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'marker', 'note']
+export const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'wall', 'window', 'marker', 'note']
 
 export const PATCHABLE = new Set([
   'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride',
-  'locked', 'symbol', 'name', 'use', 'ref', 'swing',
+  'locked', 'symbol', 'name', 'use', 'ref', 'swing', 'status', 'thicknessM', 'depthM',
 ])
 
 export interface Plan {
@@ -60,13 +60,51 @@ function doSet(op: SetOp, ctx: Ctx): void {
   if (typeof op.patch.level === 'string' && !LEVELS.includes(op.patch.level as Level)) {
     return void problems.push(`${at}: level "${op.patch.level}" is not one of ${LEVELS.join(', ')}`)
   }
+  const { thicknessM, depthM, ...patch } = op.patch as Record<string, unknown>
+  let thickness: number | null = null
+  let depth: number | null = null
+  if (depthM !== undefined) {
+    if (target!.item.kind !== 'window') return void problems.push(`${at}: depthM is for windows; ${op.id} is a ${target!.item.kind}`)
+    if (typeof depthM !== 'number' || !(depthM > 0)) return void problems.push(`${at}: depthM must be a positive number of metres`)
+    depth = pointsFromMetres(target!.sheet, depthM)
+    if (depth === null) return void problems.push(`${at}: sheet "${target!.sheet.name}" has no scale, so depthM means nothing here`)
+  }
+  if ('status' in patch || thicknessM !== undefined) {
+    if (target!.item.kind !== 'wall') return void problems.push(`${at}: status and thicknessM are for walls; ${op.id} is a ${target!.item.kind}`)
+  }
+  if ('status' in patch && !WALL_STATUSES.includes(patch.status as WallStatus)) {
+    return void problems.push(`${at}: status must be one of ${WALL_STATUSES.join(', ')}`)
+  }
+  if (thicknessM !== undefined) {
+    if (typeof thicknessM !== 'number' || !(thicknessM > 0)) return void problems.push(`${at}: thicknessM must be a positive number of metres`)
+    thickness = pointsFromMetres(target!.sheet, thicknessM)
+    if (thickness === null) return void problems.push(`${at}: sheet "${target!.sheet.name}" has no scale, so thicknessM means nothing here`)
+  }
   describe.push(`${at}: ${Object.keys(op.patch).join(', ')} on ${op.id}`)
   planned.push(() => {
-    Object.assign(target!.item, op.patch)
+    Object.assign(target!.item, patch)
+    if (thickness !== null && target!.item.kind === 'wall') target!.item.thickness = thickness
+    if (depth !== null && target!.item.kind === 'window') target!.item.depth = depth
     // Editing claims machine output, whoever does the editing. Without this a later
     // `generate` would quietly undo the change.
     adopt(target!.item)
   })
+}
+
+/**
+ * The wall a window's two jambs both sit in: within its thickness of one straight stretch of its
+ * centreline. A window is one straight opening, so a corner between the jambs does not count.
+ */
+function hostWall(sheet: Sheet, a: Pt, b: Pt): WallItem | null {
+  for (const item of sheet.items) {
+    if (item.kind !== 'wall') continue
+    const reach = item.thickness / 2 + 0.5
+    for (let i = 0; i + 1 < item.points.length; i++) {
+      const [p, q] = [item.points[i], item.points[i + 1]]
+      if (closestOnSegment(a, p, q).dist <= reach && closestOnSegment(b, p, q).dist <= reach) return item
+    }
+  }
+  return null
 }
 
 function doDelete(op: DeleteOp, ctx: Ctx): void {
@@ -108,7 +146,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
     return void problems.push(`${at}: item.systemId must be one of this project's systems`)
   }
   const level = oneOf(LEVELS, raw.level, 'wall')
-  const shaped = raw.kind === 'run' || raw.kind === 'room' || raw.kind === 'door'
+  const shaped = raw.kind === 'run' || raw.kind === 'room' || raw.kind === 'door' || raw.kind === 'wall' || raw.kind === 'window'
   if (shaped) {
     const source = Array.isArray(raw.pointsM) ? raw.pointsM : Array.isArray(raw.points) ? raw.points : null
     const least = raw.kind === 'room' ? 3 : 2
@@ -122,6 +160,30 @@ function doAdd(op: AddOp, ctx: Ctx): void {
       const y = inMetres ? pointsFromMetres(sheet, pair[1]) : pair[1]
       if (x === null || y === null) return void problems.push(`${at}: sheet "${sheet.name}" has no scale, so pointsM mean nothing here`)
       points.push({ x, y })
+    }
+    let thickness = 0
+    if (raw.kind === 'wall') {
+      if (typeof raw.thicknessM !== 'number' || !(raw.thicknessM > 0)) {
+        return void problems.push(`${at}: a wall needs thicknessM, its full thickness in metres`)
+      }
+      thickness = pointsFromMetres(sheet, raw.thicknessM) as number
+      if (raw.status !== undefined && !WALL_STATUSES.includes(raw.status as WallStatus)) {
+        return void problems.push(`${at}: status must be one of ${WALL_STATUSES.join(', ')}`)
+      }
+    }
+    let depth = 0
+    if (raw.kind === 'window') {
+      if (source.length !== 2) return void problems.push(`${at}: a window is exactly 2 points, one jamb then the other`)
+      if (raw.depthM !== undefined) {
+        if (typeof raw.depthM !== 'number' || !(raw.depthM > 0)) return void problems.push(`${at}: depthM must be a positive number of metres`)
+        depth = pointsFromMetres(sheet, raw.depthM) as number
+      } else {
+        const host = hostWall(sheet, points[0], points[1])
+        if (!host) {
+          return void problems.push(`${at}: a window needs depthM, or both jambs on the centreline of a wall already in the drawing to take its thickness from`)
+        }
+        depth = host.thickness
+      }
     }
     if (raw.kind === 'room' && typeof raw.expectM2 === 'number') {
       // The architect prints the area on the plan, so a traced outline can check itself.
@@ -140,6 +202,20 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           name: String(raw.name ?? 'Room'),
           use: oneOf(ROOM_USES, raw.use, 'other'),
           ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
+        })
+      } else if (raw.kind === 'wall') {
+        sheet.items.push({
+          kind: 'wall', id: newId('wall'), systemId: raw.systemId as string, level, points, thickness,
+          status: (raw.status as WallStatus | undefined) ?? 'existing',
+          ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
+          ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+        })
+      } else if (raw.kind === 'window') {
+        sheet.items.push({
+          kind: 'window', id: newId('window'), systemId: raw.systemId as string, level,
+          points: [points[0], points[1]], depth,
+          ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
+          ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
         })
       } else if (raw.kind === 'door') {
         sheet.items.push({

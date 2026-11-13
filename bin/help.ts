@@ -5,7 +5,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { PLACEMENTS } from '../src/generate.ts'
-import { CATEGORIES, ITEM_KINDS, LEVELS, MARKER_SYMBOLS, ROOM_USES } from '../src/model/types.ts'
+import { CATEGORIES, ITEM_KINDS, LEVELS, MARKER_SYMBOLS, ROOM_USES, WALL_STATUSES } from '../src/model/types.ts'
 import { ADDABLE_KINDS, PATCHABLE } from './ops.ts'
 
 interface Entry {
@@ -309,13 +309,16 @@ const OPS: Record<string, { does: string; fields: Record<string, string> }> = {
       'item.kind': `one of ${ADDABLE_KINDS.join(', ')}`,
       'item.systemId': 'required — must already be in this project’s catalogue (see `systems`)',
       'item.level': `optional — one of ${LEVELS.join(', ')} (default: wall)`,
-      'item.pointsM': 'run/room/door — [[x, y], ...] in metres. A run takes 2+, a room 3+, a door exactly 2 with the hinge jamb first',
+      'item.pointsM': 'run/room/door/wall/window — [[x, y], ...] in metres. A run takes 2+, a room 3+, a door exactly 2 with the hinge jamb first, a wall 2+ along its centreline, a window exactly 2 — its jambs, on the centreline of the wall it sits in',
+      'item.thicknessM': 'wall — required: its full thickness in metres, centred on the line (half each side)',
+      'item.depthM': 'window — the frame depth across the wall in metres; leave it out to take the thickness of the wall both jambs sit on (which must then already exist — the wall stays continuous behind the window)',
+      'item.status': `wall — one of ${WALL_STATUSES.join(', ')} (default existing)`,
       'item.xM, item.yM': 'marker/note — position in metres',
       'item.name, item.ref': 'room — its name, and the number printed on the plan',
       'item.use': `room — one of ${ROOM_USES.join(', ')}`,
       'item.expectM2': 'room — the area printed on the plan; the batch is refused if the outline is more than 8% out',
       'item.swing': 'door — 1 or -1',
-      'item.label': 'run/door/marker — the text drawn beside it',
+      'item.label': 'run/door/wall/window/marker — the text drawn beside it',
       'item.size, item.flow': `run — size defaults to the system’s; flow is none, forward or reverse`,
       'item.symbol': `marker — one of ${MARKER_SYMBOLS.join(', ')}`,
       'item.text': 'note — its contents',
@@ -443,6 +446,7 @@ export function manifest() {
       itemKind: [...ITEM_KINDS],
       addableKind: [...ADDABLE_KINDS],
       roomUse: [...ROOM_USES],
+      wallStatus: [...WALL_STATUSES],
       markerSymbol: [...MARKER_SYMBOLS],
       category: [...CATEGORIES],
       flow: ['none', 'forward', 'reverse'],

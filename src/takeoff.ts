@@ -1,6 +1,6 @@
 import { polylineLength } from './geom.ts'
 import type { Store } from './model/doc.ts'
-import type { Category, Sheet, System } from './model/types.ts'
+import { ARCHITECTURE_KINDS, type Category, type Sheet, type System } from './model/types.ts'
 
 export interface SizeTally {
   /** The run's size field, or a placeholder when it has none. */
@@ -51,6 +51,8 @@ export function computeTakeoff(store: Store, scope: 'sheet' | 'project'): Takeof
   for (const sheet of sheets) {
     if (!sheet.mmPerPoint && sheet.items.some((i) => i.kind === 'run')) uncalibrated.push(sheet.name)
     for (const item of sheet.items) {
+      // Rooms, doors and walls are what the services are drawn against, not things to order.
+      if (ARCHITECTURE_KINDS.includes(item.kind)) continue
       const system = store.system(item.systemId)
       let row = map.get(system.id)
       if (!row) {

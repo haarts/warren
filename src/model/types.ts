@@ -240,28 +240,78 @@ export interface DoorItem {
   locked?: boolean
 }
 
-export type Item = RunItem | BoxItem | MarkerItem | NoteItem | RoomItem | DoorItem
+/**
+ * Whether a wall stands already or is being built. The architect draws the two differently,
+ * and it is the first thing to know before chasing a pipe into one.
+ */
+export const WALL_STATUSES = ['new', 'existing'] as const
+export type WallStatus = typeof WALL_STATUSES[number]
+
+/**
+ * A wall, as its centreline and a thickness either side of it. A run of wall with corners is
+ * one item, like a run of pipe. Architecture, so never material in the takeoff.
+ */
+export interface WallItem {
+  kind: 'wall'
+  id: string
+  systemId: string
+  level: Level
+  /** The centreline, two or more points. */
+  points: Pt[]
+  /** Full thickness, in world units (PDF points) like every other length in the file. */
+  thickness: number
+  status: WallStatus
+  ref?: string
+  label?: string
+  note?: string
+  colorOverride?: string
+  locked?: boolean
+}
+
+/**
+ * A window, as the two jambs of its opening on the wall's centreline and the depth of the frame
+ * across the wall. It sits in a wall rather than replacing it: the wall stays continuous behind
+ * it, the way the parapet under a window does, and the window is drawn over the top.
+ */
+export interface WindowItem {
+  kind: 'window'
+  id: string
+  systemId: string
+  level: Level
+  /** Exactly two: one jamb, then the other. */
+  points: Pt[]
+  /** Depth of the frame across the wall, in world units (PDF points). */
+  depth: number
+  ref?: string
+  label?: string
+  note?: string
+  colorOverride?: string
+  locked?: boolean
+}
+
+export type Item = RunItem | BoxItem | MarkerItem | NoteItem | RoomItem | DoorItem | WallItem | WindowItem
+
+export const ITEM_KINDS: Item['kind'][] = ['run', 'box', 'marker', 'note', 'room', 'door', 'wall', 'window']
 
 /** Architecture, not services: exempt from the level filter and never material. */
-export const ITEM_KINDS: Item['kind'][] = ['run', 'box', 'marker', 'note', 'room', 'door']
-
-export const ARCHITECTURE_KINDS: Item['kind'][] = ['room', 'door']
+export const ARCHITECTURE_KINDS: Item['kind'][] = ['room', 'door', 'wall', 'window']
 
 /** The text a label filter searches: everything the item says about itself. */
 export function searchTextOf(item: Item): string {
   const parts: string[] = []
   if (item.kind === 'room') parts.push(item.name, item.ref ?? '')
   else if (item.kind === 'note') parts.push(item.text)
-  else if (item.kind === 'door') parts.push(item.ref ?? '', item.label ?? '')
+  else if (item.kind === 'door' || item.kind === 'wall' || item.kind === 'window') parts.push(item.ref ?? '', item.label ?? '')
   else parts.push(item.label ?? '')
   if (item.kind === 'run') parts.push(item.size ?? '', item.slope ?? '')
   if ('note' in item && typeof item.note === 'string') parts.push(item.note)
   return parts.join(' ').toLowerCase()
 }
 
-/** Items defined by a list of points: runs, room outlines and door openings. */
+/** Items defined by a list of points: runs, room outlines, door and window openings, wall centrelines. */
 export function pointsOf(item: Item): Pt[] | null {
-  return item.kind === 'run' || item.kind === 'room' || item.kind === 'door' ? item.points : null
+  return item.kind === 'run' || item.kind === 'room' || item.kind === 'door' || item.kind === 'wall' || item.kind === 'window'
+    ? item.points : null
 }
 
 /** Items defined by a single position. */

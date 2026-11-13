@@ -1,15 +1,15 @@
 import type { App } from '../../app.ts'
 import { polygonArea, polylineLength } from '../../geom.ts'
 import {
-  CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS, ROOM_USES, ROOM_USE_LABELS,
-  type Item, type Level, type MarkerSymbol, type RoomUse,
+  CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS, ROOM_USES, ROOM_USE_LABELS, WALL_STATUSES,
+  type Item, type Level, type MarkerSymbol, type RoomUse, type WallStatus,
 } from '../../model/types.ts'
 import { buildGraph, connectionsOf, networkOf, type Contact } from '../../topology.ts'
 import { adopt, generatedBy } from '../../generate.ts'
 import { symbolsFor } from '../../model/systems.ts'
 import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
-import { nameCompassTip, placeCompass, removeCompass, removeDirection, turnCompass } from '../../interact/compass.ts'
+import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -136,6 +136,29 @@ export function buildProperties(app: App, body: HTMLElement): void {
         onclick: () => applyToAll((item) => { if (item.kind === 'door') item.swing = item.swing === 1 ? -1 : 1 }),
       }, 'Flip swing'),
     ), 'The hinge is the first jamb. A light switch belongs by the other one, not behind the door.'))
+  }
+
+  if (items.every((i) => i.kind === 'wall')) {
+    const mmPerPoint = sheet.mmPerPoint
+    if (!many && first.kind === 'wall' && mmPerPoint) {
+      body.appendChild(field('Thickness', el('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } },
+        numberInput(Math.round(first.thickness * mmPerPoint), (v) => applyToAll((item) => {
+          if (item.kind === 'wall' && v > 0) item.thickness = v / mmPerPoint
+        })), 'mm'), 'Centred on the line: half each side.'))
+    }
+    body.appendChild(field('Status', select(
+      WALL_STATUSES.map((s) => [s, s === 'new' ? 'New' : 'Existing'] as const),
+      common((i) => (i.kind === 'wall' ? i.status : 'existing'), ''),
+      (v) => applyToAll((item) => { if (item.kind === 'wall') item.status = v as WallStatus }),
+    )))
+  }
+
+  if (!many && first.kind === 'window' && sheet.mmPerPoint) {
+    const mmPerPoint = sheet.mmPerPoint
+    body.appendChild(field('Depth', el('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } },
+      numberInput(Math.round(first.depth * mmPerPoint), (v) => applyToAll((item) => {
+        if (item.kind === 'window' && v > 0) item.depth = v / mmPerPoint
+      })), 'mm'), 'The frame across the wall. Its width is the distance between the two jambs.'))
   }
 
   if (first.kind === 'run' && !many) {
@@ -349,6 +372,8 @@ function describeItem(store: App['store'], item: Item): string {
   const sys = store.system(item.systemId).name
   if (item.kind === 'room') return `${item.name} (room)`
   if (item.kind === 'door') return `${item.ref ?? 'door'}`
+  if (item.kind === 'wall') return `${item.label || item.ref || `${item.status} wall`} (wall)`
+  if (item.kind === 'window') return `${item.label || item.ref || 'window'} (window)`
   const own = item.kind === 'note' ? item.text.slice(0, 24) : (item.label ?? '').trim()
   const size = item.kind === 'run' ? (item.size ?? '').trim() : ''
   const detail = [own, size].filter(Boolean).join(' ')
@@ -363,6 +388,8 @@ function labelForKind(item: Item): string {
     case 'note': return 'Note'
     case 'room': return 'Room'
     case 'door': return 'Door'
+    case 'wall': return 'Wall'
+    case 'window': return 'Window'
   }
 }
 
@@ -407,19 +434,31 @@ function buildOrientation(app: App, body: HTMLElement): void {
     }
   }
 
+  // Off-axis directions read and edit exactly like a tip: bearing in the label, names in the
+  // box. Only the ✕ is extra, because unlike a tip one of these can be gone entirely.
   const others = store.project.directions ?? []
-  body.appendChild(field(rose ? 'Others' : 'Off-axis', el('div', {},
-    ...others.map((d) => el('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' } },
-      el('span', {}, `${d.aliases.join(', ') || d.id} · ${Math.round(d.bearingDeg)}°`),
-      el('button', {
-        title: `Remove "${d.id}"`,
-        style: { padding: '0 6px', lineHeight: '1.4' },
-        onclick: () => removeDirection(editor, d.id),
-      }, '✕'),
-    )),
+  others.forEach((d, i) => {
+    const input = el('input', {
+      type: 'text',
+      value: d.aliases.join(', ') || d.id,
+      placeholder: 'comma-separated names',
+      style: { flex: '1', minWidth: '0' },
+      dataset: { focusKey: `direction-${i}` },
+    }) as HTMLInputElement
+    input.addEventListener('change', () => { const v = input.value; setTimeout(() => renameDirection(editor, d.id, v), 0) })
+    body.appendChild(field(`${rose ? 'Other' : 'Off-axis'} · ${Math.round(d.bearingDeg)}°`,
+      el('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } },
+        input,
+        el('button', {
+          title: `Remove "${d.id}"`,
+          style: { padding: '0 6px', lineHeight: '1.4' },
+          onclick: () => removeDirection(editor, d.id),
+        }, '✕'),
+      )))
+  })
+  body.appendChild(field(others.length ? '' : (rose ? 'Others' : 'Off-axis'),
     el('button', {
       title: 'A bearing the compass rose does not cover: click two points on the plan, then name it',
       onclick: () => editor.setTool('direction'),
-    }, others.length ? 'Add another…' : 'Add an off-axis direction…'),
-  )))
+    }, others.length ? 'Add another…' : 'Add an off-axis direction…')))
 }

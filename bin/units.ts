@@ -60,6 +60,11 @@ export interface ItemReport {
   text?: string
   use?: string
   areaM2?: number
+  /** A wall's full thickness, and whether it stands already or is being built. */
+  thicknessM?: number | null
+  status?: string
+  /** A window's frame depth across the wall; its width is `lengthM`. */
+  depthM?: number | null
   /** Which symbol a marker draws with — otherwise invisible to anything but the raw file. */
   symbol?: string
 }
@@ -86,6 +91,26 @@ export function reportItem(store: Store, sheet: Sheet, item: Item): ItemReport {
   if (item.kind === 'door') {
     report.atM = pointAtM(sheet, item.points[0])
     report.label = [item.ref, item.label].filter(Boolean).join(' ')
+    return report
+  }
+  if (item.kind === 'window') {
+    const len = metres(sheet, polylineLength(item.points))
+    const depth = metres(sheet, item.depth)
+    report.lengthM = len === null ? null : round(len)
+    report.depthM = depth === null ? null : round(depth, 3)
+    report.atM = pointAtM(sheet, item.points[0])
+    const name = [item.ref, item.label].filter(Boolean).join(' ')
+    if (name) report.label = name
+    return report
+  }
+  if (item.kind === 'wall') {
+    const len = metres(sheet, polylineLength(item.points))
+    const thick = metres(sheet, item.thickness)
+    report.lengthM = len === null ? null : round(len)
+    report.thicknessM = thick === null ? null : round(thick, 3)
+    report.status = item.status
+    report.atM = pointAtM(sheet, item.points[0])
+    if (item.ref) report.label = [item.ref, item.label].filter(Boolean).join(' ')
     return report
   }
   if (item.kind === 'run') {

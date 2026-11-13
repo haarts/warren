@@ -6,7 +6,7 @@ import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
   ROOM_USES,
-  type CompassRose, type Direction, type DoorItem, type Item, type MarkerItem, type MarkerSymbol, type Project,
+  type CompassRose, type Direction, type DoorItem, type WallItem, type WindowItem, WALL_STATUSES, type Item, type MarkerItem, type MarkerSymbol, type Project,
   type RoomItem, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
@@ -141,6 +141,27 @@ const ITEM_PARSERS: { [K in Item['kind']]: (raw: Record<string, unknown>, base: 
     }
     if (typeof raw.ref === 'string') door.ref = raw.ref
     return door
+  },
+  wall: (raw, base, shared) => {
+    const points = readPoints(raw.points, 2)
+    if (!points) return null
+    const wall: WallItem = {
+      ...base, ...shared, ...readLabelled(raw), kind: 'wall', points,
+      thickness: Math.max(0.01, num(raw.thickness, 8)),
+      status: oneOf(WALL_STATUSES, raw.status, 'existing'),
+    }
+    if (typeof raw.ref === 'string') wall.ref = raw.ref
+    return wall
+  },
+  window: (raw, base, shared) => {
+    const points = readPoints(raw.points, 2)
+    if (!points) return null
+    const window: WindowItem = {
+      ...base, ...shared, ...readLabelled(raw), kind: 'window', points: [points[0], points[1]],
+      depth: Math.max(0.01, num(raw.depth, 4)),
+    }
+    if (typeof raw.ref === 'string') window.ref = raw.ref
+    return window
   },
   // Notes carry `text`, not `label`/`note` - a sticky whose content lived in a side field would
   // be a trap - so they skip readLabelled.

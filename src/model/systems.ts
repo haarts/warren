@@ -122,6 +122,8 @@ const SEEDS: Seed[] = [
   { id: 'struct.note', category: 'struct', name: 'General note', color: '#ca8a04', dash: D.solid, width: 1.2, symbols: ['note', 'penetration'] },
   { id: 'struct.room', category: 'struct', name: 'Room', color: '#0f766e', dash: D.solid, width: 1.0, symbols: ['note', 'penetration'] },
   { id: 'struct.door', category: 'struct', name: 'Door', color: '#7c3aed', dash: D.solid, width: 1.6, symbols: ['note', 'penetration'] },
+  { id: 'struct.window', category: 'struct', name: 'Window', color: '#0284c7', dash: D.solid, width: 1.0, symbols: ['note', 'penetration'] },
+  { id: 'struct.wall', category: 'struct', name: 'Wall', color: '#57534e', dash: D.solid, width: 1.0, symbols: ['note', 'penetration'] },
 ]
 
 export function defaultSystems(): System[] {
