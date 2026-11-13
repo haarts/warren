@@ -7,18 +7,21 @@ import { existsSync, writeFileSync, unlinkSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { defaultRoot, serve } from '../serve.ts'
 import { fail, type Args } from '../args.ts'
-import { lockPath, resolveAssets, runningServer } from '../project.ts'
+import { createProjectFile, lockPath, resolveAssets, runningServer } from '../project.ts'
 import { planOps, type Op } from '../ops.ts'
 
 export async function cmdServe(args: Args): Promise<void> {
   const projectPath = args.positional[0]
   if (!projectPath) fail('which project file? usage: warren serve <file.warren.json>')
-  if (!existsSync(projectPath)) fail(`no such file: ${projectPath}`)
 
   const root = typeof args.flags.root === 'string' ? args.flags.root : defaultRoot()
   if (!existsSync(join(root, 'index.html'))) {
     fail(`nothing built at ${root}. Run: npm run build`)
   }
+
+  // Checked after the build, so a failed start does not leave an empty project behind.
+  const created = !existsSync(projectPath)
+  if (created) createProjectFile(projectPath)
 
   const handle = await serve({
     projectPath,
@@ -48,6 +51,7 @@ export async function cmdServe(args: Args): Promise<void> {
   process.on('SIGTERM', bye)
 
   console.log(`warren serve — http://127.0.0.1:${handle.port}`)
+  if (created) console.log(`  created ${basename(projectPath)} — a new, empty project.`)
   console.log(`  holding ${basename(projectPath)}; other commands will route through this.`)
   console.log('  Ctrl+C to stop.')
 }

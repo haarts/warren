@@ -7,9 +7,9 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { bytesToBase64, sha256Hex } from '../src/io/base64.ts'
-import { parseProject, serialize } from '../src/io/projectFile.ts'
-import { registerAsset } from '../src/model/assets.ts'
-import { Store } from '../src/model/doc.ts'
+import { FILE_EXTENSION, parseProject, serialize } from '../src/io/projectFile.ts'
+import { hasAsset, registerAsset } from '../src/model/assets.ts'
+import { emptyProject, Store } from '../src/model/doc.ts'
 import type { Project } from '../src/model/types.ts'
 import { fail, type Args } from './args.ts'
 
@@ -34,6 +34,11 @@ export async function resolveAssets(project: Project, projectPath: string, asset
   const here = assetDir ? resolve(assetDir) : dirname(resolve(projectPath))
   const missing: string[] = []
   for (const [id, ref] of Object.entries(project.assets)) {
+    // The id is the sha-256 of the bytes, so an asset already in the registry needs no more
+    // verifying - and under `warren serve` this runs on every save, not just once at startup,
+    // so re-reading and re-hashing a multi-megabyte PDF here would block the whole server on
+    // every edit for bytes that have not changed.
+    if (hasAsset(id)) continue
     if (ref.data) {
       registerAsset(id, ref.data)
       continue
@@ -100,6 +105,21 @@ export async function persist(loaded: Loaded): Promise<void> {
     fail('the drawing changed while this command was running — nothing was written. Try again.')
   }
   if (!res.ok) fail(`the server refused the write: ${res.status}`)
+}
+
+/**
+ * Starts a project from nothing: one empty sheet, the default systems, named after the file.
+ * Refuses anything that is not a `.warren.json` in an existing folder, so a slip like
+ * `warren serve dist` or a mistyped directory does not quietly create a file somewhere odd.
+ */
+export function createProjectFile(path: string): void {
+  if (!path.endsWith(FILE_EXTENSION)) {
+    fail(`no such file: ${path}. To start a new project, give it a name ending in ${FILE_EXTENSION}`)
+  }
+  if (!existsSync(dirname(resolve(path)))) fail(`no such folder: ${dirname(path)}`)
+  const project = emptyProject()
+  project.name = basename(path, FILE_EXTENSION)
+  writeFileSync(path, serialize(project))
 }
 
 /** Where a running server announces itself, so other commands find it without being told. */

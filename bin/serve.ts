@@ -13,7 +13,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join, resolve, sep } from 'node:path'
 import { parseProject, serialize } from '../src/io/projectFile.ts'
-import { assetData } from '../src/model/assets.ts'
+import { assetData, registerAsset } from '../src/model/assets.ts'
+import { bytesToBase64, sha256Hex } from '../src/io/base64.ts'
 import { Store } from '../src/model/doc.ts'
 import type { Project } from '../src/model/types.ts'
 
@@ -107,6 +108,37 @@ export async function serve(opts: ServeOptions): Promise<{ port: number; close: 
       req.on('error', no)
     })
 
+  const readBytes = (req: IncomingMessage, limit: number): Promise<Buffer> =>
+    new Promise((ok, no) => {
+      const chunks: Buffer[] = []
+      let size = 0
+      req.on('data', (chunk: Buffer) => {
+        size += chunk.length
+        if (size > limit) no(new Error('body too large'))
+        else chunks.push(chunk)
+      })
+      req.on('end', () => ok(Buffer.concat(chunks)))
+      req.on('error', no)
+    })
+
+  /**
+   * Keeps a plan PDF the browser has attached. The project file only references it, so unless
+   * the bytes land on disk beside it, the plan exists only in that one tab and is gone on the
+   * next reload. Written under its own name, where `resolveAssets` looks first - or as
+   * `<hash>.pdf` when that name is taken by different bytes, which it also looks for.
+   */
+  const keepAsset = async (id: string, name: string, bytes: Uint8Array): Promise<string> => {
+    const here = dirname(path)
+    const safe = basename(name)
+    const named = safe && safe !== '.' && safe !== '..' ? join(here, safe) : null
+    const byHash = join(here, `${id}.pdf`)
+    let target = named ?? byHash
+    if (existsSync(target) && await sha256Hex(new Uint8Array(readFileSync(target))) !== id) target = byHash
+    if (!existsSync(target) || target === byHash) writeFileSync(target, bytes)
+    registerAsset(id, bytesToBase64(bytes))
+    return basename(target)
+  }
+
   const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
     const route = url.pathname
@@ -166,6 +198,16 @@ export async function serve(opts: ServeOptions): Promise<{ port: number; close: 
         const bytes = Buffer.from(data, 'base64')
         res.writeHead(200, { 'content-type': 'application/pdf', 'content-length': String(bytes.length) })
         return void res.end(bytes)
+      }
+
+      if (route.startsWith('/api/asset/') && req.method === 'PUT') {
+        const id = route.slice('/api/asset/'.length)
+        if (!/^[0-9a-f]{64}$/.test(id)) return json(res, 400, { error: 'an asset id is a sha-256' })
+        const bytes = new Uint8Array(await readBytes(req, 256 * 1024 * 1024))
+        // The id is the hash of the bytes; anything else is not this asset.
+        if (await sha256Hex(bytes) !== id) return json(res, 422, { error: 'the bytes do not match the id' })
+        const file = await keepAsset(id, url.searchParams.get('name') ?? '', bytes)
+        return json(res, 200, { id, file })
       }
 
       // --- live updates -------------------------------------------------------------------

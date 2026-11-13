@@ -139,6 +139,33 @@ try {
   check('a change from elsewhere is still taken',
     await page.evaluate(() => window.warren.store.item('r1')?.note === 'from the CLI'))
 
+  // --- a plan attached in the window outlives a reload ----------------------------------------
+  // The project file only references its PDF, so unless the window hands the bytes to the
+  // server, the plan lives in that one tab and a reload comes back to empty sheets.
+  const clickText = (sel, text) => page.evaluate((sel, text) => {
+    const b = [...document.querySelectorAll(sel)].find((x) => x.textContent.includes(text))
+    if (!b) throw new Error(`no ${sel} with "${text}"`)
+    b.click()
+  }, sel, text)
+  await clickText('button', 'File')
+  const [chooser] = await Promise.all([
+    page.waitForFileChooser({ timeout: 5000 }),
+    clickText('.menu button', 'Import PDF page → this sheet'),
+  ])
+  await chooser.accept([join(ROOT, 'samples/sample-floorplan.pdf')])
+  await page.waitForSelector('.page-card', { timeout: 15000 })
+  await clickText('button.primary', 'Use this page')
+  await page.waitForFunction(() => window.warren.store.sheet.pdf?.widthPt > 100, { timeout: 15000 })
+  await settle()
+  check('an imported plan is written beside the project file',
+    existsSync(join(dir, 'sample-floorplan.pdf')))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.waitForFunction(() => !!window.warren?.store.sheet.pdf, { timeout: 15000 })
+  check('and the window still has it after a reload', await page.evaluate(async () => {
+    const id = window.warren.store.sheet.pdf.assetId
+    return (await fetch(`/api/asset/${id}`)).ok
+  }))
+
   check('no page errors', errors.length === 0, errors.slice(0, 2).join(' | '))
 } finally {
   await browser.close()

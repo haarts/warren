@@ -213,3 +213,35 @@ test('the served app cannot be used to read outside its directory', async () => 
     s.close()
   }
 })
+
+test('a plan attached in the browser is kept beside the project, so a reload still has it', async () => {
+  const { createHash } = await import('node:crypto')
+  const { existsSync } = await import('node:fs')
+  const { file, dir } = fixture()
+  const bytes = Buffer.from('%PDF-1.7 not really a plan')
+  const id = createHash('sha256').update(bytes).digest('hex')
+  const s = await serve(options(file))
+  try {
+    const put = (name: string, body: Buffer) =>
+      fetch(`http://127.0.0.1:${s.port}/api/asset/${id}?name=${encodeURIComponent(name)}`, { method: 'PUT', body: new Uint8Array(body) })
+
+    assert.equal((await put('plan.pdf', Buffer.from('other bytes'))).status, 422, 'bytes must hash to the id')
+
+    const res = await put('../escape/plan.pdf', bytes)
+    assert.equal(res.status, 200)
+    assert.equal((await res.json() as { file: string }).file, 'plan.pdf', 'written under its own name, in the project folder')
+    assert.deepEqual(readFileSync(join(dir, 'plan.pdf')), bytes)
+
+    const back = await fetch(`http://127.0.0.1:${s.port}/api/asset/${id}`)
+    assert.deepEqual(Buffer.from(await back.arrayBuffer()), bytes, 'the next browser to load gets it')
+
+    // A different file already holds that name: never overwrite it, fall back to the hash.
+    writeFileSync(join(dir, 'taken.pdf'), 'somebody else')
+    const taken = await (await put('taken.pdf', bytes)).json() as { file: string }
+    assert.equal(taken.file, `${id}.pdf`)
+    assert.equal(readFileSync(join(dir, 'taken.pdf'), 'utf8'), 'somebody else')
+    assert.ok(existsSync(join(dir, `${id}.pdf`)))
+  } finally {
+    s.close()
+  }
+})

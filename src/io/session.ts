@@ -1,5 +1,5 @@
-import { registerAsset } from '../model/assets.ts'
-import { bytesToBase64 } from './base64.ts'
+import { assetData, registerAsset } from '../model/assets.ts'
+import { base64ToBytes, bytesToBase64 } from './base64.ts'
 import { parseProject, serialize } from './projectFile.ts'
 import type { Project } from '../model/types.ts'
 
@@ -31,6 +31,8 @@ export class Session {
   private saving = false
   private pending = false
   private latest: Project | null = null
+  /** Plan PDFs the server already has, so each is sent at most once. */
+  private readonly onServer = new Set<string>()
 
   constructor(private handlers: SessionHandlers) {}
 
@@ -48,10 +50,11 @@ export class Session {
   /** The plan PDF comes from the server too, so this browser need never have seen it. */
   private async fetchAssets(project: Project): Promise<void> {
     for (const id of Object.keys(project.assets)) {
-      if (project.assets[id].data) continue
+      if (project.assets[id].data) { this.onServer.add(id); continue }
       try {
         const res = await fetch(`/api/asset/${id}`)
         if (!res.ok) continue
+        this.onServer.add(id)
         registerAsset(id, bytesToBase64(new Uint8Array(await res.arrayBuffer())))
       } catch {
         // The drawing opens without it; only the plan underneath is missing.
@@ -119,6 +122,28 @@ export class Session {
     }, 700)
   }
 
+  /**
+   * A plan attached in this window exists only in this window until the server has it. The
+   * project goes over without its PDF bytes (that is the file format), so they are sent
+   * separately, first, for the server to write beside the project file.
+   */
+  private async uploadAssets(project: Project): Promise<void> {
+    for (const [id, ref] of Object.entries(project.assets)) {
+      if (this.onServer.has(id)) continue
+      const data = assetData(id)
+      if (!data) continue
+      this.handlers.onStatus(`Sending ${ref.name} to warren serve…`)
+      const res = await fetch(`/api/asset/${id}?name=${encodeURIComponent(ref.name)}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/pdf' },
+        body: base64ToBytes(data) as Uint8Array<ArrayBuffer>,
+      })
+      if (!res.ok) throw new Error(`the server would not keep ${ref.name} (${res.status})`)
+      this.onServer.add(id)
+      this.handlers.onStatus(`Saved ${ref.name} beside the project`)
+    }
+  }
+
   async flush(project: Project): Promise<void> {
     this.latest = project
     if (this.saving) {
@@ -128,6 +153,7 @@ export class Session {
     this.clearSaveTimer()
     this.saving = true
     try {
+      await this.uploadAssets(project)
       const res = await fetch('/api/project', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
