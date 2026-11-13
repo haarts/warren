@@ -10,7 +10,7 @@ import { symbolsFor } from '../../model/systems.ts'
 import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
 import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
-import { alignItems, distributeItems, setBoxRotation, type AlignEdge } from '../../interact/arrange.ts'
+import { acrossAxis, alignItems, distributeItems, runAxis, setBoxRotation, type AlignEdge } from '../../interact/arrange.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -386,26 +386,60 @@ const ALIGN_BUTTONS: [AlignEdge, string, string][] = [
   ['top', '⤒', 'Align top edges'], ['middle', '↕', 'Align middles, top to bottom'], ['bottom', '⤓', 'Align bottom edges'],
 ]
 
-/** Align and distribute, as in Slides or Illustrator - only once there is more than one thing to line up. */
+/** Whether Arrange measures square to the selected runs or to the page; kept for the session. */
+let arrangeSquareTo: 'runs' | 'page' = 'runs'
+
+/**
+ * Align and distribute, as in Slides or Illustrator - only once there is more than one thing to
+ * line up. When the selected runs all run the same way at an angle, it measures along and across
+ * them instead of along the page edges, which is what lining up diagonal runs actually needs.
+ */
 function buildArrange(app: App, body: HTMLElement): void {
   const { store } = app
   const movable = store.selectedItems().filter((i) => store.isEditable(i))
   if (movable.length < 2) return
+  const axis = runAxis(movable)
+  const turned = axis !== null && Math.abs(axis) > (0.5 * Math.PI) / 180
+  const angle = turned && arrangeSquareTo === 'runs' ? axis : 0
+  const deg = (angle * 180) / Math.PI
   const run = (fn: (items: Item[]) => void): void => store.mutate(() => fn(store.selectedItems().filter((i) => store.isEditable(i))))
+  // The glyphs turn with the frame, so each button shows the direction it will actually act in.
+  const glyph = (text: string): HTMLElement =>
+    el('span', { style: { display: 'inline-block', transform: angle ? `rotate(${deg}deg)` : '' } }, text)
   const row = el('div', { class: 'arrange' },
-    ...ALIGN_BUTTONS.map(([edge, glyph, title]) => el('button', { title, onclick: () => run((it) => alignItems(it, edge)) }, glyph)),
+    ...ALIGN_BUTTONS.map(([edge, g, title]) => el('button', { title, onclick: () => run((it) => alignItems(it, edge, angle)) }, glyph(g))),
   )
   if (movable.length >= 3) {
     row.appendChild(el('button', {
-      title: 'Distribute horizontally: equal gaps left to right, the outer two stay put',
-      onclick: () => run((it) => distributeItems(it, 'horizontal')),
-    }, '⇹ Even'))
+      title: 'Distribute: equal gaps left to right, the outer two stay put',
+      onclick: () => run((it) => distributeItems(it, 'horizontal', angle)),
+    }, glyph('⇹'), ' Even'))
     row.appendChild(el('button', {
-      title: 'Distribute vertically: equal gaps top to bottom, the outer two stay put',
-      onclick: () => run((it) => distributeItems(it, 'vertical')),
-    }, '⇳ Even'))
+      title: 'Distribute: equal gaps top to bottom, the outer two stay put',
+      onclick: () => run((it) => distributeItems(it, 'vertical', angle)),
+    }, glyph('⇳'), ' Even'))
   }
-  body.appendChild(field('Arrange', row, movable.length < 3 ? 'Select three or more to space them evenly.' : undefined))
+  const spacingMm = store.project.settings.runSpacingMm
+  const mmPerPoint = store.sheet.mmPerPoint
+  if (axis !== null && spacingMm > 0 && mmPerPoint && movable.filter((i) => i.kind === 'run').length >= 2) {
+    // Runs are lines: their gap across is centreline to centreline, which is the clearance.
+    const across = acrossAxis(movable, axis)
+    row.appendChild(el('button', {
+      title: `Space the runs ${spacingMm} mm apart, side by side; the first stays put`,
+      onclick: () => run((it) => distributeItems(it, across, axis, spacingMm / mmPerPoint)),
+    }, `${spacingMm} mm`))
+  }
+  const hint = turned
+    ? 'Measured along and across the selected runs, not the page — the arrows show which way each button acts.'
+    : movable.length < 3 ? 'Select three or more to space them evenly.' : undefined
+  body.appendChild(field('Arrange', row, hint))
+  if (turned) {
+    body.appendChild(field('Square to', select(
+      [['runs', `the runs (turned ${Math.round((axis * 180) / Math.PI)}°)`], ['page', 'the page']] as const,
+      arrangeSquareTo,
+      (v) => { arrangeSquareTo = v as 'runs' | 'page'; app.refresh() },
+    )))
+  }
 }
 
 /**
