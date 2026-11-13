@@ -7,8 +7,8 @@
 import { dist, normalizeRect, type Pt, type Rect } from '../geom.ts'
 import { BOX_ROTATE_OFFSET_PX, boxCentre, boxCorners, rotateAbout } from '../render/bounds.ts'
 import type { VertexRef } from '../model/doc.ts'
-import { newId } from '../model/ids.ts'
-import { isPositioned, pointsOf, type BoxItem, type Item, type MarkerItem, type NoteItem, type RunItem } from '../model/types.ts'
+import { idPrefix, newId } from '../model/ids.ts'
+import { coordsOf, isPositioned, pointsOf, type BoxItem, type Item, type MarkerItem, type NoteItem, type RunItem } from '../model/types.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { adopt } from '../generate.ts'
 import { setBoxRotation } from './arrange.ts'
@@ -47,7 +47,7 @@ function shiftItem(item: Item, dx: number, dy: number, from: Item = item): void 
 export type Drag =
   | { mode: 'none' }
   | { mode: 'pan'; lastX: number; lastY: number }
-  | { mode: 'move'; start: Pt; originals: Map<string, Item>; moved: boolean }
+  | { mode: 'move'; start: Pt; originals: Map<string, Item>; moved: boolean; copy: boolean }
   | { mode: 'vertex'; ref: VertexRef }
   | { mode: 'boxCorner'; boxId: string; anchor: Pt }
   | { mode: 'boxRotate'; boxId: string; grab: number; fromDeg: number }
@@ -150,7 +150,10 @@ function selectPointerDown(ed: Editor, e: PointerEvent, world: Pt): void {
       if (store.isEditable(it)) originals.set(it.id, structuredClone(it))
     }
     store.begin()
-    ed.drag = { mode: 'move', start: world, originals, moved: false }
+    // Ctrl (Cmd on a Mac) and drag leaves the originals behind and drags copies, as in
+    // Illustrator, Inkscape or Slides. The copies are only made once it actually moves, so a
+    // Ctrl+click is still just a click.
+    ed.drag = { mode: 'move', start: world, originals, moved: false, copy: e.ctrlKey || e.metaKey }
     ed.onChange?.()
     return
   }
@@ -210,15 +213,22 @@ function onPointerMove(ed: Editor, e: PointerEvent): void {
       break
     }
     case 'move': {
-      const only = ed.drag.originals.size === 1 ? [...ed.drag.originals.values()][0] : null
+      // A Ctrl+drag swaps the originals for their copies on the first move, so do that
+      // before deciding what is being dragged.
+      if (ed.drag.copy && !ed.drag.moved && dist(world, ed.drag.start) > ed.tol(2)) {
+        leaveCopiesBehind(ed, ed.drag.originals)
+        ed.drag.moved = true
+      }
+      const onlyEntry = ed.drag.originals.size === 1 ? [...ed.drag.originals][0] : null
+      const only = onlyEntry ? onlyEntry[1] : null
       let dx: number, dy: number
-      if (only && (only.kind === 'marker' || only.kind === 'note')) {
+      if (onlyEntry && only && (only.kind === 'marker' || only.kind === 'note')) {
         // A single marker or note is nothing but a point - the cursor and the shape are the
         // same thing, so this is exactly where snapping to a run's end belongs (attaching a
         // lamp to a stub that ends mid-room). Resolve where the *item* would land, not the
         // raw cursor, and exclude the item from its own candidate list.
         const candidate = { x: only.x + (world.x - ed.drag.start.x), y: only.y + (world.y - ed.drag.start.y) }
-        const target = ed.resolve(candidate, { excludeRunId: only.id })
+        const target = ed.resolve(candidate, { excludeRunId: onlyEntry[0] })
         dx = target.x - only.x
         dy = target.y - only.y
       } else {
@@ -340,7 +350,25 @@ function onPointerUp(ed: Editor, e: PointerEvent): void {
   if (ed.canvas.hasPointerCapture(e.pointerId)) ed.canvas.releasePointerCapture(e.pointerId)
   const store = ed.store
   switch (ed.drag.mode) {
-    case 'move':
+    case 'move': {
+      // Dropped back where it started is no edit at all - and for a Ctrl+drag, it would leave
+      // an invisible duplicate stacked exactly on the original.
+      const displaced = [...ed.drag.originals].some(([id, original]) => {
+        const live = store.item(id)
+        if (!live) return false
+        const a = coordsOf(live)
+        const b = coordsOf(original)
+        return a.some((p, i) => Math.abs(p.x - b[i].x) > 1e-9 || Math.abs(p.y - b[i].y) > 1e-9)
+      })
+      if (ed.drag.moved && displaced) store.commit()
+      else {
+        store.cancel()
+        // The clones are gone with the cancel; the things you grabbed stay selected.
+        for (const original of ed.drag.originals.values()) if (store.item(original.id)) store.selection.add(original.id)
+        ed.onChange?.()
+      }
+      break
+    }
     case 'compassTurn':
     case 'compassMove':
       // A click that did not move anything leaves no undo step behind.
@@ -566,6 +594,30 @@ function deleteVertex(ed: Editor, ref: VertexRef): void {
     }
     ed.store.activeVertex = null
   })
+}
+
+/**
+ * The first move of a Ctrl+drag: the selection is cloned where it stands, and from here on it
+ * is the clones that are dragged and selected. `originals` still holds the starting coordinates,
+ * re-keyed to the clones, so the move code below carries on none the wiser.
+ */
+function leaveCopiesBehind(ed: Editor, originals: Map<string, Item>): void {
+  const store = ed.store
+  const copies = new Map<string, Item>()
+  store.selection.clear()
+  store.activeVertex = null
+  for (const original of originals.values()) {
+    const copy = structuredClone(original)
+    copy.id = newId(idPrefix(copy.kind))
+    // A copy was placed by a person, not a rule.
+    if (copy.kind === 'marker') delete copy.generated
+    store.sheet.items.push(copy)
+    store.selection.add(copy.id)
+    copies.set(copy.id, original)
+  }
+  originals.clear()
+  for (const [id, item] of copies) originals.set(id, item)
+  ed.onChange?.()
 }
 
 // --- frozen commands, delegated to from editor.ts ---------------------------------------------

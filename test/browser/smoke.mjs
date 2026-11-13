@@ -997,6 +997,38 @@ try {
     return editable === false
   }))
 
+  // --- Ctrl+drag leaves the original and drags a copy --------------------------------------------
+  const ctrlCopy = await (async () => {
+    const start = await page.evaluate(() => {
+      const app = window.warren
+      const box = app.store.items().find((i) => i.kind === 'box')
+      const r = document.getElementById('canvas').getBoundingClientRect()
+      return { id: box.id, x: box.x, y: box.y, count: app.store.items().length,
+        sx: r.x + app.editor.cam.toScreenX(box.x), sy: r.y + app.editor.cam.toScreenY(box.y + box.h / 2) }
+    })
+    await page.keyboard.press('v')
+    await page.mouse.move(start.sx, start.sy)
+    await page.keyboard.down('Control')
+    await page.mouse.down()
+    await page.mouse.move(start.sx + 80, start.sy + 30, { steps: 6 })
+    await page.mouse.up()
+    await page.keyboard.up('Control')
+    const after = await page.evaluate((id) => {
+      const app = window.warren
+      const original = app.store.item(id)
+      const sel = app.store.selectedItems()
+      return { count: app.store.items().length, x: original.x, y: original.y, selected: sel.map((i) => ({ id: i.id, kind: i.kind, x: i.x })) }
+    }, start.id)
+    await page.evaluate(() => window.warren.store.undo())
+    const undone = await page.evaluate(() => window.warren.store.items().length)
+    return { start, after, undone }
+  })()
+  check('Ctrl+drag leaves the original where it was and drags a copy',
+    ctrlCopy.after.count === ctrlCopy.start.count + 1 && ctrlCopy.after.x === ctrlCopy.start.x
+    && ctrlCopy.after.selected.length === 1 && ctrlCopy.after.selected[0].id !== ctrlCopy.start.id
+    && ctrlCopy.after.selected[0].x > ctrlCopy.start.x && ctrlCopy.undone === ctrlCopy.start.count,
+    JSON.stringify(ctrlCopy.after))
+
   // --- a box turns by its handle ---------------------------------------------------------------------
   const boxTurn = await (async () => {
     const at = await page.evaluate(async () => {

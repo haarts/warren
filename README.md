@@ -56,7 +56,7 @@ Click any part of it and you select the whole thing; drag it and every corner mo
 |---|---|
 | **Draw a run** | `L`, then click each corner. `Enter` or double-click finishes, `Backspace` removes the last corner, `Esc` cancels. Hold `Shift` for 45° lock |
 | **Select** | `V`. Click a run to select all of it. Shift-click to add. Drag on empty space for a rubber band |
-| **Move** | Drag the selection. Arrow keys nudge (`Shift` = 10×) |
+| **Move** | Drag the selection. Arrow keys nudge (`Shift` = 10×). `Ctrl`+drag (`Cmd` on a Mac) leaves the original and drags a copy |
 | **Edit corners** | Drag a corner handle to move it. `Alt`+click a segment to insert a corner, `Alt`+click a corner to remove it. Double-click a segment also inserts. Works the same on a room outline — a room is closed, so the edge back to the first corner takes a corner too |
 | **Equipment** | `R` draws a box — HRV unit, manifold, distribution board. Drag the round handle above a selected box to turn it (`Shift` for 15° steps), or type the angle in Properties |
 | **Markers** | `M` places a socket, switch, light point, detector, riser, gully, cleanout or penetration — the list follows the system you have selected |
