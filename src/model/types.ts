@@ -139,6 +139,11 @@ export interface BoxItem {
   y: number
   w: number
   h: number
+  /**
+   * Turned about its own centre, degrees clockwise. x/y/w/h stay the unturned rectangle, so a
+   * box without this is exactly the box it always was.
+   */
+  rotationDeg?: number
   label?: string
   note?: string
   colorOverride?: string

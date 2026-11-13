@@ -1,5 +1,6 @@
 import { closestOnPolyline, dist, type Pt } from './geom.ts'
 import type { Item, RunItem, Sheet } from './model/types.ts'
+import { boxContains } from './render/bounds.ts'
 
 /**
  * The connections between things are not stored, they are derived. Endpoints snap while you
@@ -61,9 +62,7 @@ export interface Graph {
 const endpointsOf = (run: RunItem): [Pt, Pt] => [run.points[0], run.points[run.points.length - 1]]
 
 function touchesBox(p: Pt, item: Item, tol: number): boolean {
-  if (item.kind !== 'box') return false
-  return p.x >= item.x - tol && p.x <= item.x + item.w + tol
-    && p.y >= item.y - tol && p.y <= item.y + item.h + tol
+  return item.kind === 'box' && boxContains(item, p, tol)
 }
 
 /**

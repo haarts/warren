@@ -10,6 +10,7 @@ import { symbolsFor } from '../../model/systems.ts'
 import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
 import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
+import { setBoxRotation } from '../../interact/arrange.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -136,6 +137,22 @@ export function buildProperties(app: App, body: HTMLElement): void {
         onclick: () => applyToAll((item) => { if (item.kind === 'door') item.swing = item.swing === 1 ? -1 : 1 }),
       }, 'Flip swing'),
     ), 'The hinge is the first jamb. A light switch belongs by the other one, not behind the door.'))
+  }
+
+  if (!many && first.kind === 'box') {
+    const turn = el('input', {
+      type: 'number', step: '15', value: String(Number((first.rotationDeg ?? 0).toFixed(1))), style: { width: '70px' },
+      title: 'Degrees clockwise. Or drag the round handle above the box; Shift turns it in 15° steps.',
+      dataset: { focusKey: 'box-rotation' },
+    }) as HTMLInputElement
+    turn.addEventListener('change', () => applyToAll((item) => { if (item.kind === 'box') setBoxRotation(item, Number(turn.value) || 0) }))
+    body.appendChild(field('Rotation', el('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } },
+      turn, '°',
+      el('button', {
+        title: 'Turn a quarter clockwise',
+        onclick: () => applyToAll((item) => { if (item.kind === 'box') setBoxRotation(item, (item.rotationDeg ?? 0) + 90) }),
+      }, '↻ 90°'),
+    ), 'Or drag the round handle above the box. Shift turns it in 15° steps.'))
   }
 
   if (items.every((i) => i.kind === 'wall')) {

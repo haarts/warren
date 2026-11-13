@@ -5,13 +5,15 @@
  * a finished calibration or direction answer means.
  */
 import { dist, normalizeRect, type Pt, type Rect } from '../geom.ts'
+import { BOX_ROTATE_OFFSET_PX, boxCentre, boxCorners, rotateAbout } from '../render/bounds.ts'
 import type { VertexRef } from '../model/doc.ts'
 import { newId } from '../model/ids.ts'
 import { isPositioned, pointsOf, type BoxItem, type Item, type MarkerItem, type NoteItem, type RunItem } from '../model/types.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { adopt } from '../generate.ts'
+import { setBoxRotation } from './arrange.ts'
 import { bearingBetween } from '../directions.ts'
-import { HIT_TOL_PX, hitBoxCorner, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
+import { HIT_TOL_PX, hitBoxCorner, hitBoxRotate, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { hitCompass } from './compass.ts'
 import { clearFlashIfStale, zoomToFit } from './view.ts'
 import type { Editor } from './editor.ts'
@@ -48,6 +50,7 @@ export type Drag =
   | { mode: 'move'; start: Pt; originals: Map<string, Item>; moved: boolean }
   | { mode: 'vertex'; ref: VertexRef }
   | { mode: 'boxCorner'; boxId: string; anchor: Pt }
+  | { mode: 'boxRotate'; boxId: string; grab: number; fromDeg: number }
   | { mode: 'noteWidth'; noteId: string }
   | { mode: 'rubber'; start: Pt; additive: boolean; current: Pt }
   | { mode: 'newBox'; start: Pt; current: Pt }
@@ -175,14 +178,18 @@ function hitHandle(ed: Editor, world: Pt): Drag | null {
       : { mode: 'compassMove', offset: { x: world.x - c.x, y: world.y - c.y }, moved: false }
   }
 
+  const turning = hitBoxRotate(store, world, ed.tol(HIT_TOL_PX), ed.tol(BOX_ROTATE_OFFSET_PX))
+  const turned = turning ? store.item(turning) : undefined
+  if (turned && turned.kind === 'box') {
+    const c = boxCentre(turned)
+    return { mode: 'boxRotate', boxId: turned.id, grab: Math.atan2(world.y - c.y, world.x - c.x), fromDeg: turned.rotationDeg ?? 0 }
+  }
+
   const corner = hitBoxCorner(store, world, ed.tol(HIT_TOL_PX))
   const box = corner ? store.item(corner.boxId) : undefined
   if (corner && box && box.kind === 'box') {
-    const anchor = {
-      x: corner.corner === 0 || corner.corner === 3 ? box.x + box.w : box.x,
-      y: corner.corner === 0 || corner.corner === 1 ? box.y + box.h : box.y,
-    }
-    return { mode: 'boxCorner', boxId: box.id, anchor }
+    // The diagonally opposite corner stays put, whichever way the box is turned.
+    return { mode: 'boxCorner', boxId: box.id, anchor: boxCorners(box)[(corner.corner + 2) % 4] }
   }
 
   const noteHandle = hitNoteHandle(store, world, ed.tol(HIT_TOL_PX))
@@ -243,7 +250,27 @@ function onPointerMove(ed: Editor, e: PointerEvent): void {
       const box = ed.store.item(ed.drag.boxId)
       if (box && box.kind === 'box') {
         const p = ed.resolve(world, { anchor: ed.drag.anchor })
-        Object.assign(box, normalizeRect(ed.drag.anchor, p))
+        // The two corners are a diagonal in the box's own turned frame: the centre is their
+        // midpoint, and the sides are the diagonal measured along the box's own axes.
+        const rad = ((box.rotationDeg ?? 0) * Math.PI) / 180
+        const centre = { x: (ed.drag.anchor.x + p.x) / 2, y: (ed.drag.anchor.y + p.y) / 2 }
+        const d = rotateAbout({ x: p.x - ed.drag.anchor.x, y: p.y - ed.drag.anchor.y }, { x: 0, y: 0 }, -rad)
+        const w = Math.abs(d.x)
+        const h = Math.abs(d.y)
+        Object.assign(box, { x: centre.x - w / 2, y: centre.y - h / 2, w, h })
+      }
+      break
+    }
+    case 'boxRotate': {
+      const box = ed.store.item(ed.drag.boxId)
+      if (box && box.kind === 'box') {
+        const c = boxCentre(box)
+        const now = Math.atan2(world.y - c.y, world.x - c.x)
+        let deg = ed.drag.fromDeg + ((now - ed.drag.grab) * 180) / Math.PI
+        // Ortho means square to the drawing, so it turns in 15° steps - 90° among them.
+        if (ed.store.project.settings.orthoLock !== ed.shiftHeld) deg = Math.round(deg / 15) * 15
+        setBoxRotation(box, deg)
+        ed.onStatus?.(`Rotation ${Math.round(box.rotationDeg ?? 0)}°`)
       }
       break
     }
@@ -322,6 +349,7 @@ function onPointerUp(ed: Editor, e: PointerEvent): void {
       break
     case 'vertex':
     case 'boxCorner':
+    case 'boxRotate':
     case 'noteWidth':
       store.commit()
       break

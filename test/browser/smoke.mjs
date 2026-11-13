@@ -997,6 +997,32 @@ try {
     return editable === false
   }))
 
+  // --- a box turns by its handle ---------------------------------------------------------------------
+  const boxTurn = await (async () => {
+    const at = await page.evaluate(async () => {
+      const app = window.warren
+      const { boxCentre, boxRotateHandle, BOX_ROTATE_OFFSET_PX } = await import('/src/render/bounds.ts')
+      const box = app.store.items().find((i) => i.kind === 'box')
+      app.store.selection.clear()
+      app.store.selection.add(box.id)
+      app.store.touch(false)
+      const r = document.getElementById('canvas').getBoundingClientRect()
+      const screen = (p) => ({ x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) })
+      return { id: box.id, knob: screen(boxRotateHandle(box, BOX_ROTATE_OFFSET_PX / app.editor.cam.zoom)), centre: screen(boxCentre(box)) }
+    })
+    // From straight above the centre to straight right of it: a quarter turn clockwise.
+    const reach = at.centre.y - at.knob.y
+    await page.mouse.move(at.knob.x, at.knob.y)
+    await page.mouse.down()
+    await page.mouse.move(at.centre.x + reach * 0.7, at.centre.y - reach * 0.7, { steps: 4 })
+    await page.mouse.move(at.centre.x + reach, at.centre.y + 0.5, { steps: 4 })
+    await page.mouse.up()
+    const deg = await page.evaluate((id) => window.warren.store.item(id).rotationDeg, at.id)
+    await page.evaluate(() => window.warren.store.undo())
+    return deg
+  })()
+  check('dragging the round handle turns a box', Math.abs(boxTurn - 90) < 2, `${boxTurn}°`)
+
   // --- copy the selection to another sheet ------------------------------------------------------------
   const copied = await page.evaluate(() => {
     const app = window.warren

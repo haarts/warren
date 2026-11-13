@@ -1,17 +1,22 @@
 /** The closed and near-closed shapes traced off the plan: equipment boxes, rooms, doors, walls, windows. */
 import { dist, thickOutline } from '../geom.ts'
 import type { BoxItem, DoorItem, RoomItem, WallItem, WindowItem } from '../model/types.ts'
+import { boxCentre, boxRotation } from './bounds.ts'
 import { applyStroke, DIMMED, isDimmed, screenPoints, strokeStyleFor, type DrawCtx } from './draw.ts'
 
 /** An equipment footprint: a filled, outlined rectangle. */
 export function drawBox(dc: DrawCtx, box: BoxItem): void {
   const { ctx, cam } = dc
   const style = strokeStyleFor(dc, box)
-  const x = cam.toScreenX(box.x)
-  const y = cam.toScreenY(box.y)
   const w = box.w * cam.zoom
   const h = box.h * cam.zoom
+  const c = cam.toScreen(boxCentre(box))
   ctx.save()
+  // Drawn about its centre, so the turn and the unturned case are the same code.
+  ctx.translate(c.x, c.y)
+  ctx.rotate(boxRotation(box))
+  const x = -w / 2
+  const y = -h / 2
   ctx.fillStyle = style.color
   ctx.globalAlpha = 0.14
   ctx.fillRect(x, y, w, h)

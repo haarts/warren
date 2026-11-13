@@ -6,7 +6,7 @@ import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
   ROOM_USES,
-  type CompassRose, type Direction, type DoorItem, type WallItem, type WindowItem, WALL_STATUSES, type Item, type MarkerItem, type MarkerSymbol, type Project,
+  type BoxItem, type CompassRose, type Direction, type DoorItem, type WallItem, type WindowItem, WALL_STATUSES, type Item, type MarkerItem, type MarkerSymbol, type Project,
   type RoomItem, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
@@ -111,10 +111,15 @@ const ITEM_PARSERS: { [K in Item['kind']]: (raw: Record<string, unknown>, base: 
     if (typeof raw.extraM === 'number' && isFinite(raw.extraM)) run.extraM = raw.extraM
     return run
   },
-  box: (raw, base, shared) => ({
-    ...base, ...shared, ...readLabelled(raw),
-    kind: 'box', x: num(raw.x), y: num(raw.y), w: num(raw.w, 20), h: num(raw.h, 20),
-  }),
+  box: (raw, base, shared) => {
+    const box: BoxItem = {
+      ...base, ...shared, ...readLabelled(raw),
+      kind: 'box', x: num(raw.x), y: num(raw.y), w: num(raw.w, 20), h: num(raw.h, 20),
+    }
+    const turn = num(raw.rotationDeg) % 360
+    if (turn) box.rotationDeg = turn < 0 ? turn + 360 : turn
+    return box
+  },
   marker: (raw, base, shared) => {
     const symbol = oneOf(MARKER_SYMBOLS, raw.symbol, 'note')
     const item: MarkerItem = { ...base, ...shared, ...readLabelled(raw), kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }

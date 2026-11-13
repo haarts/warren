@@ -2,7 +2,7 @@ import { closestOnPolyline, closestOnSegment, dist, polygonEdges, thickOutline, 
 import type { Store, VertexRef } from '../model/doc.ts'
 import { pointsOf, type Item } from '../model/types.ts'
 import { noteHeight } from '../render/notes.ts'
-import { boxCorners, itemBounds } from '../render/bounds.ts'
+import { boxContains, boxCorners, boxRotateHandle, itemBounds } from '../render/bounds.ts'
 
 /** Screen pixels within which a click or hover counts as "on" a vertex, handle or item. */
 export const HIT_TOL_PX = 9
@@ -49,13 +49,10 @@ export function hitsItem(item: Item, p: Pt, tol: number): boolean {
     }
     case 'box': {
       // Edges are the grab target; the interior counts too so small boxes stay clickable.
-      const r = itemBounds(item)
-      if (rectContains({ x: r.x - tol, y: r.y - tol, w: r.w + tol * 2, h: r.h + tol * 2 }, p)) {
-        const inner = { x: r.x + tol, y: r.y + tol, w: Math.max(0, r.w - tol * 2), h: Math.max(0, r.h - tol * 2) }
-        if (!rectContains(inner, p)) return true
-        return r.w * r.h < tol * tol * 400
-      }
-      return false
+      // Tested in the box's own frame, so a turned box is hit where it is drawn.
+      if (!boxContains(item, p, tol)) return false
+      if (!boxContains(item, p, -tol) || item.w <= tol * 2 || item.h <= tol * 2) return true
+      return item.w * item.h < tol * tol * 400
     }
     case 'marker':
       return dist({ x: item.x, y: item.y }, p) <= tol * 1.4
@@ -130,6 +127,17 @@ export function itemsInRect(store: Store, rect: Rect): Item[] {
   })
 }
 
+/**
+ * The rotate handle of a selected box - a lollipop out past its top edge. Only offered for a
+ * single selected box: turning a group about each one's own centre is not what anyone means.
+ */
+export function hitBoxRotate(store: Store, p: Pt, tol: number, offset: number): string | null {
+  const sel = store.selectedItems()
+  const box = sel.length === 1 ? sel[0] : null
+  if (!box || box.kind !== 'box' || !store.isEditable(box)) return null
+  return dist(boxRotateHandle(box, offset), p) <= tol ? box.id : null
+}
+
 export interface NoteHandleRef { noteId: string }
 
 /** The one resize handle a note has: bottom-right, and it only changes the width. */
@@ -151,8 +159,9 @@ export function nearestPointOnItem(item: Item, p: Pt): { point: Pt; dist: number
     const r = closestOnPolyline(p, line)
     return { point: r.point, dist: r.dist }
   }
-  if (item.kind === 'box' || item.kind === 'note') {
-    const r = item.kind === 'box' ? itemBounds(item) : { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }
+  if (item.kind === 'box') return closestOnRing(p, boxCorners(item))
+  if (item.kind === 'note') {
+    const r = { x: item.x, y: item.y, w: item.w, h: noteHeight(item) }
     return closestOnRing(p, [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }])
   }
   return null

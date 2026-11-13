@@ -8,7 +8,7 @@ import { ACCENT, HANDLE_FILL, screenPoints, type DrawCtx } from './draw.ts'
 import { pill } from './labels.ts'
 import { MARKER_RADIUS } from './markers.ts'
 import { noteHeight } from './notes.ts'
-import { boxCorners } from './bounds.ts'
+import { BOX_ROTATE_OFFSET_PX, boxCentre, boxCorners, boxRotateHandle, boxRotation, rotateAbout } from './bounds.ts'
 import { formatMetres } from '../units.ts'
 import type { Overlay } from './scene.ts'
 import type { Camera } from './camera.ts'
@@ -27,10 +27,14 @@ function outlinePath(ctx: CanvasRenderingContext2D, cam: Camera, item: Item): vo
     ctx.stroke()
   } else if (item.kind === 'box') {
     const pad = 3
-    ctx.strokeRect(
-      cam.toScreenX(item.x) - pad, cam.toScreenY(item.y) - pad,
-      item.w * cam.zoom + pad * 2, item.h * cam.zoom + pad * 2,
-    )
+    const c = cam.toScreen(boxCentre(item))
+    const w = item.w * cam.zoom + pad * 2
+    const h = item.h * cam.zoom + pad * 2
+    ctx.save()
+    ctx.translate(c.x, c.y)
+    ctx.rotate(boxRotation(item))
+    ctx.strokeRect(-w / 2, -h / 2, w, h)
+    ctx.restore()
   } else if (item.kind === 'marker') {
     const p = cam.toScreen(item)
     ctx.beginPath()
@@ -83,6 +87,21 @@ export function drawHandles(dc: DrawCtx): void {
       })
     } else if (item.kind === 'box') {
       for (const c of boxCorners(item)) square(c, false)
+      if (sel.length === 1) {
+        // The rotate handle: a round knob on a stalk out of the top edge, as in any drawing app.
+        const edge = cam.toScreen(rotateAbout({ x: item.x + item.w / 2, y: item.y }, boxCentre(item), boxRotation(item)))
+        const knob = cam.toScreen(boxRotateHandle(item, BOX_ROTATE_OFFSET_PX / cam.zoom))
+        ctx.beginPath()
+        ctx.moveTo(edge.x, edge.y)
+        ctx.lineTo(knob.x, knob.y)
+        ctx.strokeStyle = ACCENT
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.arc(knob.x, knob.y, s / 2, 0, Math.PI * 2)
+        ctx.fillStyle = HANDLE_FILL
+        ctx.fill()
+        ctx.stroke()
+      }
     } else if (item.kind === 'note') {
       // One handle, bottom-right: a note only has a width. Height follows the text.
       square({ x: item.x + item.w, y: item.y + noteHeight(item) }, false)
