@@ -3,7 +3,7 @@
  * `placeLabel` helper tries candidate positions and drops the label rather than overlap another
  * - the four `drawXLabel` functions below just supply the text and the candidates.
  */
-import { pointAtFraction, polygonArea, polygonCentroid, polylineLength, rectsIntersect, type Pt, type Rect } from '../geom.ts'
+import { polygonArea, polygonCentroid, rectsIntersect, type Pt, type Rect } from '../geom.ts'
 import { LEVEL_SHORT, type BoxItem, type MarkerItem, type RoomItem, type RunItem } from '../model/types.ts'
 import type { Store } from '../model/doc.ts'
 import { DIMMED, isDimmed, type DrawCtx } from './draw.ts'
@@ -30,8 +30,10 @@ export function labelTextFor(store: Store, item: RunItem | BoxItem | MarkerItem)
   return parts.join(' · ')
 }
 
+const LABEL_FONT = (ui: number): string => `${11 * ui}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`
+
 function pillRect(dc: DrawCtx, text: string, x: number, y: number, align: 'center' | 'left'): Rect {
-  dc.ctx.font = `${11 * dc.ui}px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`
+  dc.ctx.font = LABEL_FONT(dc.ui)
   const w = dc.ctx.measureText(text).width + 8 * dc.ui
   const h = 15 * dc.ui
   return { x: align === 'center' ? x - w / 2 : x, y: y - h / 2, w, h }
@@ -46,15 +48,21 @@ export function pill(
   dc: DrawCtx, text: string, x: number, y: number, color: string,
   align: 'center' | 'left' = 'center', placed?: Rect[],
 ): boolean {
-  const { ctx, ui } = dc
   const box = pillRect(dc, text, x, y, align)
   if (placed) {
     const padded = { x: box.x - 1, y: box.y - 1, w: box.w + 2, h: box.h + 2 }
     if (placed.some((r) => rectsIntersect(r, padded))) return false
     placed.push(box)
   }
-  const padX = 4 * ui
+  paintPill(dc, text, box, y, color)
+  return true
+}
+
+/** The pill itself, at `box`, its text centred on `textY`. */
+function paintPill(dc: DrawCtx, text: string, box: Rect, textY: number, color: string): void {
+  const { ctx, ui } = dc
   ctx.save()
+  ctx.font = LABEL_FONT(ui)
   ctx.setLineDash([])
   ctx.globalAlpha = 0.92
   ctx.fillStyle = '#ffffff'
@@ -68,9 +76,8 @@ export function pill(
   ctx.fillStyle = '#111827'
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
-  ctx.fillText(text, box.x + padX, y + 0.5 * ui)
+  ctx.fillText(text, box.x + 4 * ui, textY + 0.5 * ui)
   ctx.restore()
-  return true
 }
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number): void {
@@ -147,24 +154,68 @@ export function drawMarkerLabel(dc: DrawCtx, marker: MarkerItem, placed: Rect[])
   placeLabel(dc, text, [{ x: p.x, y: p.y - gap }, { x: p.x, y: p.y + gap }], color, placed)
 }
 
+/**
+ * A run's label sits *on* the run, turned to follow it, with the line going in one end of the
+ * pill and out the other - the way an installation drawing or a road map does it. A label set
+ * beside its line can be read as belonging to the next one over as soon as two runs go side by
+ * side; one sitting on its line cannot be read any other way.
+ *
+ * It wants a straight stretch longer than itself, so it is tried on the longest segments first,
+ * at the middle and then staggered either side - two parallel runs of the same length would
+ * otherwise both claim the same middle, and the second would lose its label.
+ */
 export function drawRunLabel(dc: DrawCtx, run: RunItem, placed: Rect[]): void {
   const text = labelTextFor(dc.store, run)
   if (!text || run.points.length < 2) return
   const { ctx, cam, ui } = dc
-  const screenLen = polylineLength(run.points) * cam.zoom
-  ctx.font = `${11 * ui}px ui-sans-serif, system-ui, sans-serif`
-  const needed = ctx.measureText(text).width + 10 * ui
+  ctx.font = LABEL_FONT(ui)
+  const w = ctx.measureText(text).width + 8 * ui
+  const h = 15 * ui
+  // Room for the pill plus enough bare line either side to see that it runs through.
+  const needed = w + 16 * ui
+  const pts = run.points.map((p) => cam.toScreen(p))
+  const segments = pts.slice(1)
+    .map((b, i) => ({ a: pts[i], b, len: Math.hypot(b.x - pts[i].x, b.y - pts[i].y) }))
+    .filter((s) => s.len >= needed)
+    .sort((s, t) => t.len - s.len)
   // Declutter: a label that cannot sit along the run is dropped until you zoom in.
-  if (needed > screenLen * 0.95) return
+  if (!segments.length) return
   const color = dc.store.system(run.systemId).color
-  const off = 11 * ui
-  const candidates: Pt[] = []
-  for (const fraction of [0.5, 0.3, 0.7]) {
-    const at = pointAtFraction(run.points, fraction)
-    const nx = Math.sin(at.angle)
-    const ny = -Math.cos(at.angle)
-    const p = cam.toScreen(at.p)
-    for (const side of [1, -1]) candidates.push({ x: p.x + nx * off * side, y: p.y + ny * off * side })
+  for (const seg of segments.slice(0, 4)) {
+    // How far the centre can move from the middle and still leave bare line at both ends.
+    const slack = (seg.len - needed) / 2 / seg.len
+    for (const t of [0.5, 0.5 - slack * 0.6, 0.5 + slack * 0.6, 0.5 - slack, 0.5 + slack]) {
+      const centre = { x: seg.a.x + (seg.b.x - seg.a.x) * t, y: seg.a.y + (seg.b.y - seg.a.y) * t }
+      if (inlinePill(dc, text, centre, readableAngle(seg.a, seg.b), w, h, color, placed)) return
+    }
   }
-  placeLabel(dc, text, candidates, color, placed)
+}
+
+/** The segment's angle, turned so text along it never reads upside down. Vertical reads upward. */
+function readableAngle(a: Pt, b: Pt): number {
+  let angle = Math.atan2(b.y - a.y, b.x - a.x)
+  if (angle > Math.PI / 2 + 1e-6) angle -= Math.PI
+  else if (angle <= -Math.PI / 2 + 1e-6) angle += Math.PI
+  return angle
+}
+
+/** A pill turned to `angle` about `centre`, refused if its upright bounds hit a placed label. */
+function inlinePill(
+  dc: DrawCtx, text: string, centre: Pt, angle: number, w: number, h: number, color: string, placed: Rect[],
+): boolean {
+  const cos = Math.abs(Math.cos(angle))
+  const sin = Math.abs(Math.sin(angle))
+  const bw = w * cos + h * sin
+  const bh = w * sin + h * cos
+  const bounds = { x: centre.x - bw / 2, y: centre.y - bh / 2, w: bw, h: bh }
+  const padded = { x: bounds.x - 1, y: bounds.y - 1, w: bounds.w + 2, h: bounds.h + 2 }
+  if (placed.some((r) => rectsIntersect(r, padded))) return false
+  placed.push(bounds)
+  const { ctx } = dc
+  ctx.save()
+  ctx.translate(centre.x, centre.y)
+  ctx.rotate(angle)
+  paintPill(dc, text, { x: -w / 2, y: -h / 2, w, h }, 0, color)
+  ctx.restore()
+  return true
 }
