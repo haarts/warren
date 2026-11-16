@@ -17,19 +17,57 @@ import { comboInput, el, field, groupedSelect, numberInput, select, swatch, text
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
 
+/**
+ * What is selected comes first: it is what this tab is open for nearly every time. The sheet's
+ * setup and the project's directions are set once and then left, so they fold away at the
+ * bottom. Only an uncalibrated sheet interrupts, because nothing measures until it is fixed.
+ */
 export function buildProperties(app: App, body: HTMLElement): void {
   const { store, editor } = app
-  const items = store.selectedItems()
+  if (!store.sheet.mmPerPoint) {
+    body.appendChild(el('div', { class: 'hint warn', style: { marginBottom: '8px' } },
+      'This sheet is not calibrated: lengths and the takeoff stay empty. ',
+      el('button', { onclick: () => editor.setTool('calibrate') }, 'Calibrate…')))
+  }
+  buildSelection(app, body)
+  fold(body, 'sheet', 'Sheet', (inner) => buildSheet(app, inner))
+  fold(body, 'directions', 'Directions — every sheet', (inner) => buildOrientation(app, inner))
+}
 
-  body.appendChild(el('div', { class: 'section-title' }, 'Sheet'))
+/** Which folds are open, kept across the rebuild every change sets off, and across visits. */
+const openFolds: Record<string, boolean> = (() => {
+  try { return JSON.parse(localStorage.getItem('warren.panel.folds') ?? '{}') as Record<string, boolean> } catch { return {} }
+})()
+
+function fold(body: HTMLElement, key: string, title: string, build: (inner: HTMLElement) => void): void {
+  const details = el('details', { class: 'fold' }) as HTMLDetailsElement
+  details.open = openFolds[key] ?? false
+  // Recorded on the click, not on 'toggle': that event comes a task later, and by then a
+  // rebuild may already have replaced this element with one built from the old state.
+  details.appendChild(el('summary', {
+    class: 'section-title',
+    onclick: () => {
+      openFolds[key] = !details.open
+      try { localStorage.setItem('warren.panel.folds', JSON.stringify(openFolds)) } catch { /* private window */ }
+    },
+  }, title))
+  const inner = el('div', { class: 'fold-body' })
+  build(inner)
+  details.appendChild(inner)
+  body.appendChild(details)
+}
+
+/** This sheet's setup: its scale, how it lines up with the other floors, and drawing aids. */
+function buildSheet(app: App, body: HTMLElement): void {
+  const { store, editor } = app
   const sheet = store.sheet
   body.appendChild(field('Scale', el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
     sheet.mmPerPoint ? el('span', {}, `1 pt = ${sheet.mmPerPoint.toFixed(3)} mm`) : null,
     el('button', { onclick: () => editor.setTool('calibrate') }, sheet.mmPerPoint ? 'Recalibrate…' : 'Calibrate this sheet…'),
   )))
   if (!sheet.mmPerPoint) {
-    body.appendChild(el('div', { class: 'hint warn' },
-      'Uncalibrated: lengths and the takeoff stay empty. Click Calibrate, then click the two ends of a dimension printed on the plan.'))
+    body.appendChild(el('div', { class: 'hint' },
+      'Click Calibrate, then the two ends of a dimension printed on the plan, and type its length.'))
   }
 
   buildFloorAlignment(app, body)
@@ -65,8 +103,13 @@ export function buildProperties(app: App, body: HTMLElement): void {
       }),
     }, `Assume direction for ${flowless.length} run${flowless.length === 1 ? '' : 's'}`)))
   }
+}
 
-  buildOrientation(app, body)
+/** The selected items: everything they have in common, and what can be done to them. */
+function buildSelection(app: App, body: HTMLElement): void {
+  const { store, editor } = app
+  const items = store.selectedItems()
+  const sheet = store.sheet
 
   if (items.length === 0) {
     body.appendChild(el('div', { class: 'section-title' }, 'Nothing selected'))
@@ -516,7 +559,6 @@ function labelForKind(item: Item): string {
 function buildOrientation(app: App, body: HTMLElement): void {
   const { store, editor } = app
   const rose = store.project.compass
-  body.appendChild(el('div', { class: 'section-title' }, 'Directions — every sheet'))
 
   if (!rose) {
     body.appendChild(field('Compass',

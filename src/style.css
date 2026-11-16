@@ -156,6 +156,19 @@ input[type="range"] { width: 90px; vertical-align: middle; }
 }
 .section-title:first-child { margin-top: 0; }
 
+/* Set-once sections at the bottom of Properties: folded until wanted. */
+details.fold { border-top: 1px solid var(--line-soft); margin-top: 14px; }
+details.fold + details.fold { margin-top: 0; }
+details.fold > summary {
+  cursor: pointer; list-style: none; margin: 0; padding: 9px 0 7px;
+  display: flex; align-items: center; gap: 6px; user-select: none;
+}
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::before { content: '▸'; font-size: 10px; transition: transform 0.12s; }
+details.fold[open] > summary::before { transform: rotate(90deg); }
+details.fold > summary:hover { color: var(--ink); }
+.fold-body { padding-bottom: 8px; }
+
 /* ---------------------------------------------------------------- layers */
 
 .layer-cat { margin-bottom: 4px; border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }

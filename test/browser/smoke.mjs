@@ -949,6 +949,22 @@ try {
   check('the rose lands pointing straight up, with four unnamed tips',
     placed.rotationDeg === 0 && placed.tips.length === 4 && placed.tips.every((t) => t === ''), JSON.stringify(placed))
 
+  // Directions are set once, so they sit folded at the bottom of Properties: open them first.
+  check('Sheet and Directions fold away below the selection', await page.evaluate(() => {
+    const folds = [...document.querySelectorAll('.tab-body details.fold > summary')].map((s) => s.textContent)
+    return folds.length === 2 && /^Sheet/.test(folds[0]) && /^Directions/.test(folds[1])
+  }))
+  await page.evaluate(() => {
+    const fold = [...document.querySelectorAll('.tab-body details.fold')].find((d) => /^Directions/.test(d.querySelector('summary').textContent))
+    fold.querySelector('summary').click()
+  })
+  await page.waitForSelector('input[data-focus-key="compass-tip-0"]', { visible: true, timeout: 3000 })
+  check('an opened fold stays open across the rebuild a change sets off', await page.evaluate(async () => {
+    window.warren.store.touch()
+    await new Promise((r) => setTimeout(r, 50))
+    return [...document.querySelectorAll('.tab-body details.fold')].some((d) => d.open && /^Directions/.test(d.querySelector('summary').textContent))
+  }))
+
   // Type all four names the way a person would: click the first, then Tab from tip to tip.
   await page.click('input[data-focus-key="compass-tip-0"]')
   const tipNames = ['north, straatzijde', 'east, rechts', 'south, tuinzijde', 'west, links']
