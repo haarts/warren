@@ -1,18 +1,19 @@
 import type { Pt } from '../geom.ts'
 import type { AssetRef } from './assets.ts'
 
-export const CATEGORIES = ['water', 'reuse', 'drain', 'heat', 'air', 'power', 'data', 'struct'] as const
+/** In the order they are listed - Layers, the system picker, exports. Rainwater last, by request. */
+export const CATEGORIES = ['water', 'power', 'drain', 'heat', 'air', 'data', 'struct', 'reuse'] as const
 export type Category = (typeof CATEGORIES)[number]
 
 export const CATEGORY_LABELS: Record<Category, string> = {
   water: 'Fresh water',
-  reuse: 'Rainwater reuse (non-potable)',
+  power: 'Power',
   drain: 'Drainage',
   heat: 'Heating / heat pump',
   air: 'Ventilation',
-  power: 'Power',
   data: 'Data / low voltage',
   struct: 'Structure / coordination',
+  reuse: 'Rainwater reuse (non-potable)',
 }
 
 /**
