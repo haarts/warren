@@ -13,7 +13,24 @@ import { confirmDialog, guarded } from '../ui/modal.ts'
 import { ensurePlanPdfOnDisk, locateMissingAssets, refit } from './pdfOps.ts'
 import type { App } from '../app.ts'
 
+/**
+ * A window on `warren serve` does not hold a file of its own: it shows the one drawing the
+ * server holds, and whatever replaces it here is written over that file and sent to every
+ * other window. Opening an old version "to have a look" is exactly how a drawing gets lost,
+ * so that is said first, with the way to look without replacing anything.
+ */
+async function mayReplaceShared(app: App, doing: string): Promise<boolean> {
+  if (!app.session) return true
+  const name = app.session.name || 'the shared project'
+  return confirmDialog(`Replace ${name}?`,
+    `This window is sharing ${name} through warren serve. ${doing} here replaces that drawing - in ` +
+    `the file on disk and in every other window on it - and it cannot be undone from here. ` +
+    `To look at another project beside this one, run a second "warren serve <file> --port 5171" and open that address instead.`,
+    `Replace ${name}`)
+}
+
 export async function newProject(app: App): Promise<void> {
+  if (!(await mayReplaceShared(app, 'Starting a new project'))) return
   if (app.store.dirty && !(await confirmDialog('Discard changes?', 'The current project has unsaved changes.', 'Discard'))) return
   app.store.loadProject(emptyProject(), null)
   app.saveTarget = null
@@ -22,6 +39,7 @@ export async function newProject(app: App): Promise<void> {
 }
 
 export async function openProject(app: App): Promise<void> {
+  if (!(await mayReplaceShared(app, 'Opening another file'))) return
   if (app.store.dirty && !(await confirmDialog('Discard changes?', 'The current project has unsaved changes.', 'Discard'))) return
   await guarded('Could not open that file', async () => {
     const picked = await pickOpenFile()

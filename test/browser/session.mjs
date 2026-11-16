@@ -78,6 +78,23 @@ try {
   check('the app joins the session with no file dialog',
     await page.evaluate(() => !!window.warren.session && window.warren.store.items().length === 2))
 
+  // --- opening another file here would replace the shared one: say so first -----------------
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'o', ctrlKey: true, bubbles: true }))
+  })
+  await page.waitForSelector('.dialog', { timeout: 3000 }).catch(() => null)
+  const warned = await page.evaluate(() => {
+    const d = document.querySelector('.dialog')
+    const text = d?.textContent ?? ''
+    ;[...(d?.querySelectorAll('footer button') ?? [])].find((b) => /cancel/i.test(b.textContent))?.click()
+    return text
+  })
+  await settle(200)
+  check('File → Open in a served window warns that it replaces the shared project',
+    /Replace .*warren\.json\?/.test(warned) && /second .*warren serve/.test(warned)
+    && await page.evaluate(() => !document.querySelector('.dialog') && window.warren.store.items().length === 2),
+    warned.slice(0, 90))
+
   // --- pointing changes nothing ----------------------------------------------------------
   warren('select', file, '--id', 'r2', '--say', 'this one')
   await settle(900)
