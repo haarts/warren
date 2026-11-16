@@ -109,3 +109,48 @@ test('nudging this floor\'s pair moves, turns and sizes the floor seen through i
   assert.ok(Math.abs(ghostOf(grown).scale / before.scale - 1.01) < 1e-12)
   assert.ok(near(ghostOf(grown).apply(spot), { x: pivot.x + (was.x - pivot.x) * 1.01, y: pivot.y + (was.y - pivot.y) * 1.01 }))
 })
+
+test('a floor nobody lined up starts in the same place on its page, at the size the calibrations imply', async () => {
+  const { ensurePlaced } = await import('../src/align.ts')
+  const ground = sheet('ground', undefined, 10)
+  const first = sheet('first', undefined, 20)
+  assert.equal(ensurePlaced(first, ground), true)
+  assert.ok(ground.align?.byEye && first.align?.byEye)
+  const m = floorMapping(ground, first)!
+  // 100 pt on the ground floor is 1 m; on the first floor, drawn at half the size, 1 m is 50 pt.
+  assert.ok(near(m.apply({ x: 100, y: 40 }), { x: 50, y: 20 }), JSON.stringify(m.apply({ x: 100, y: 40 })))
+  assert.equal(ensurePlaced(first, ground), false, 'placed floors are left alone')
+
+  // Against a floor aligned by clicks, the same: same page position, calibrated size.
+  const clicked = sheet('clicked', { a: { x: 30, y: 70 }, b: { x: 330, y: 90 } }, 10)
+  const loft = sheet('loft', undefined, 10)
+  ensurePlaced(loft, clicked)
+  assert.ok(near(floorMapping(clicked, loft)!.apply({ x: 123, y: 45 }), { x: 123, y: 45 }))
+  assert.equal(clicked.align!.byEye, undefined, 'the clicked floor keeps its clicked pair')
+})
+
+test('clicking two spots keeps floors lined up by eye where they were, and moves to clicked ones', async () => {
+  const { nudgeAlignment, placeByClicks } = await import('../src/align.ts')
+  const here = sheet('here', { a: { x: 0, y: 0 }, b: { x: 100, y: 0 } }, 10)
+  const eyed = sheet('eyed', nudgeAlignment({ a: { x: 0, y: 0 }, b: { x: 100, y: 0 } }, { dx: 7, turnDeg: 1, pivot: { x: 50, y: 50 } }), 10)
+  const spot = { x: 60, y: 25 }
+  const was = floorMapping(here, eyed)!.apply(spot)
+  placeByClicks([here, eyed], here, { x: 20, y: 30 }, { x: 220, y: 60 })
+  assert.deepEqual(here.align, { a: { x: 20, y: 30 }, b: { x: 220, y: 60 } })
+  const now = floorMapping(here, eyed)!.apply(spot)
+  assert.ok(Math.hypot(now.x - was.x, now.y - was.y) < 1e-9, 'the by-eye floor still sits the same against this one')
+
+  // A floor aligned by its own clicked spots keeps them: the relation follows the new click.
+  const other = sheet('other', { a: { x: 5, y: 5 }, b: { x: 105, y: 5 } }, 10)
+  placeByClicks([here, other], here, { x: 0, y: 0 }, { x: 100, y: 0 })
+  assert.deepEqual(other.align, { a: { x: 5, y: 5 }, b: { x: 105, y: 5 } })
+})
+
+test('a by-eye placement survives saving and loading', () => {
+  const store = new Store()
+  const project = emptyProject()
+  project.sheets[0].align = { a: { x: 1, y: 2 }, b: { x: 3, y: 4 }, byEye: true }
+  store.loadProject(project, null)
+  const back = parseProject(serialize(store.project))
+  assert.equal(back.sheets[0].align?.byEye, true)
+})

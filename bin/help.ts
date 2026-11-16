@@ -141,6 +141,7 @@ const MANUAL = {
       'Each floor\'s plan sits differently on its page, so nothing is carried between sheets by page position. Two spots every floor shares - grid-line crossings, a stair corner, a shaft - give the shift, turn and scale between any two aligned sheets.',
       'Both points must be the same physical spots on every sheet, in the same order. Read them off the plan; do not guess.',
       'The two floors\' calibrations must agree about the distance between the spots. The report says when they do not, and so does `check` (floors-disagree): one of the calibrations is wrong, and a person should say which.',
+      'In the app a floor can also be lined up by eye, against another shown underneath it; the report marks those "lined up by eye". Its pair is a placement, not two spots anyone clicked - so recording --a/--b on another sheet keeps a by-eye floor where it is relative to that sheet, rather than asking for spots it never had.',
     ],
     writes: true,
   },

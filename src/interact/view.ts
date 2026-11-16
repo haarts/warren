@@ -100,10 +100,10 @@ function overlay(ed: Editor): Overlay {
   }
 }
 
-/** While aligning, or with a floor underneath, show the pair this sheet is placed by. */
+/** While aligning, show the clicked pair a new one replaces. */
 function alignPointsShown(ed: Editor): Overlay['alignPoints'] {
   const align = ed.store.sheet.align
-  if (!align || !(ed.tool === 'align' || ed.ghostSheetId)) return null
+  if (!align || align.byEye || ed.tool !== 'align') return null
   const names = ed.store.project.alignNames
   return { a: align.a, b: align.b, names: [names?.[0] || 'A', names?.[1] || 'B'] }
 }

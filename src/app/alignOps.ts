@@ -4,7 +4,7 @@
  * those spots are, which one is right.
  */
 import type { Pt } from '../geom.ts'
-import { CALIBRATION_TOLERANCE, calibrationAgreement, scaleFromAlignment } from '../align.ts'
+import { CALIBRATION_TOLERANCE, calibrationAgreement, placeByClicks, scaleFromAlignment } from '../align.ts'
 import type { Sheet } from '../model/types.ts'
 import { formatMetres } from '../units.ts'
 import { cancelMeasurement } from '../interact/pointer.ts'
@@ -22,20 +22,25 @@ export function alignedOthers(app: App, sheet: Sheet = app.store.sheet): Sheet[]
   return app.store.project.sheets.filter((s) => s.id !== sheet.id && s.align)
 }
 
+/** Other floors whose pair is two spots somebody clicked - the ones a click here must match. */
+export function clickedOthers(app: App, sheet: Sheet = app.store.sheet): Sheet[] {
+  return alignedOthers(app, sheet).filter((s) => !s.align!.byEye)
+}
+
 export function startAlign(app: App): void {
   app.editor.setTool('align')
   const [a] = alignPointNames(app)
-  const first = alignedOthers(app).length === 0
-  app.editor.flash(first
+  const clicked = clickedOthers(app)
+  app.editor.flash(clicked.length === 0
     ? 'Click a spot you can find on every floor - a grid-line crossing, a stair corner, a shaft'
-    : `Click ${a} - the same spot you clicked on ${alignedOthers(app)[0].name}`)
+    : `Click ${a} - the same spot you clicked on ${clicked[0].name}`)
 }
 
 /** Fired by the align tool once both points are clicked. */
 export async function completeAlignment(app: App, a: Pt, b: Pt): Promise<void> {
   const { store, editor } = app
   const sheet = store.sheet
-  const first = alignedOthers(app).length === 0 && !store.project.alignNames
+  const first = clickedOthers(app).length === 0 && !store.project.alignNames
 
   let names: [string, string] | null = null
   if (first) {
@@ -54,16 +59,21 @@ export async function completeAlignment(app: App, a: Pt, b: Pt): Promise<void> {
     if (parts[0] || parts[1]) names = [parts[0] ?? '', parts[1] ?? '']
   }
 
+  // Before the change: which floors a click has to agree with, rather than carry along.
+  const clicked = clickedOthers(app)
   editor.edit(null, () => {
-    sheet.align = { a: { ...a }, b: { ...b } }
+    placeByClicks(store.project.sheets, sheet, a, b)
     if (names) store.project.alignNames = names
   })
   cancelMeasurement(editor)
   editor.setTool('select')
 
-  const others = alignedOthers(app)
+  const others = clicked
   if (others.length === 0) {
-    editor.flash(`${sheet.name} has its two reference points. Now click the same two spots on another floor.`)
+    editor.flash(alignedOthers(app).length
+      ? `${sheet.name} has its two reference points; floors lined up by eye stay where they were`
+      : `${sheet.name} has its two reference points. Now click the same two spots on another floor, or line one up by eye.`)
+    app.refresh()
     return
   }
   // The floor this one is checked against: a calibrated one if there is one.

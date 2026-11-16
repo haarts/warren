@@ -6,7 +6,7 @@
  * Without --sheet it reports: which sheets are aligned, and whether their calibrations agree
  * about the distance between the two spots. With --sheet, --a and --b it records them.
  */
-import { CALIBRATION_TOLERANCE, calibrationAgreement, floorMapping } from '../../src/align.ts'
+import { CALIBRATION_TOLERANCE, calibrationAgreement, floorMapping, placeByClicks } from '../../src/align.ts'
 import type { Pt } from '../../src/geom.ts'
 import type { Sheet } from '../../src/model/types.ts'
 import { fail, type Args } from '../args.ts'
@@ -46,7 +46,8 @@ export async function cmdAlign(args: Args): Promise<void> {
   const a = read('a')
   const b = read('b')
   if (a.x === b.x && a.y === b.y) fail('--a and --b are the same point; they need to be two spots, as far apart as the plan allows')
-  sheet.align = { a, b }
+  // Floors lined up by eye keep their placement relative to this one; see placeByClicks.
+  placeByClicks(project.sheets, sheet, a, b)
   if (typeof args.flags.names === 'string') {
     const [n1 = '', n2 = ''] = args.flags.names.split(',').map((s) => s.trim())
     project.alignNames = [n1, n2]
@@ -72,6 +73,7 @@ function report(sheets: Sheet[], names: [string, string] | undefined, json: bool
   const rows = sheets.map((s) => ({
     sheet: s.name,
     aligned: Boolean(s.align),
+    byEye: s.align?.byEye === true,
     a: s.align ? pointAtM(s, s.align.a) : null,
     b: s.align ? pointAtM(s, s.align.b) : null,
     // How this floor sits against the first aligned one: worth seeing when it is not ~0° and ~1.
@@ -86,7 +88,7 @@ function report(sheets: Sheet[], names: [string, string] | undefined, json: bool
   if (names) console.log(`reference points: ${names[0] || 'A'}, ${names[1] || 'B'}`)
   for (const r of rows) {
     console.log(r.aligned
-      ? `  ${r.sheet}: aligned${r.a ? ` — A at ${r.a.join(', ')} m, B at ${r.b!.join(', ')} m` : ''}${r.against ? `; against ${r.against.sheet}: turned ${r.against.turnDeg}°, ×${r.against.scale}` : ''}`
+      ? `  ${r.sheet}: ${r.byEye ? 'lined up by eye' : 'aligned'}${r.a ? ` — A at ${r.a.join(', ')} m, B at ${r.b!.join(', ')} m` : ''}${r.against ? `; against ${r.against.sheet}: turned ${r.against.turnDeg}°, ×${r.against.scale}` : ''}`
       : `  ${r.sheet}: not aligned — risers and copies cannot be placed between it and another floor`)
   }
   for (const p of pairs) {

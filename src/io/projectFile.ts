@@ -259,7 +259,7 @@ function asAlignment(raw: unknown): { align?: Sheet['align'] } {
   if (!isObj(raw)) return {}
   const pts = readPoints([raw.a, raw.b], 2)
   if (!pts || pts.length !== 2 || (pts[0].x === pts[1].x && pts[0].y === pts[1].y)) return {}
-  return { align: { a: pts[0], b: pts[1] } }
+  return { align: { a: pts[0], b: pts[1], ...(raw.byEye === true ? { byEye: true } : {}) } }
 }
 
 function asSheet(raw: unknown, index: number): Sheet {

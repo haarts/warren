@@ -1187,7 +1187,7 @@ try {
     app.store.project.settings.snapToItems = false
     return { a: screen({ x: 120, y: 140 }), b: screen({ x: 420, y: 140 }) }
   })
-  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Align with other floors/.test(b.textContent))?.click())
+  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Click two spots/.test(b.textContent))?.click())
   await page.mouse.click(alignClicks.a.x, alignClicks.a.y)
   await page.mouse.click(alignClicks.b.x, alignClicks.b.y)
   await page.waitForSelector('.dialog input[type=text]', { timeout: 5000 })
@@ -1202,11 +1202,37 @@ try {
   check('the Align tool records two points and what they are called',
     firstAligned.align && Math.abs(firstAligned.align.b.x - firstAligned.align.a.x - 300) < 1 && firstAligned.names?.[0] === 'A1'
     && firstAligned.tool === 'select', JSON.stringify(firstAligned))
-  const loneHint = await page.evaluate(() => [...document.querySelectorAll('.tab-body .hint')].some((h) => /No other floor is aligned yet/.test(h.textContent)))
-  check('a floor aligned on its own says the other floor still needs the same two spots', loneHint)
+  // No clicks needed: on the second floor, pick the first underneath and it is lined up by eye
+  // from the same place on its page, with the pad to finish it. Undone again for what follows.
+  const eyed = await page.evaluate(async () => {
+    const app = window.warren
+    const [first, second] = app.store.project.sheets
+    app.store.setActiveSheet(second.id)
+    app.refresh()
+    await new Promise((r) => setTimeout(r, 50))
+    const fold = [...document.querySelectorAll('.tab-body details.fold')].find((d) => /^Sheet/.test(d.querySelector('summary').textContent))
+    if (!fold.open) fold.querySelector('summary').click()
+    const picker = [...document.querySelectorAll('.tab-body .field')].find((f) => /Underneath/.test(f.textContent)).querySelector('select')
+    picker.value = first.id
+    picker.dispatchEvent(new Event('change'))
+    await new Promise((r) => setTimeout(r, 100))
+    if (!second.align) return { seeded: false }
+    const out = {
+      align: second.align, ghost: app.editor.ghostSheetId === first.id,
+      pad: !!document.querySelector('button[title="Move it right"]'),
+      state: [...document.querySelectorAll('.tab-body .field')].find((f) => /Floors/.test(f.textContent))?.textContent ?? '',
+    }
+    app.store.undo()
+    app.editor.ghostSheetId = null
+    app.store.setActiveSheet(first.id)
+    app.refresh()
+    return { ...out, undone: !app.store.project.sheets[1].align }
+  })
+  check('a floor nobody aligned can be shown underneath straight away and lined up by eye',
+    eyed.align?.byEye === true && eyed.ghost && eyed.pad && /lined up by eye/.test(eyed.state) && eyed.undone, JSON.stringify(eyed))
 
   // Realign says, where the button was, that it is now waiting for clicks - and can be cancelled.
-  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Realign/.test(b.textContent))?.click())
+  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Click two spots/.test(b.textContent))?.click())
   await new Promise((r) => setTimeout(r, 100))
   const aligning = await page.evaluate(() => ({
     tool: window.warren.editor.tool,
@@ -1215,7 +1241,7 @@ try {
   await page.evaluate(() => [...document.querySelectorAll('.tab-body .hint button')].find((b) => b.textContent === 'Cancel')?.click())
   await new Promise((r) => setTimeout(r, 100))
   const cancelled = await page.evaluate(() => ({ tool: window.warren.editor.tool, align: window.warren.store.project.sheets[0].align }))
-  check('Realign shows it is waiting for two clicks, and Cancel leaves the pair as it was',
+  check('Click two spots shows it is waiting for two clicks, and Cancel leaves the pair as it was',
     aligning.tool === 'align' && /click A1 on the plan, then D1/.test(aligning.hint) && cancelled.tool === 'select'
     && JSON.stringify(cancelled.align) === JSON.stringify(firstAligned.align), JSON.stringify({ aligning, cancelled }))
 
@@ -1232,7 +1258,7 @@ try {
     window.warren.refresh()
   })
   await new Promise((r) => setTimeout(r, 100))
-  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Align with other floors/.test(b.textContent))?.click())
+  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Click two spots/.test(b.textContent))?.click())
   await page.mouse.click(secondClicks.a.x, secondClicks.a.y)
   await page.mouse.click(secondClicks.b.x, secondClicks.b.y)
   await page.waitForSelector('.dialog footer button.primary', { timeout: 5000 })

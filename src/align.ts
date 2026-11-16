@@ -126,5 +126,54 @@ export function nudgeAlignment(align: SheetAlignment, n: Nudge): SheetAlignment 
     const y = p.y - n.pivot.y
     return { x: n.pivot.x + x * cos - y * sin + (n.dx ?? 0), y: n.pivot.y + x * sin + y * cos + (n.dy ?? 0) }
   }
-  return { a: move(align.a), b: move(align.b) }
+  return { a: move(align.a), b: move(align.b), byEye: true }
+}
+
+/** Real-world length of a starting pair, when nothing better is known. */
+const SEED_MM = 10_000
+
+/**
+ * A starting placement for a floor nobody has lined up yet: the same spot on its page as `from`,
+ * at the size the two calibrations imply. Architects tend to put every floor in the same place
+ * on the sheet, so this is usually close, and the nudge pad does the rest. With nothing to start
+ * from, a pair along the top of the page: any pair will do, as long as every floor's agrees.
+ */
+export function seedAlignment(sheet: Sheet, from?: Sheet): SheetAlignment {
+  if (from?.align) {
+    const r = from.mmPerPoint && sheet.mmPerPoint ? from.mmPerPoint / sheet.mmPerPoint : 1
+    return { a: { x: from.align.a.x * r, y: from.align.a.y * r }, b: { x: from.align.b.x * r, y: from.align.b.y * r }, byEye: true }
+  }
+  const length = sheet.mmPerPoint ? SEED_MM / sheet.mmPerPoint : 300
+  return { a: { x: 0, y: 0 }, b: { x: length, y: 0 }, byEye: true }
+}
+
+/**
+ * Give `sheet` and `other` placements, where they have none, so one can be shown under the other.
+ * Returns whether anything changed.
+ */
+export function ensurePlaced(sheet: Sheet, other: Sheet): boolean {
+  if (sheet.align && other.align) return false
+  if (!other.align) other.align = seedAlignment(other, sheet.align ? sheet : undefined)
+  if (!sheet.align) sheet.align = seedAlignment(sheet, other)
+  return true
+}
+
+/**
+ * `sheet`'s reference spots are now `a` and `b`, clicked on its plan. A floor aligned by clicking
+ * keeps its pair - the spots are the same spots - and so moves relative to this one. A floor lined
+ * up by eye has no spots of its own, only its placement relative to this one, so that is kept:
+ * its pair is moved to wherever the new spots land on it.
+ */
+export function placeByClicks(sheets: Sheet[], sheet: Sheet, a: Pt, b: Pt): void {
+  const others = sheets.filter((s) => s !== sheet && s.align)
+  const clicked = others.filter((s) => !s.align!.byEye)
+  const eyed = others.filter((s) => s.align!.byEye)
+  const before = sheet.align ?? (clicked.length === 0 && eyed.length ? seedAlignment(sheet, eyed[0]) : null)
+  if (before) {
+    for (const o of eyed) {
+      const m = mappingBetween(before, o.align!)
+      if (m) o.align = { a: m.apply(a), b: m.apply(b), byEye: true }
+    }
+  }
+  sheet.align = { a: { ...a }, b: { ...b } }
 }

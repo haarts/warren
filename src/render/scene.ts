@@ -40,7 +40,7 @@ export interface Overlay {
   hoverLockedId?: string | null
   /** The part of the compass rose under the pointer, or being dragged. */
   compass?: CompassPart | null
-  /** This sheet's two reference points, shown while aligning or with a floor underneath. */
+  /** This sheet's clicked reference points, shown while aligning. */
   alignPoints?: { a: Pt; b: Pt; names: [string, string] } | null
 }
 
@@ -182,7 +182,7 @@ export function drawScene(opts: SceneOptions): void {
 
 /**
  * The two spots this floor is lined up by: a ringed cross with its name. While aligning they show
- * what a new pair replaces; with a floor underneath, they sit where that floor's spots land.
+ * what a new pair replaces.
  */
 function drawAlignPoints(dc: DrawCtx, pts: NonNullable<Overlay['alignPoints']>): void {
   const { ctx, cam, ui } = dc

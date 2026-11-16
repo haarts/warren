@@ -11,8 +11,8 @@ import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
 import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
 import { acrossAxis, alignItems, distributeItems, runAxis, setBoxRotation, type AlignEdge } from '../../interact/arrange.ts'
-import { alignedOthers, alignPointNames, startAlign } from '../../app/alignOps.ts'
-import { CALIBRATION_TOLERANCE, calibrationAgreement, nudgeAlignment, type Nudge } from '../../align.ts'
+import { alignPointNames, clickedOthers, startAlign } from '../../app/alignOps.ts'
+import { CALIBRATION_TOLERANCE, calibrationAgreement, ensurePlaced, nudgeAlignment, type Nudge } from '../../align.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -621,53 +621,62 @@ function buildOrientation(app: App, body: HTMLElement): void {
 }
 
 /**
- * Lining this floor up with the others: two clicks at spots every floor shares. Then the other
- * floor can be shown underneath, which is both the proof that it worked and the reason to do it.
+ * Lining this floor up with the others. Pick a floor to show underneath and line it up by eye;
+ * clicking two spots every floor shares is the quick way to get close first. The floor
+ * underneath is both the proof that it worked and the reason to do it.
  */
 function buildFloorAlignment(app: App, body: HTMLElement): void {
   const { store, editor } = app
   const sheet = store.sheet
   if (store.project.sheets.length < 2) return
   const [a, b] = alignPointNames(app)
-  const others = alignedOthers(app)
+  const clicked = clickedOthers(app)
+  const others = store.project.sheets.filter((s) => s.id !== sheet.id)
   if (editor.tool === 'align') {
     // The panel is where the button was pressed, so this is where to say what happens next.
     body.appendChild(el('div', { class: 'hint warn', style: { display: 'flex', gap: '8px', alignItems: 'center' } },
       el('span', { style: { flex: '1' } },
         el('b', {}, 'Aligning: '),
         `click ${a} on the plan, then ${b}.`,
-        sheet.align ? ' The current pair is marked there in purple.' : '',
-        others.length ? ` Use the same two spots you clicked on ${others.map((o) => o.name).join(', ')}.` : ''),
+        sheet.align && !sheet.align.byEye ? ' The current pair is marked there in purple.' : '',
+        clicked.length ? ` Use the same two spots you clicked on ${clicked.map((o) => o.name).join(', ')}.` : ''),
       el('button', { onclick: () => editor.setTool('select') }, 'Cancel')))
   } else {
+    const state = !sheet.align ? null : sheet.align.byEye ? 'lined up by eye' : `aligned on ${a} and ${b}`
     body.appendChild(field('Floors', el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } },
-      sheet.align ? el('span', {}, `aligned on ${a} and ${b}`) : null,
-      el('button', { onclick: () => startAlign(app) }, sheet.align ? 'Realign…' : 'Align with other floors…'),
+      state ? el('span', {}, state) : null,
+      el('button', {
+        title: 'Click two spots every floor shares - grid-line crossings are ideal - to get close in one go',
+        onclick: () => startAlign(app),
+      }, 'Click two spots…'),
     ), sheet.align ? undefined
-      : 'Click two spots every floor shares - grid-line crossings are ideal. Risers and copies then land in the same place in the building on every floor.'))
-  }
-  if (sheet.align && !others.length) {
-    const rest = store.project.sheets.filter((s) => s.id !== sheet.id).map((s) => s.name)
-    body.appendChild(el('div', { class: 'hint' },
-      `No other floor is aligned yet. Open ${rest.join(', ')} and align it on the same two spots; ` +
-      'then it can be shown underneath this one and fine-tuned by eye.'))
+      : 'Pick a floor underneath and line this one up with it by eye - or click two spots every floor shares to get close first.'))
   }
 
-  if (sheet.align && others.length) {
-    const picker = select(
-      [['', 'nothing'] as const, ...others.map((s) => [s.id, s.name] as const)],
-      editor.ghostSheetId && others.some((s) => s.id === editor.ghostSheetId) ? editor.ghostSheetId : '',
-      (v) => { editor.ghostSheetId = v || null; editor.requestRender() },
-    )
-    body.appendChild(field('Underneath', picker, 'Another floor, drawn faintly through the alignment - walls landing on walls means it is right.'))
-    if (editor.ghostSheetId && others.some((s) => s.id === editor.ghostSheetId)) buildNudgePad(app, body)
-    const off = others.map((o) => ({ o, agree: calibrationAgreement(sheet, o) }))
-      .find((x) => x.agree && x.agree.off > CALIBRATION_TOLERANCE)
-    if (off) {
-      body.appendChild(el('div', { class: 'hint warn' },
-        `This floor's scale and ${off.o.name}'s disagree by ${(off.agree!.off * 100).toFixed(1)}% about the distance from ${a} to ${b}. ` +
-        'One of the two calibrations is off - Realign to choose which one to trust.'))
-    }
+  const showing = editor.ghostSheetId && others.some((s) => s.id === editor.ghostSheetId) ? editor.ghostSheetId : ''
+  const picker = select(
+    [['', 'nothing'] as const, ...others.map((s) => [s.id, s.name] as const)],
+    showing,
+    (v) => {
+      const other = others.find((s) => s.id === v)
+      // A floor nobody has lined up starts in the same place on its page, at the size the
+      // calibrations say; the pad takes it from there.
+      if (other && (!other.align || !sheet.align)) store.mutate(() => { ensurePlaced(sheet, other) })
+      editor.ghostSheetId = other ? other.id : null
+      editor.requestRender()
+      app.refresh()
+    },
+  )
+  body.appendChild(field('Underneath', picker, 'Another floor, drawn faintly - walls landing on walls means they line up.'))
+  if (showing && sheet.align && others.find((s) => s.id === showing)?.align) buildNudgePad(app, body)
+  const off = others.map((o) => ({ o, agree: calibrationAgreement(sheet, o) }))
+    .find((x) => x.agree && x.agree.off > CALIBRATION_TOLERANCE)
+  if (off) {
+    body.appendChild(el('div', { class: 'hint warn' },
+      `This floor's scale and ${off.o.name}'s disagree by ${(off.agree!.off * 100).toFixed(1)}% about how far apart the floors' shared spots are. ` +
+      (off.o.align!.byEye || sheet.align!.byEye
+        ? 'If the walls line up, one calibration is off - recalibrate whichever one you trust less.'
+        : 'One of the two calibrations is off - click the two spots again to choose which one to trust.')))
   }
 }
 
