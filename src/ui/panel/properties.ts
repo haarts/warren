@@ -630,11 +630,28 @@ function buildFloorAlignment(app: App, body: HTMLElement): void {
   if (store.project.sheets.length < 2) return
   const [a, b] = alignPointNames(app)
   const others = alignedOthers(app)
-  body.appendChild(field('Floors', el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } },
-    sheet.align ? el('span', {}, `aligned on ${a} and ${b}`) : null,
-    el('button', { onclick: () => startAlign(app) }, sheet.align ? 'Realign…' : 'Align with other floors…'),
-  ), sheet.align ? undefined
-    : 'Click two spots every floor shares - grid-line crossings are ideal. Risers and copies then land in the same place in the building on every floor.'))
+  if (editor.tool === 'align') {
+    // The panel is where the button was pressed, so this is where to say what happens next.
+    body.appendChild(el('div', { class: 'hint warn', style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+      el('span', { style: { flex: '1' } },
+        el('b', {}, 'Aligning: '),
+        `click ${a} on the plan, then ${b}.`,
+        sheet.align ? ' The current pair is marked there in purple.' : '',
+        others.length ? ` Use the same two spots you clicked on ${others.map((o) => o.name).join(', ')}.` : ''),
+      el('button', { onclick: () => editor.setTool('select') }, 'Cancel')))
+  } else {
+    body.appendChild(field('Floors', el('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } },
+      sheet.align ? el('span', {}, `aligned on ${a} and ${b}`) : null,
+      el('button', { onclick: () => startAlign(app) }, sheet.align ? 'Realign…' : 'Align with other floors…'),
+    ), sheet.align ? undefined
+      : 'Click two spots every floor shares - grid-line crossings are ideal. Risers and copies then land in the same place in the building on every floor.'))
+  }
+  if (sheet.align && !others.length) {
+    const rest = store.project.sheets.filter((s) => s.id !== sheet.id).map((s) => s.name)
+    body.appendChild(el('div', { class: 'hint' },
+      `No other floor is aligned yet. Open ${rest.join(', ')} and align it on the same two spots; ` +
+      'then it can be shown underneath this one and fine-tuned by eye.'))
+  }
 
   if (sheet.align && others.length) {
     const picker = select(

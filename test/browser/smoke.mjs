@@ -1202,6 +1202,22 @@ try {
   check('the Align tool records two points and what they are called',
     firstAligned.align && Math.abs(firstAligned.align.b.x - firstAligned.align.a.x - 300) < 1 && firstAligned.names?.[0] === 'A1'
     && firstAligned.tool === 'select', JSON.stringify(firstAligned))
+  const loneHint = await page.evaluate(() => [...document.querySelectorAll('.tab-body .hint')].some((h) => /No other floor is aligned yet/.test(h.textContent)))
+  check('a floor aligned on its own says the other floor still needs the same two spots', loneHint)
+
+  // Realign says, where the button was, that it is now waiting for clicks - and can be cancelled.
+  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Realign/.test(b.textContent))?.click())
+  await new Promise((r) => setTimeout(r, 100))
+  const aligning = await page.evaluate(() => ({
+    tool: window.warren.editor.tool,
+    hint: [...document.querySelectorAll('.tab-body .hint')].find((h) => /Aligning:/.test(h.textContent))?.textContent ?? '',
+  }))
+  await page.evaluate(() => [...document.querySelectorAll('.tab-body .hint button')].find((b) => b.textContent === 'Cancel')?.click())
+  await new Promise((r) => setTimeout(r, 100))
+  const cancelled = await page.evaluate(() => ({ tool: window.warren.editor.tool, align: window.warren.store.project.sheets[0].align }))
+  check('Realign shows it is waiting for two clicks, and Cancel leaves the pair as it was',
+    aligning.tool === 'align' && /click A1 on the plan, then D1/.test(aligning.hint) && cancelled.tool === 'select'
+    && JSON.stringify(cancelled.align) === JSON.stringify(firstAligned.align), JSON.stringify({ aligning, cancelled }))
 
   // The second floor's plan sits 50 pt right and 20 pt down on its page, and has no scale yet:
   // aligning it offers the first floor's scale.

@@ -96,7 +96,16 @@ function overlay(ed: Editor): Overlay {
     hoverId: ed.hover.id,
     hoverLockedId: ed.hover.locked,
     compass: compassPart(ed),
+    alignPoints: alignPointsShown(ed),
   }
+}
+
+/** While aligning, or with a floor underneath, show the pair this sheet is placed by. */
+function alignPointsShown(ed: Editor): Overlay['alignPoints'] {
+  const align = ed.store.sheet.align
+  if (!align || !(ed.tool === 'align' || ed.ghostSheetId)) return null
+  const names = ed.store.project.alignNames
+  return { a: align.a, b: align.b, names: [names?.[0] || 'A', names?.[1] || 'B'] }
 }
 
 function cursorFor(ed: Editor): string {

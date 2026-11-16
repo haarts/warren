@@ -40,6 +40,8 @@ export interface Overlay {
   hoverLockedId?: string | null
   /** The part of the compass rose under the pointer, or being dragged. */
   compass?: CompassPart | null
+  /** This sheet's two reference points, shown while aligning or with a floor underneath. */
+  alignPoints?: { a: Pt; b: Pt; names: [string, string] } | null
 }
 
 export interface SceneOptions {
@@ -171,8 +173,41 @@ export function drawScene(opts: SceneOptions): void {
     }
     drawHandles(dc)
     drawOverlay(dc, overlay)
+    if (overlay.alignPoints) drawAlignPoints(dc, overlay.alignPoints)
   }
 
   drawScaleBar(dc, height)
+  ctx.restore()
+}
+
+/**
+ * The two spots this floor is lined up by: a ringed cross with its name. While aligning they show
+ * what a new pair replaces; with a floor underneath, they sit where that floor's spots land.
+ */
+function drawAlignPoints(dc: DrawCtx, pts: NonNullable<Overlay['alignPoints']>): void {
+  const { ctx, cam, ui } = dc
+  ctx.save()
+  ctx.setLineDash([])
+  ctx.font = `600 ${Math.round(12 * ui)}px system-ui, sans-serif`
+  ctx.textBaseline = 'middle'
+  for (const [p, name] of [[pts.a, pts.names[0]], [pts.b, pts.names[1]]] as const) {
+    const s = cam.toScreen(p)
+    const r = 9 * ui
+    for (const [color, width] of [['#ffffff', 4 * ui], ['#c026d3', 1.8 * ui]] as const) {
+      ctx.strokeStyle = color
+      ctx.lineWidth = width
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, r, 0, Math.PI * 2)
+      ctx.moveTo(s.x - r * 1.6, s.y); ctx.lineTo(s.x + r * 1.6, s.y)
+      ctx.moveTo(s.x, s.y - r * 1.6); ctx.lineTo(s.x, s.y + r * 1.6)
+      ctx.stroke()
+    }
+    const x = s.x + r * 1.8
+    const w = ctx.measureText(name).width
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'
+    ctx.fillRect(x - 3 * ui, s.y - 9 * ui, w + 6 * ui, 18 * ui)
+    ctx.fillStyle = '#a21caf'
+    ctx.fillText(name, x, s.y)
+  }
   ctx.restore()
 }
