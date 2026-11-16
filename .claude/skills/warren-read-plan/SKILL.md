@@ -12,8 +12,9 @@ answer the question you need.
 
 ## Tracing a room
 
-1. Render the relevant PDF page (or reuse an already-rendered image) and read the room's printed
-   name and, on Dutch plans, its printed area in m².
+1. Render the spot with `warren render <file> --sheet <n> --around <xM,yM> --sizeM <w,h> --grid`
+   and read the room's printed name and, on Dutch plans, its printed area in m². The grid lines
+   are numbered in sheet metres, so corners read off the picture go straight into `pointsM`.
 2. Trace the polygon corners in the image, convert to the sheet's coordinate frame, and pass
    both the points and `item.expectM2` (the printed area) in the `add` op — see the
    `warren-apply-ops` skill for the op shape. The batch is refused if your trace is off by more

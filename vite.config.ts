@@ -30,6 +30,11 @@ export default defineConfig({
   base: './',
   define: { __WARREN_RELEASE__: JSON.stringify(RELEASE) },
   plugins: [versionFile()],
-  build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
+  build: {
+    target: 'es2022',
+    chunkSizeWarningLimit: 2000,
+    // render.html is the page `warren render` drives in headless Chrome.
+    rollupOptions: { input: { main: 'index.html', render: 'render.html' } },
+  },
   server: { open: true },
 })

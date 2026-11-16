@@ -144,6 +144,37 @@ const MANUAL = {
     ],
     writes: true,
   },
+  render: {
+    summary: 'a PNG of part of a sheet: the plan, the drawing on it, and a metre grid',
+    usage: [
+      'warren render <file> [--sheet <n|name>] [--out file.png]                   the whole sheet',
+      'warren render <file> --around <xM,yM> [--sizeM <w,h>] [--grid [stepM]]     a spot',
+      'warren render <file> --id <id[,id…]> [--grid]                               some items, outlined',
+    ],
+    flags: [
+      SHEET_FLAG,
+      ['--around <xM,yM>', 'the centre of the picture, in metres'],
+      ['--sizeM <w,h>', 'how much around it, in metres (default 6,6; one number for a square)'],
+      ['--id <id[,id…]>', 'frame these items with a margin, and outline them the way the app shows a selection'],
+      ['--no-highlight', 'with --id: frame them but do not outline them'],
+      ['--grid [stepM]', 'red lines every stepM metres, numbered in the metres items and apply use (picked for you without a value)'],
+      ['--width <px>', `the longer side in pixels (default ${1600})`],
+      ['--px-per-m <n>', 'or a fixed resolution instead, for pictures that compare'],
+      ['--no-plan', 'leave the plan PDF out: the drawing alone'],
+      ['--out <file.png>', 'where to write it (default <project>-render.png)'],
+      ['--json', 'report what was written as JSON: the file, its size, and the region in metres'],
+    ],
+    examples: [
+      'warren render house.warren.json --sheet p9 --around 18,20.8 --sizeM 4 --grid --out tech.png',
+      'warren render house.warren.json --id box_abc,run_def --grid',
+    ],
+    notes: [
+      'Drawn by the app itself, in headless Chrome, so a render looks exactly like the window. It needs the built app (npm run build), Chrome or Chromium (CHROME_PATH to point at one), and puppeteer-core.',
+      'This is how to look before placing something: render the spot with --grid, read positions off the numbered lines, and the numbers go straight into an op.',
+      'Reads through warren serve when it is running, so the picture shows what the person sees now. Writes nothing to the project.',
+    ],
+    writes: false,
+  },
   calibrate: {
     summary: 'set a sheet\'s scale: a number, the printed 1:n, or another sheet\'s',
     usage: [

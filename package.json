@@ -17,11 +17,11 @@
   },
   "dependencies": {
     "@typesafe-ai/sdk": "^0.6.0",
-    "pdfjs-dist": "^6.3.289"
+    "pdfjs-dist": "^6.3.289",
+    "puppeteer-core": "^24.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.5.0",
-    "puppeteer-core": "^24.0.0",
     "typescript": "^5.9.0",
     "vite": "^8.2.2"
   },

@@ -24,6 +24,7 @@ import { cmdGenerate } from './commands/generate.ts'
 import { cmdSplit, cmdBundle } from './commands/split-bundle.ts'
 import { cmdApply } from './commands/apply.ts'
 import { cmdSelect, cmdServe } from './commands/serve-select.ts'
+import { cmdRender } from './commands/render.ts'
 
 // Typed by the manual, so a command that gains an implementation without gaining an entry — or
 // the other way round — does not compile. Self-description is not a thing to remember to do.
@@ -45,6 +46,7 @@ const commands: Record<Command, (a: Args) => Promise<void>> = {
   apply: cmdApply,
   serve: cmdServe,
   select: cmdSelect,
+  render: cmdRender,
 }
 
 async function main(): Promise<void> {

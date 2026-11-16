@@ -39,6 +39,11 @@ a door hinged on the left is understanding, and it has to come from you — rend
 PDF, look at it, and hand the result over as ops. That boundary is deliberate: it is what keeps
 the file honest about which parts are measured and which are someone's judgement.
 
+`warren render <file> --around <xM,yM> --grid` is how to look: a PNG of that spot, plan and
+drawing together, drawn by the app itself, with red lines numbered in the same metres `apply`
+takes. Read a position off the grid and it goes straight into an op; render again afterwards to
+see that it landed where you meant.
+
 So the useful division is: you read the plan, Warren grades what you read. A room op takes an
 `expectM2` — Dutch plans print the area of every room — and the whole batch is refused if your
 traced polygon disagrees by more than 8%.
@@ -66,6 +71,7 @@ warren systems  house.warren.json --add-missing   # a project can predate a syst
 warren apply    house.warren.json ops.json --dry-run
 warren apply    house.warren.json ops.json
 warren check    house.warren.json --strict        # always, after any write
+warren render   house.warren.json --id <ids> --grid   # and look at what you placed
 ```
 
 `warren generate` does the repetitive half — two sockets per wall, a switch by each door, a

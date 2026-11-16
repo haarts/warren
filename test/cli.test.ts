@@ -171,6 +171,29 @@ test('apply adds a box by corner and size, and reshapes an item in place', async
   assert.match(refused.out, /wM, hM/)
 })
 
+// render drives the built app in headless Chrome; without either there is nothing to test.
+const CHROME = [process.env.CHROME_PATH, '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable']
+  .find((c) => c && existsSync(c))
+const BUILT = existsSync(fileURLToPath(new URL('../dist/render.html', import.meta.url)))
+
+test('render writes a PNG of a region, with the plan, framed and sized as asked', { skip: !CHROME || !BUILT ? 'needs Chrome and npm run build' : false }, async () => {
+  const { dir, file } = await fixture()
+  const { out, code } = warren(['render', file, '--around', '5,4', '--sizeM', '4,2', '--width', '400', '--grid', '--out', 'spot.png', '--json'], dir)
+  assert.equal(code, 0, out)
+  const report = JSON.parse(out)
+  assert.deepEqual(report.px, [400, 200], 'the longer side gets --width, the other follows the region')
+  assert.deepEqual([report.fromM, report.sizeM, report.gridM], [[3, 3], [4, 2], 0.5])
+  const png = readFileSync(join(dir, 'spot.png'))
+  assert.equal(png.subarray(1, 4).toString(), 'PNG')
+  assert.equal(png.readUInt32BE(16), 400)
+  assert.equal(png.readUInt32BE(20), 200)
+
+  const framed = warren(['render', file, '--id', 'r1', '--no-plan', '--out', 'r1.png'], dir)
+  assert.equal(framed.code, 0, framed.out)
+  assert.ok(existsSync(join(dir, 'r1.png')))
+  assert.equal(warren(['render', file, '--id', 'nope'], dir).code, 2, 'an unknown id is a wrong command line')
+})
+
 test('split and bundle are inverses', async () => {
   const { dir, file } = await fixture()
   const original = JSON.parse(readFileSync(join(dir, file), 'utf8'))
