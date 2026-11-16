@@ -366,6 +366,9 @@ function onPointerUp(ed: Editor, e: PointerEvent): void {
       else store.cancel()
       break
     case 'vertex':
+      mergeDroppedCorner(ed, ed.drag.ref)
+      store.commit()
+      break
     case 'boxCorner':
     case 'boxRotate':
     case 'noteWidth':
@@ -618,6 +621,26 @@ function insertVertex(ed: Editor, item: Item, world: Pt): void {
     ed.store.selection.add(item.id)
     ed.store.activeVertex = { itemId: item.id, index: hit.index + 1 }
   })
+}
+
+/**
+ * A corner dropped on the corner next to it is that corner: the two become one, rather than
+ * leaving a stretch of no length behind - which nothing can be clicked on, and which a wall
+ * cannot draw a clean join around. Part of the drag's own undo step.
+ */
+function mergeDroppedCorner(ed: Editor, ref: VertexRef): void {
+  const item = ed.store.item(ref.itemId)
+  const points = item ? pointsOf(item) : null
+  if (!item || !points || points.length <= minPointsFor(item)) return
+  const n = points.length
+  const closed = item.kind === 'room'
+  const at = points[ref.index]
+  const neighbours = [ref.index - 1, ref.index + 1]
+    .map((i) => (closed ? (i + n) % n : i))
+    .filter((i) => i >= 0 && i < n && i !== ref.index)
+  if (!neighbours.some((i) => Math.hypot(points[i].x - at.x, points[i].y - at.y) < 1e-3)) return
+  points.splice(ref.index, 1)
+  ed.store.activeVertex = null
 }
 
 function deleteVertex(ed: Editor, ref: VertexRef): void {

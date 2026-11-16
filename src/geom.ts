@@ -208,13 +208,21 @@ export function roundTo(value: number, step: number): number {
   return step > 0 ? Math.round(value / step) * step : value
 }
 
+/** The polyline with corners that sit on the one before them dropped. */
+export function withoutRepeats(points: Pt[], tolerance = 1e-6): Pt[] {
+  return points.filter((p, i) => i === 0 || Math.hypot(p.x - points[i - 1].x, p.y - points[i - 1].y) > tolerance)
+}
+
 /**
  * The outline of a polyline drawn `half` thick on each side - a wall from its centreline. The
  * left side runs forward and the right side back, so the result is one closed polygon. Corners
  * are mitred, which is how walls meet; a mitre longer than four half-widths (a hairpin) is cut
  * back to that, so a near-reversal cannot throw a spike across the drawing.
  */
-export function thickOutline(points: Pt[], half: number): Pt[] {
+export function thickOutline(all: Pt[], half: number): Pt[] {
+  // Two corners on the same spot make a stretch with no direction, and a mitre against that
+  // throws a spike: treat them as the one corner they are.
+  const points = withoutRepeats(all)
   const n = points.length
   if (n < 2) return []
   const normals: Pt[] = []

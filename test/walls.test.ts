@@ -115,3 +115,9 @@ test('a window off any wall needs a depth, and is never more than two jambs', ()
   assert.deepEqual(apply(p, store, [{ op: 'set', id: win.id, patch: { depthM: 0.2 } }]).problems, [])
   assert.equal((win as WindowItem).depth, 20)
 })
+
+test('two corners on one spot draw as one corner, not a spike', () => {
+  const clean = thickOutline([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], 5)
+  const doubled = thickOutline([{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }], 5)
+  assert.deepEqual(doubled, clean)
+})
