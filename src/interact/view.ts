@@ -96,16 +96,7 @@ function overlay(ed: Editor): Overlay {
     hoverId: ed.hover.id,
     hoverLockedId: ed.hover.locked,
     compass: compassPart(ed),
-    alignPoints: alignPointsShown(ed),
   }
-}
-
-/** While aligning, show the clicked pair a new one replaces. */
-function alignPointsShown(ed: Editor): Overlay['alignPoints'] {
-  const align = ed.store.sheet.align
-  if (!align || align.byEye || ed.tool !== 'align') return null
-  const names = ed.store.project.alignNames
-  return { a: align.a, b: align.b, names: [names?.[0] || 'A', names?.[1] || 'B'] }
 }
 
 function cursorFor(ed: Editor): string {
@@ -191,13 +182,6 @@ function publishStatus(ed: Editor): void {
     parts.push('compass rose — drag the centre to move it; name the tips in Properties')
   }
   if (ed.tool === 'direction') parts.push(ed.measurePts.length === 0 ? 'Click a point, then click again toward the direction you mean' : 'Click again, in the direction this points to')
-  if (ed.tool === 'align') {
-    const names = ed.store.project.alignNames
-    const name = (i: 0 | 1): string => names?.[i] || (i === 0 ? 'A' : 'B')
-    parts.push(ed.measurePts.length === 0
-      ? `Click ${name(0)} — a spot you can find on every floor`
-      : `Click ${name(1)} — a second such spot, the further from ${name(0)} the better · Esc cancels`)
-  }
   ed.onStatus(parts.join('   ·   '))
 }
 

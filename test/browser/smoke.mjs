@@ -1179,34 +1179,12 @@ try {
   check('rising to a floor that is not aligned asks for the alignment instead of guessing',
     /Align the floors first/.test(refused.title) && refused.placed === 0, JSON.stringify(refused))
 
-  // Align the first floor through the tool: two clicks on the canvas, then name the two spots.
-  const alignClicks = await page.evaluate(() => {
-    const app = window.warren
-    const r = document.getElementById('canvas').getBoundingClientRect()
-    const screen = (p) => ({ x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) })
-    app.store.project.settings.snapToItems = false
-    return { a: screen({ x: 120, y: 140 }), b: screen({ x: 420, y: 140 }) }
-  })
-  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Click two spots/.test(b.textContent))?.click())
-  await page.mouse.click(alignClicks.a.x, alignClicks.a.y)
-  await page.mouse.click(alignClicks.b.x, alignClicks.b.y)
-  await page.waitForSelector('.dialog input[type=text]', { timeout: 5000 })
-  await page.type('.dialog input[type=text]', 'A1, D1')
-  await page.keyboard.press('Enter')
-  await new Promise((r) => setTimeout(r, 200))
-  const firstAligned = await page.evaluate(() => {
-    const app = window.warren
-    const s = app.store.project.sheets[0]
-    return { align: s.align, names: app.store.project.alignNames, tool: app.editor.tool }
-  })
-  check('the Align tool records two points and what they are called',
-    firstAligned.align && Math.abs(firstAligned.align.b.x - firstAligned.align.a.x - 300) < 1 && firstAligned.names?.[0] === 'A1'
-    && firstAligned.tool === 'select', JSON.stringify(firstAligned))
-  // No clicks needed: on the second floor, pick the first underneath and it is lined up by eye
-  // from the same place on its page, with the pad to finish it. Undone again for what follows.
+  // No points to click: on the second floor, pick the first underneath. Neither was lined up, so
+  // both start in the same place on their pages - the second has no scale, so at the same size.
   const eyed = await page.evaluate(async () => {
     const app = window.warren
     const [first, second] = app.store.project.sheets
+    app.store.project.settings.snapToItems = false
     app.store.setActiveSheet(second.id)
     app.refresh()
     await new Promise((r) => setTimeout(r, 50))
@@ -1216,63 +1194,34 @@ try {
     picker.value = first.id
     picker.dispatchEvent(new Event('change'))
     await new Promise((r) => setTimeout(r, 100))
-    if (!second.align) return { seeded: false }
-    const out = {
-      align: second.align, ghost: app.editor.ghostSheetId === first.id,
+    const [f, s] = app.store.project.sheets
+    return {
+      first: f.align, second: s.align, ghost: app.editor.ghostSheetId === first.id,
       pad: !!document.querySelector('button[title="Move it right"]'),
-      state: [...document.querySelectorAll('.tab-body .field')].find((f) => /Floors/.test(f.textContent))?.textContent ?? '',
+      clickTool: [...document.querySelectorAll('.tab-body button')].some((b) => /two spots|Realign/i.test(b.textContent)),
     }
-    app.store.undo()
-    app.editor.ghostSheetId = null
-    app.store.setActiveSheet(first.id)
-    app.refresh()
-    return { ...out, undone: !app.store.project.sheets[1].align }
   })
-  check('a floor nobody aligned can be shown underneath straight away and lined up by eye',
-    eyed.align?.byEye === true && eyed.ghost && eyed.pad && /lined up by eye/.test(eyed.state) && eyed.undone, JSON.stringify(eyed))
+  check('a floor nobody lined up is shown underneath straight away, where it sits on its page, with the pad',
+    eyed.first && JSON.stringify(eyed.first) === JSON.stringify(eyed.second) && eyed.ghost && eyed.pad && !eyed.clickTool,
+    JSON.stringify(eyed))
 
-  // Realign says, where the button was, that it is now waiting for clicks - and can be cancelled.
-  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Click two spots/.test(b.textContent))?.click())
-  await new Promise((r) => setTimeout(r, 100))
-  const aligning = await page.evaluate(() => ({
-    tool: window.warren.editor.tool,
-    hint: [...document.querySelectorAll('.tab-body .hint')].find((h) => /Aligning:/.test(h.textContent))?.textContent ?? '',
-  }))
-  await page.evaluate(() => [...document.querySelectorAll('.tab-body .hint button')].find((b) => b.textContent === 'Cancel')?.click())
-  await new Promise((r) => setTimeout(r, 100))
-  const cancelled = await page.evaluate(() => ({ tool: window.warren.editor.tool, align: window.warren.store.project.sheets[0].align }))
-  check('Click two spots shows it is waiting for two clicks, and Cancel leaves the pair as it was',
-    aligning.tool === 'align' && /click A1 on the plan, then D1/.test(aligning.hint) && cancelled.tool === 'select'
-    && JSON.stringify(cancelled.align) === JSON.stringify(firstAligned.align), JSON.stringify({ aligning, cancelled }))
-
-  // The second floor's plan sits 50 pt right and 20 pt down on its page, and has no scale yet:
-  // aligning it offers the first floor's scale.
-  const secondClicks = await page.evaluate(() => {
-    const app = window.warren
-    app.store.setActiveSheet(app.store.project.sheets[1].id)
-    const r = document.getElementById('canvas').getBoundingClientRect()
-    const screen = (p) => ({ x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) })
-    return { a: screen({ x: 170, y: 160 }), b: screen({ x: 470, y: 160 }) }
-  })
-  await page.evaluate(() => {
-    window.warren.refresh()
-  })
-  await new Promise((r) => setTimeout(r, 100))
-  await page.evaluate(() => [...document.querySelectorAll('.tab-body button')].find((b) => /Click two spots/.test(b.textContent))?.click())
-  await page.mouse.click(secondClicks.a.x, secondClicks.a.y)
-  await page.mouse.click(secondClicks.b.x, secondClicks.b.y)
-  await page.waitForSelector('.dialog footer button.primary', { timeout: 5000 })
-  const scaleQuestion = await page.evaluate(() => document.querySelector('.dialog header')?.textContent ?? '')
-  await page.click('.dialog footer button.primary')
-  await new Promise((r) => setTimeout(r, 300))
-  const secondAligned = await page.evaluate(() => {
+  // As if lined up by eye: the second floor's plan sits 50 pt right and 20 pt down on its page.
+  // It has no scale yet, and can take the first floor's.
+  const scaleOffer = await page.evaluate(async () => {
     const app = window.warren
     const [first, second] = app.store.project.sheets
-    return { scale: second.mmPerPoint, firstScale: first.mmPerPoint, ghost: app.editor.ghostSheetId === first.id }
+    first.align = { a: { x: 120, y: 140 }, b: { x: 420, y: 140 } }
+    second.align = { a: { x: 170, y: 160 }, b: { x: 470, y: 160 } }
+    app.store.touch()
+    app.refresh()
+    await new Promise((r) => setTimeout(r, 50))
+    const button = [...document.querySelectorAll('.tab-body button')].find((b) => /Take the scale from/.test(b.textContent))
+    button?.click()
+    await new Promise((r) => setTimeout(r, 50))
+    return { offered: !!button, scale: app.store.project.sheets[1].mmPerPoint, firstScale: first.mmPerPoint }
   })
-  check('aligning an uncalibrated floor offers the other floor\'s scale, then shows that floor underneath',
-    /Calibrate from the other floor/.test(scaleQuestion) && Math.abs(secondAligned.scale / secondAligned.firstScale - 1) < 1e-3 && secondAligned.ghost,
-    `${scaleQuestion} ${JSON.stringify(secondAligned)}`)
+  check('an uncalibrated floor lined up over a calibrated one can take its scale',
+    scaleOffer.offered && Math.abs(scaleOffer.scale / scaleOffer.firstScale - 1) < 1e-9, JSON.stringify(scaleOffer))
 
   // --- lining the floor underneath up by eye ------------------------------------------------
   await page.evaluate(() => {
@@ -1367,7 +1316,6 @@ try {
   await page.evaluate(() => {
     const app = window.warren
     for (const s of app.store.project.sheets) delete s.align
-    delete app.store.project.alignNames
     app.store.project.sheets[1].mmPerPoint = null
     app.editor.ghostSheetId = null
     app.store.touch()

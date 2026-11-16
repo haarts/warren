@@ -94,8 +94,7 @@ function onPointerDown(ed: Editor, e: PointerEvent): void {
     case 'note': placeNote(ed, ed.resolve(world)); break
     case 'measure':
     case 'calibrate':
-    case 'direction':
-    case 'align': measurePointerDown(ed, world); break
+    case 'direction': measurePointerDown(ed, world); break
   }
   ed.requestRender()
 }
@@ -549,7 +548,6 @@ function measurePointerDown(ed: Editor, world: Pt): void {
   if (dist(a, b) < 1e-6) { ed.measurePts = []; return }
   if (ed.tool === 'calibrate') ed.onCalibrateRequest?.(dist(a, b))
   else if (ed.tool === 'direction') ed.onDirectionRequest?.(bearingBetween(a, b))
-  else if (ed.tool === 'align') ed.onAlignRequest?.(a, b)
 }
 
 function updateMeasureCursor(ed: Editor, world: Pt): void {

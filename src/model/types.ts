@@ -373,19 +373,14 @@ export interface CompassRose {
 }
 
 /**
- * Where two reference points sit on this sheet, in its own points: the same two physical spots
- * on every floor (a grid-line crossing, a stair corner). That is all it takes to carry a point
- * from one floor's drawing to another's, however each page was placed, turned or scaled.
- *
- * The pair is how a placement is stored, not necessarily something anyone clicked: a floor lined
- * up by eye has a pair too, wherever its nudges left it. `byEye` says so, so nobody is asked to
- * find "A" on a plan where A was never a spot.
+ * Where this floor sits against the others, stored as two points in its own coordinates that
+ * stand for the same two places in the building on every floor. Nobody picks them: a floor is
+ * lined up by eye against another shown underneath it, and the pair is simply wherever those
+ * nudges leave it. From two pairs, a point is carried between floors - see align.ts.
  */
 export interface SheetAlignment {
   a: Pt
   b: Pt
-  /** Placed or last adjusted by eye, rather than by two clicked spots. */
-  byEye?: boolean
 }
 
 export interface Sheet {
@@ -449,7 +444,6 @@ export interface Project {
    * What the two alignment points are, e.g. ["A1", "C4"], so the next floor can say what to
    * click. Optional: the points themselves live on each sheet.
    */
-  alignNames?: [string, string]
   systems: System[]
   sheets: Sheet[]
   /**

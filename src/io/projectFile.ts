@@ -259,7 +259,7 @@ function asAlignment(raw: unknown): { align?: Sheet['align'] } {
   if (!isObj(raw)) return {}
   const pts = readPoints([raw.a, raw.b], 2)
   if (!pts || pts.length !== 2 || (pts[0].x === pts[1].x && pts[0].y === pts[1].y)) return {}
-  return { align: { a: pts[0], b: pts[1], ...(raw.byEye === true ? { byEye: true } : {}) } }
+  return { align: { a: pts[0], b: pts[1] } }
 }
 
 function asSheet(raw: unknown, index: number): Sheet {
@@ -350,8 +350,6 @@ export function parseProject(text: string): Project {
     ...(rules?.length ? { rules } : {}),
     ...(compass ? { compass } : {}),
     ...(directions.length ? { directions } : {}),
-    ...(Array.isArray(raw.alignNames) && raw.alignNames.length === 2
-      ? { alignNames: [str(raw.alignNames[0], ''), str(raw.alignNames[1], '')] as [string, string] } : {}),
     systems: systems.length > 0 ? systems : defaultSystems(),
     sheets,
     assets,

@@ -60,18 +60,16 @@ test('an item copied between floors keeps its place and size in the building', (
 test('alignment survives a save, and check reports floors that disagree about the scale', () => {
   const project = emptyProject()
   project.sheets = [lower, { ...upper, mmPerPoint: 5.5 }]
-  project.alignNames = ['A1', 'C4']
   const back = parseProject(serialize(project))
   assert.deepEqual(back.sheets[0].align, lower.align)
-  assert.deepEqual(back.alignNames, ['A1', 'C4'])
   const store = new Store()
   store.loadProject(back, null)
   const finding = runChecks(store).find((f) => f.rule === 'floors-disagree')
   assert.ok(finding, 'a 10% disagreement is reported')
-  assert.match(finding!.message, /1\.00 m .* 1\.10 m/)
+  assert.match(finding!.message, /9\.1% apart/)
 })
 
-test('warren align records the points in metres and reports the floors', () => {
+test('warren align places a floor against another, nudges it, and reports how they sit', () => {
   const dir = mkdtempSync(join(tmpdir(), 'warren-align-'))
   const project = emptyProject()
   project.sheets = [sheet('s1', undefined, 20), sheet('s2', undefined, 20)]
@@ -80,13 +78,14 @@ test('warren align records the points in metres and reports the floors', () => {
   writeFileSync(join(dir, 'h.warren.json'), serialize(project))
   const cli = fileURLToPath(new URL('../bin/warren.ts', import.meta.url))
   const run = (...args: string[]): string => execFileSync(process.execPath, [cli, ...args], { cwd: dir, encoding: 'utf8' })
-  run('align', 'h.warren.json', '--sheet', '1', '--a', '1,1', '--b', '9,1', '--names', 'A1, D1')
-  run('align', 'h.warren.json', '--sheet', '2', '--a', '2,1', '--b', '10,1')
-  const report = JSON.parse(run('align', 'h.warren.json', '--json'))
-  assert.deepEqual(report.names, ['A1', 'D1'])
-  assert.deepEqual(report.sheets[0].a, [1, 1])
-  assert.equal(report.sheets[1].against.scale, 1)
-  assert.equal(report.calibration[0].agrees, true)
+  run('align', 'h.warren.json', '--sheet', '2', '--under', '1')
+  let report = JSON.parse(run('align', 'h.warren.json', '--json'))
+  assert.ok(report.sheets.every((r: { linedUp: boolean }) => r.linedUp))
+  assert.deepEqual(report.sheets[1].against, { sheet: 'Ground', turnDeg: 0, scale: 1 })
+  run('align', 'h.warren.json', '--sheet', '2', '--turn', '0.5', '--grow', '-0.5')
+  report = JSON.parse(run('align', 'h.warren.json', '--json'))
+  assert.deepEqual(report.sheets[1].against, { sheet: 'Ground', turnDeg: 0.5, scale: 0.995 })
+  assert.equal(report.calibration[0].agrees, true, 'a half-percent nudge is within what calibrations are trusted to')
 })
 
 test('nudging this floor\'s pair moves, turns and sizes the floor seen through it by exactly that', async () => {
@@ -115,42 +114,16 @@ test('a floor nobody lined up starts in the same place on its page, at the size 
   const ground = sheet('ground', undefined, 10)
   const first = sheet('first', undefined, 20)
   assert.equal(ensurePlaced(first, ground), true)
-  assert.ok(ground.align?.byEye && first.align?.byEye)
+  assert.ok(ground.align && first.align)
   const m = floorMapping(ground, first)!
   // 100 pt on the ground floor is 1 m; on the first floor, drawn at half the size, 1 m is 50 pt.
   assert.ok(near(m.apply({ x: 100, y: 40 }), { x: 50, y: 20 }), JSON.stringify(m.apply({ x: 100, y: 40 })))
   assert.equal(ensurePlaced(first, ground), false, 'placed floors are left alone')
 
-  // Against a floor aligned by clicks, the same: same page position, calibrated size.
-  const clicked = sheet('clicked', { a: { x: 30, y: 70 }, b: { x: 330, y: 90 } }, 10)
+  // Against a floor already lined up, the same: same page position, calibrated size.
+  const placed = sheet('placed', { a: { x: 30, y: 70 }, b: { x: 330, y: 90 } }, 10)
   const loft = sheet('loft', undefined, 10)
-  ensurePlaced(loft, clicked)
-  assert.ok(near(floorMapping(clicked, loft)!.apply({ x: 123, y: 45 }), { x: 123, y: 45 }))
-  assert.equal(clicked.align!.byEye, undefined, 'the clicked floor keeps its clicked pair')
-})
-
-test('clicking two spots keeps floors lined up by eye where they were, and moves to clicked ones', async () => {
-  const { nudgeAlignment, placeByClicks } = await import('../src/align.ts')
-  const here = sheet('here', { a: { x: 0, y: 0 }, b: { x: 100, y: 0 } }, 10)
-  const eyed = sheet('eyed', nudgeAlignment({ a: { x: 0, y: 0 }, b: { x: 100, y: 0 } }, { dx: 7, turnDeg: 1, pivot: { x: 50, y: 50 } }), 10)
-  const spot = { x: 60, y: 25 }
-  const was = floorMapping(here, eyed)!.apply(spot)
-  placeByClicks([here, eyed], here, { x: 20, y: 30 }, { x: 220, y: 60 })
-  assert.deepEqual(here.align, { a: { x: 20, y: 30 }, b: { x: 220, y: 60 } })
-  const now = floorMapping(here, eyed)!.apply(spot)
-  assert.ok(Math.hypot(now.x - was.x, now.y - was.y) < 1e-9, 'the by-eye floor still sits the same against this one')
-
-  // A floor aligned by its own clicked spots keeps them: the relation follows the new click.
-  const other = sheet('other', { a: { x: 5, y: 5 }, b: { x: 105, y: 5 } }, 10)
-  placeByClicks([here, other], here, { x: 0, y: 0 }, { x: 100, y: 0 })
-  assert.deepEqual(other.align, { a: { x: 5, y: 5 }, b: { x: 105, y: 5 } })
-})
-
-test('a by-eye placement survives saving and loading', () => {
-  const store = new Store()
-  const project = emptyProject()
-  project.sheets[0].align = { a: { x: 1, y: 2 }, b: { x: 3, y: 4 }, byEye: true }
-  store.loadProject(project, null)
-  const back = parseProject(serialize(store.project))
-  assert.equal(back.sheets[0].align?.byEye, true)
+  ensurePlaced(loft, placed)
+  assert.ok(near(floorMapping(placed, loft)!.apply({ x: 123, y: 45 }), { x: 123, y: 45 }))
+  assert.deepEqual(placed.align, { a: { x: 30, y: 70 }, b: { x: 330, y: 90 } }, 'the placed floor is left where it was')
 })

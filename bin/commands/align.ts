@@ -1,99 +1,105 @@
 /**
- * Lines floors up, the command-line half of the app's Align tool. Each sheet records where the
- * same two physical spots are on it - grid-line crossings, a stair corner - and from those two
- * pairs every point can be carried between floors, however each page was placed or scaled.
+ * Lines floors up, the command-line half of the app's "Underneath" and by-eye pad. A floor is
+ * placed against another - the same spot on its page, at the size the calibrations imply - and
+ * then nudged: shifted, turned, sized. Points are carried between floors through that placement.
  *
- * Without --sheet it reports: which sheets are aligned, and whether their calibrations agree
- * about the distance between the two spots. With --sheet, --a and --b it records them.
+ * Without --sheet it reports which floors are lined up, how each sits against the first, and
+ * whether their calibrations agree about it.
  */
-import { CALIBRATION_TOLERANCE, calibrationAgreement, floorMapping, placeByClicks } from '../../src/align.ts'
-import type { Pt } from '../../src/geom.ts'
+import { CALIBRATION_TOLERANCE, calibrationAgreement, ensurePlaced, floorMapping, nudgeAlignment } from '../../src/align.ts'
 import type { Sheet } from '../../src/model/types.ts'
 import { fail, type Args } from '../args.ts'
 import { load, persist } from '../project.ts'
-import { pointAtM, pointsFromMetres, round, sheetOf } from '../units.ts'
+import { pointsFromMetres, round, sheetOf } from '../units.ts'
 
 export async function cmdAlign(args: Args): Promise<void> {
   const loaded = await load(args)
   const { project } = loaded
+  const flags = args.flags
 
-  if (args.flags.sheet === undefined) {
-    if (args.flags.a !== undefined || args.flags.b !== undefined) fail('which sheet? pass --sheet <n|name> with --a and --b')
-    return report(project.sheets, project.alignNames, Boolean(args.flags.json))
+  if (flags.sheet === undefined) {
+    for (const f of ['under', 'shift', 'turn', 'grow', 'remove']) if (flags[f] !== undefined) fail(`which sheet? pass --sheet <n|name> with --${f}`)
+    return report(project.sheets, Boolean(flags.json))
   }
+  const one = (raw: unknown, flag: string): Sheet => {
+    const found = sheetOf(project, raw as string)
+    if (found.length !== 1) fail(`${flag} "${String(raw)}" matches ${found.length} sheets`)
+    return found[0]
+  }
+  const sheet = one(flags.sheet, '--sheet')
 
-  const targets = sheetOf(project, args.flags.sheet as string)
-  if (targets.length !== 1) fail(`--sheet "${String(args.flags.sheet)}" matches ${targets.length} sheets`)
-  const sheet = targets[0]
-
-  if (args.flags.remove) {
+  if (flags.remove) {
     delete sheet.align
     await persist(loaded)
-    console.log(`${sheet.name}: alignment removed`)
+    console.log(`${sheet.name}: no longer lined up`)
     return
   }
-  if (args.flags.a === undefined || args.flags.b === undefined) fail('give both --a and --b: the two reference points on this sheet')
-  const inPoints = Boolean(args.flags.points)
-  const read = (flag: 'a' | 'b'): Pt => {
-    const [x, y] = String(args.flags[flag]).split(',').map(Number)
-    if (!isFinite(x) || !isFinite(y)) fail(`--${flag} must be "x,y"`)
-    if (inPoints) return { x, y }
-    const px = pointsFromMetres(sheet, x)
-    const py = pointsFromMetres(sheet, y)
-    if (px === null || py === null) fail(`"${sheet.name}" has no scale, so --${flag} in metres means nothing there; pass --points to give PDF points`)
-    return { x: px!, y: py! }
+
+  let changed = false
+  if (flags.under !== undefined) {
+    const other = one(flags.under, '--under')
+    if (other === sheet) fail('--under names the same sheet as --sheet')
+    changed = ensurePlaced(sheet, other)
+    if (!changed) console.log(`${sheet.name} and ${other.name} were already lined up; left as they were`)
   }
-  const a = read('a')
-  const b = read('b')
-  if (a.x === b.x && a.y === b.y) fail('--a and --b are the same point; they need to be two spots, as far apart as the plan allows')
-  // Floors lined up by eye keep their placement relative to this one; see placeByClicks.
-  placeByClicks(project.sheets, sheet, a, b)
-  if (typeof args.flags.names === 'string') {
-    const [n1 = '', n2 = ''] = args.flags.names.split(',').map((s) => s.trim())
-    project.alignNames = [n1, n2]
+
+  const pair = (raw: unknown, flag: string): [number, number] => {
+    const [x, y] = String(raw).split(',').map(Number)
+    if (!isFinite(x) || !isFinite(y)) fail(`${flag} must be "x,y" in metres`)
+    return [x, y]
   }
-  await persist(loaded)
-  console.log(`${sheet.name}: aligned`)
-  report(project.sheets, project.alignNames, false)
+  const pt = (m: number, flag: string): number => {
+    const v = pointsFromMetres(sheet, m)
+    if (v === null) fail(`"${sheet.name}" has no scale, so ${flag} in metres means nothing there`)
+    return v!
+  }
+  if (flags.shift !== undefined || flags.turn !== undefined || flags.grow !== undefined) {
+    if (!sheet.align) fail(`"${sheet.name}" is not lined up with anything yet; start with --under <sheet>`)
+    const [dx, dy] = flags.shift !== undefined ? pair(flags.shift, '--shift') : [0, 0]
+    const turnDeg = flags.turn !== undefined ? Number(flags.turn) : 0
+    const grow = flags.grow !== undefined ? Number(flags.grow) : 0
+    if (!isFinite(turnDeg)) fail('--turn takes degrees, clockwise on screen')
+    if (!isFinite(grow) || grow <= -100) fail('--grow takes a percentage, e.g. 0.3 or -0.3')
+    const page = { w: sheet.pdf?.widthPt ?? 842, h: sheet.pdf?.heightPt ?? 595 }
+    const [ax, ay] = flags.about !== undefined ? pair(flags.about, '--about') : [null, null]
+    const pivot = ax === null ? { x: page.w / 2, y: page.h / 2 } : { x: pt(ax, '--about'), y: pt(ay!, '--about') }
+    sheet.align = nudgeAlignment(sheet.align!, {
+      dx: dx ? pt(dx, '--shift') : 0, dy: dy ? pt(dy, '--shift') : 0, turnDeg, factor: 1 + grow / 100, pivot,
+    })
+    changed = true
+  }
+  if (!changed && flags.under === undefined) fail('nothing to do: give --under, --shift, --turn, --grow or --remove')
+  if (changed) await persist(loaded)
+  report(project.sheets, false)
 }
 
-function report(sheets: Sheet[], names: [string, string] | undefined, json: boolean): void {
-  const aligned = sheets.filter((s) => s.align)
-  const pairs: { sheets: [string, string]; aM: number; bM: number; offPct: number; agrees: boolean }[] = []
-  for (let i = 0; i < aligned.length; i++) {
-    for (let j = i + 1; j < aligned.length; j++) {
-      const agree = calibrationAgreement(aligned[i], aligned[j])
+function report(sheets: Sheet[], json: boolean): void {
+  const placed = sheets.filter((s) => s.align)
+  const pairs: { sheets: [string, string]; offPct: number; agrees: boolean }[] = []
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = i + 1; j < placed.length; j++) {
+      const agree = calibrationAgreement(placed[i], placed[j])
       if (!agree) continue
-      pairs.push({
-        sheets: [aligned[i].name, aligned[j].name], aM: round(agree.aMm / 1000, 3), bM: round(agree.bMm / 1000, 3),
-        offPct: round(agree.off * 100, 2), agrees: agree.off <= CALIBRATION_TOLERANCE,
-      })
+      pairs.push({ sheets: [placed[i].name, placed[j].name], offPct: round(agree.off * 100, 2), agrees: agree.off <= CALIBRATION_TOLERANCE })
     }
   }
   const rows = sheets.map((s) => ({
     sheet: s.name,
-    aligned: Boolean(s.align),
-    byEye: s.align?.byEye === true,
-    a: s.align ? pointAtM(s, s.align.a) : null,
-    b: s.align ? pointAtM(s, s.align.b) : null,
-    // How this floor sits against the first aligned one: worth seeing when it is not ~0° and ~1.
-    against: s.align && aligned[0] && aligned[0] !== s
-      ? (() => { const m = floorMapping(s, aligned[0])!; return { sheet: aligned[0].name, turnDeg: round(m.turnDeg, 2), scale: round(m.scale, 4) } })()
+    linedUp: Boolean(s.align),
+    // How the other floors sit on this one: worth seeing when it is not ~0° and ~1.
+    against: s.align && placed[0] && placed[0] !== s
+      ? (() => { const m = floorMapping(placed[0], s)!; return { sheet: placed[0].name, turnDeg: round(m.turnDeg, 3), scale: round(m.scale, 4) } })()
       : null,
   }))
-  if (json) {
-    console.log(JSON.stringify({ names: names ?? null, sheets: rows, calibration: pairs }, null, 2))
-    return
-  }
-  if (names) console.log(`reference points: ${names[0] || 'A'}, ${names[1] || 'B'}`)
+  if (json) return void console.log(JSON.stringify({ sheets: rows, calibration: pairs }, null, 2))
   for (const r of rows) {
-    console.log(r.aligned
-      ? `  ${r.sheet}: ${r.byEye ? 'lined up by eye' : 'aligned'}${r.a ? ` — A at ${r.a.join(', ')} m, B at ${r.b!.join(', ')} m` : ''}${r.against ? `; against ${r.against.sheet}: turned ${r.against.turnDeg}°, ×${r.against.scale}` : ''}`
-      : `  ${r.sheet}: not aligned — risers and copies cannot be placed between it and another floor`)
+    console.log(r.linedUp
+      ? `  ${r.sheet}: lined up${r.against ? ` — ${r.against.sheet} sits on it turned ${r.against.turnDeg}°, ×${r.against.scale}` : ''}`
+      : `  ${r.sheet}: not lined up — risers and copies cannot be placed between it and another floor`)
   }
   for (const p of pairs) {
     console.log(p.agrees
       ? `  ${p.sheets[0]} and ${p.sheets[1]} agree on the scale (${p.offPct}% apart)`
-      : `  ${p.sheets[0]} and ${p.sheets[1]} DISAGREE: the points are ${p.aM} m vs ${p.bM} m apart (${p.offPct}%) — one calibration is wrong`)
+      : `  ${p.sheets[0]} and ${p.sheets[1]} DISAGREE on the scale by ${p.offPct}% — if the walls line up, one calibration is wrong`)
   }
 }

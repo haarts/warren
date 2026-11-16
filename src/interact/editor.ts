@@ -16,10 +16,10 @@ import {
 } from './pointer.ts'
 import { attachView, requestRender as viewRequestRender, zoomToSelection as viewZoomToSelection } from './view.ts'
 
-export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate' | 'direction' | 'align'
+export type ToolId = 'select' | 'run' | 'box' | 'marker' | 'note' | 'measure' | 'calibrate' | 'direction'
 
 /** The tools that are two clicks and a question - measure, and the one-shot commands. */
-export const TWO_CLICK_TOOLS: ToolId[] = ['measure', 'calibrate', 'direction', 'align']
+export const TWO_CLICK_TOOLS: ToolId[] = ['measure', 'calibrate', 'direction']
 
 /** Real distance the raw cursor snaps a point in, at 1:1 zoom; see `Editor.resolve`. */
 const SNAP_TOL_PX = 11
@@ -36,7 +36,6 @@ export class Editor {
   /** Fired when the user has picked two direction points; UI asks what to call this bearing. */
   onDirectionRequest: ((bearingDeg: number) => void) | null = null
   /** Fired when the user has clicked both alignment points on this sheet. */
-  onAlignRequest: ((a: Pt, b: Pt) => void) | null = null
   onChange: (() => void) | null = null
   onStatus: ((text: string) => void) | null = null
 

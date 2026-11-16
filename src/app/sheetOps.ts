@@ -9,7 +9,7 @@ import { emptySheet } from '../model/doc.ts'
 import type { Item, MarkerItem, Sheet } from '../model/types.ts'
 import { buildGraph, toleranceFor } from '../topology.ts'
 import { floorMapping, mapItem } from '../align.ts'
-import { startAlign } from './alignOps.ts'
+import { showUnderneath } from './alignOps.ts'
 import { alertDialog, chooseDialog, confirmDialog } from '../ui/modal.ts'
 import { refit } from './pdfOps.ts'
 import type { App } from '../app.ts'
@@ -157,18 +157,18 @@ export function riseToSheet(app: App, sheetId: string, way: 'up' | 'down'): void
   app.editor.flash(`${way === 'up' ? 'Up' : 'Down'} to ${target.name}${via} — the riser is selected here; press L and start on it to carry on${gap}`)
 }
 
-/** Rise/Drop needs both floors aligned. Says which is not, and offers to go and do it. */
+/** Rise/Drop needs both floors lined up. Says so, and offers to go and do it. */
 async function offerAlignment(app: App, source: Sheet, target: Sheet): Promise<void> {
-  const missing = [source, target].filter((s) => !s.align)
   const go = await chooseDialog('Align the floors first',
     `Every floor plan sits differently on its page, so a riser cannot be carried to ${target.name} ` +
-    `by page position alone. Click the same two spots - a grid-line crossing, a stair corner - on ` +
-    `${missing.map((s) => s.name).join(' and ')}, and Warren lines the floors up.`,
-    [{ label: `Align ${missing[0].name} now`, value: true, primary: true }])
+    `by page position alone. Show ${source.name} underneath ${target.name} and line it up by eye - ` +
+    'walls on walls - and the riser lands in the same place in the building.',
+    [{ label: `Line up ${target.name} now`, value: true, primary: true }])
   if (!go) return
-  if (missing[0].id !== app.store.sheet.id) {
-    app.store.setActiveSheet(missing[0].id)
+  if (target.id !== app.store.sheet.id) {
+    app.store.setActiveSheet(target.id)
     refit(app)
   }
-  startAlign(app)
+  showUnderneath(app, source)
+  app.editor.flash(`${source.name} is underneath - line it up with the pad in Properties → Sheet, then rise again`)
 }

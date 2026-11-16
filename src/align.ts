@@ -2,8 +2,9 @@
  * Floors that line up. Every sheet is a separate PDF page, and nothing says the architect put
  * each floor in the same place on its page, at the same angle, or that two pages were calibrated
  * alike. So a point is never carried from one floor to another by its coordinates: each sheet
- * records where the same two physical spots are on it, and the mapping between two floors is
- * the one shift, turn and scale that lays one pair on the other.
+ * stores a pair of points standing for the same two places in the building, placed by lining
+ * the floors up by eye, and the mapping between two floors is the one shift, turn and scale
+ * that lays one pair on the other.
  *
  * Node-safe: the app, `warren check` and `warren align` all use it.
  */
@@ -126,7 +127,7 @@ export function nudgeAlignment(align: SheetAlignment, n: Nudge): SheetAlignment 
     const y = p.y - n.pivot.y
     return { x: n.pivot.x + x * cos - y * sin + (n.dx ?? 0), y: n.pivot.y + x * sin + y * cos + (n.dy ?? 0) }
   }
-  return { a: move(align.a), b: move(align.b), byEye: true }
+  return { a: move(align.a), b: move(align.b) }
 }
 
 /** Real-world length of a starting pair, when nothing better is known. */
@@ -141,10 +142,10 @@ const SEED_MM = 10_000
 export function seedAlignment(sheet: Sheet, from?: Sheet): SheetAlignment {
   if (from?.align) {
     const r = from.mmPerPoint && sheet.mmPerPoint ? from.mmPerPoint / sheet.mmPerPoint : 1
-    return { a: { x: from.align.a.x * r, y: from.align.a.y * r }, b: { x: from.align.b.x * r, y: from.align.b.y * r }, byEye: true }
+    return { a: { x: from.align.a.x * r, y: from.align.a.y * r }, b: { x: from.align.b.x * r, y: from.align.b.y * r } }
   }
   const length = sheet.mmPerPoint ? SEED_MM / sheet.mmPerPoint : 300
-  return { a: { x: 0, y: 0 }, b: { x: length, y: 0 }, byEye: true }
+  return { a: { x: 0, y: 0 }, b: { x: length, y: 0 } }
 }
 
 /**
@@ -156,24 +157,4 @@ export function ensurePlaced(sheet: Sheet, other: Sheet): boolean {
   if (!other.align) other.align = seedAlignment(other, sheet.align ? sheet : undefined)
   if (!sheet.align) sheet.align = seedAlignment(sheet, other)
   return true
-}
-
-/**
- * `sheet`'s reference spots are now `a` and `b`, clicked on its plan. A floor aligned by clicking
- * keeps its pair - the spots are the same spots - and so moves relative to this one. A floor lined
- * up by eye has no spots of its own, only its placement relative to this one, so that is kept:
- * its pair is moved to wherever the new spots land on it.
- */
-export function placeByClicks(sheets: Sheet[], sheet: Sheet, a: Pt, b: Pt): void {
-  const others = sheets.filter((s) => s !== sheet && s.align)
-  const clicked = others.filter((s) => !s.align!.byEye)
-  const eyed = others.filter((s) => s.align!.byEye)
-  const before = sheet.align ?? (clicked.length === 0 && eyed.length ? seedAlignment(sheet, eyed[0]) : null)
-  if (before) {
-    for (const o of eyed) {
-      const m = mappingBetween(before, o.align!)
-      if (m) o.align = { a: m.apply(a), b: m.apply(b), byEye: true }
-    }
-  }
-  sheet.align = { a: { ...a }, b: { ...b } }
 }

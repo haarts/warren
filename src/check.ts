@@ -68,8 +68,8 @@ export function runChecks(store: Store, opts: CheckOptions = {}): Finding[] {
       const agree = calibrationAgreement(aligned[i], aligned[j])
       if (!agree || agree.off <= CALIBRATION_TOLERANCE) continue
       add('warning', 'floors-disagree', `${aligned[i].name} / ${aligned[j].name}`,
-        `the alignment points are ${(agree.aMm / 1000).toFixed(2)} m apart by one floor's scale and ` +
-        `${(agree.bMm / 1000).toFixed(2)} m by the other's (${(agree.off * 100).toFixed(1)}% off) — one calibration is wrong`)
+        `lined up, the floors are drawn ${(agree.off * 100).toFixed(1)}% apart in size by their own scales ` +
+        '— if the walls do line up, one calibration is wrong')
     }
   }
 
