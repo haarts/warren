@@ -169,6 +169,11 @@ details.fold[open] > summary::before { transform: rotate(90deg); }
 details.fold > summary:hover { color: var(--ink); }
 .fold-body { padding-bottom: 8px; }
 
+/* Lining the floor underneath up by eye: a 3x3 pad, arrows in the cross, turns and sizes in the corners. */
+.nudge-pad { display: grid; grid-template-columns: repeat(3, 34px); gap: 4px; }
+.nudge-pad button.nudge { height: 30px; padding: 0; font-size: 15px; line-height: 1; touch-action: none; user-select: none; }
+.nudge-pad button.nudge.active { font-weight: 650; }
+
 /* ---------------------------------------------------------------- layers */
 
 .layer-cat { margin-bottom: 4px; border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }

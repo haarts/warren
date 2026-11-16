@@ -1232,6 +1232,40 @@ try {
     /Calibrate from the other floor/.test(scaleQuestion) && Math.abs(secondAligned.scale / secondAligned.firstScale - 1) < 1e-3 && secondAligned.ghost,
     `${scaleQuestion} ${JSON.stringify(secondAligned)}`)
 
+  // --- lining the floor underneath up by eye ------------------------------------------------
+  await page.evaluate(() => {
+    const fold = [...document.querySelectorAll('.tab-body details.fold')].find((d) => /^Sheet/.test(d.querySelector('summary').textContent))
+    if (!fold.open) fold.querySelector('summary').click()
+  })
+  await page.waitForSelector('button[title="Move it right"]', { visible: true, timeout: 3000 })
+  const padState = () => page.evaluate(() => {
+    const s = window.warren.store
+    return { a: { ...s.project.sheets[1].align.a }, undo: s.undoStack.length, zoom: window.warren.editor.cam.zoom }
+  })
+  const press = async (title, ms) => {
+    const box = await (await page.$(`button[title="${title}"]`)).boundingBox()
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await new Promise((r) => setTimeout(r, ms))
+    await page.mouse.up()
+    await new Promise((r) => setTimeout(r, 100))
+  }
+  const padBefore = await padState()
+  await press('Move it right', 60)
+  const padOne = await padState()
+  check('one click on → moves the floor underneath one screen pixel, as one undo step',
+    Math.abs((padOne.a.x - padBefore.a.x) * padBefore.zoom - 1) < 1e-6 && padOne.a.y === padBefore.a.y && padOne.undo === padBefore.undo + 1,
+    JSON.stringify({ padBefore, padOne }))
+  await press('Turn it clockwise, about the middle of the screen', 900)
+  const padHeld = await padState()
+  await page.evaluate(() => window.warren.store.undo())
+  const padUndone = await padState()
+  check('holding a button keeps going, and one undo takes the whole hold back',
+    padHeld.undo === padOne.undo + 1 && Math.hypot(padHeld.a.x - padOne.a.x, padHeld.a.y - padOne.a.y) > 1e-6
+    && Math.hypot(padUndone.a.x - padOne.a.x, padUndone.a.y - padOne.a.y) < 1e-9,
+    JSON.stringify({ padOne, padHeld, padUndone }))
+  await page.evaluate(() => window.warren.store.undo())
+
   const rose = await page.evaluate(() => {
     const app = window.warren
     const [first, second] = app.store.project.sheets

@@ -12,7 +12,7 @@ import { tipBearing } from '../../directions.ts'
 import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
 import { acrossAxis, alignItems, distributeItems, runAxis, setBoxRotation, type AlignEdge } from '../../interact/arrange.ts'
 import { alignedOthers, alignPointNames, startAlign } from '../../app/alignOps.ts'
-import { CALIBRATION_TOLERANCE, calibrationAgreement } from '../../align.ts'
+import { CALIBRATION_TOLERANCE, calibrationAgreement, nudgeAlignment, type Nudge } from '../../align.ts'
 import { comboInput, el, field, groupedSelect, numberInput, select, swatch, textInput } from '../dom.ts'
 
 const CONTACT_LABELS: Record<Contact, string> = { 'end-to-end': 'end', tee: 'tee', equipment: 'at' }
@@ -643,6 +643,7 @@ function buildFloorAlignment(app: App, body: HTMLElement): void {
       (v) => { editor.ghostSheetId = v || null; editor.requestRender() },
     )
     body.appendChild(field('Underneath', picker, 'Another floor, drawn faintly through the alignment - walls landing on walls means it is right.'))
+    if (editor.ghostSheetId && others.some((s) => s.id === editor.ghostSheetId)) buildNudgePad(app, body)
     const off = others.map((o) => ({ o, agree: calibrationAgreement(sheet, o) }))
       .find((x) => x.agree && x.agree.off > CALIBRATION_TOLERANCE)
     if (off) {
@@ -651,4 +652,82 @@ function buildFloorAlignment(app: App, body: HTMLElement): void {
         'One of the two calibrations is off - Realign to choose which one to trust.'))
     }
   }
+}
+
+/** Fine or coarse, kept for the session. Steps are in screen pixels, so they mean the same at any zoom. */
+let nudgeCoarse = false
+const NUDGE_STEP = {
+  fine: { px: 1, deg: 0.02, pct: 0.02 },
+  coarse: { px: 10, deg: 0.2, pct: 0.2 },
+}
+
+/**
+ * Lining the floor underneath up by eye: shift it, turn it, size it, a step at a time, watching
+ * walls land on walls. Two clicked spots get it close; this gets it exact. Each step moves this
+ * sheet's reference pair, which is all the see-through floor is placed by. Holding a button
+ * repeats it, and one hold is one undo step.
+ */
+function buildNudgePad(app: App, body: HTMLElement): void {
+  const { store, editor } = app
+  const sheet = store.sheet
+  const step = (): typeof NUDGE_STEP.fine => (nudgeCoarse ? NUDGE_STEP.coarse : NUDGE_STEP.fine)
+  // Turning and sizing go about the middle of the screen: put a spot that already matches there.
+  const pivot = (): { x: number; y: number } => ({
+    x: editor.cam.x + editor.cssWidth / 2 / editor.cam.zoom,
+    y: editor.cam.y + editor.cssHeight / 2 / editor.cam.zoom,
+  })
+  const apply = (n: Omit<Nudge, 'pivot'>): void => {
+    if (!sheet.align) return
+    sheet.align = nudgeAlignment(sheet.align, { ...n, pivot: pivot() })
+    editor.requestRender()
+  }
+  const pad = (label: string, title: string, nudge: () => Omit<Nudge, 'pivot'>): HTMLElement => {
+    let timer: number | null = null
+    const stop = (): void => {
+      if (timer === null) return
+      clearTimeout(timer)
+      timer = null
+      // One hold, one undo step; the commit is also what saves it and redraws the panel.
+      store.commit()
+    }
+    const button = el('button', { title, class: 'nudge' }, label)
+    button.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return
+      e.preventDefault()
+      store.begin()
+      apply(nudge())
+      const repeat = (delay: number): void => {
+        timer = window.setTimeout(() => { apply(nudge()); repeat(60) }, delay)
+      }
+      repeat(350)
+    })
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel'] as const) button.addEventListener(ev, stop)
+    return button
+  }
+  const move = (dx: number, dy: number) => () => {
+    const d = step().px / editor.cam.zoom
+    return { dx: dx * d, dy: dy * d }
+  }
+  const turn = (sign: number) => () => ({ turnDeg: sign * step().deg })
+  const size = (sign: number) => () => ({ factor: 1 + (sign * step().pct) / 100 })
+
+  const grid = el('div', { class: 'nudge-pad' },
+    pad('↺', 'Turn it anticlockwise, about the middle of the screen', turn(-1)),
+    pad('↑', 'Move it up', move(0, -1)),
+    pad('↻', 'Turn it clockwise, about the middle of the screen', turn(1)),
+    pad('←', 'Move it left', move(-1, 0)),
+    el('button', {
+      class: `nudge${nudgeCoarse ? ' active' : ''}`,
+      title: nudgeCoarse ? 'Coarse steps: 10 px, 0.2°, 0.2% - click for fine' : 'Fine steps: 1 px, 0.02°, 0.02% - click for coarse',
+      onclick: () => { nudgeCoarse = !nudgeCoarse; app.refresh() },
+    }, nudgeCoarse ? '×10' : '×1'),
+    pad('→', 'Move it right', move(1, 0)),
+    pad('−', 'Make it smaller, about the middle of the screen', size(-1)),
+    pad('↓', 'Move it down', move(0, 1)),
+    pad('+', 'Make it bigger, about the middle of the screen', size(1)),
+  )
+  body.appendChild(field('By eye', grid,
+    'Shifts, turns and sizes the floor underneath until walls land on walls. ' +
+    'Turning and sizing go about the middle of the screen, so put a spot that already lines up there. ' +
+    'Hold a button to keep going; the middle one switches fine and coarse steps.'))
 }

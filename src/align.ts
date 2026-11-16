@@ -98,3 +98,33 @@ export function mapItem(item: Item, m: FloorMapping): Item {
   }
   return copy
 }
+
+/** One step of lining floors up by eye: a shift, a turn about a pivot, a change of size about it. */
+export interface Nudge {
+  /** Shift, in this sheet's points. */
+  dx?: number
+  dy?: number
+  /** Clockwise on screen, in degrees, about `pivot`. */
+  turnDeg?: number
+  /** Size, about `pivot`: 1.001 is a tenth of a percent bigger. */
+  factor?: number
+  pivot: Pt
+}
+
+/**
+ * This sheet's reference pair after one nudge. Every other floor is placed on this one through
+ * the pair, so whatever the pair does, the see-through floor does too: moving both points 1 pt
+ * right moves it 1 pt right, turning them about a spot turns it about that spot. Nothing drawn
+ * on either floor moves - only where the other floor is understood to sit.
+ */
+export function nudgeAlignment(align: SheetAlignment, n: Nudge): SheetAlignment {
+  const rad = ((n.turnDeg ?? 0) * Math.PI) / 180
+  const cos = Math.cos(rad) * (n.factor ?? 1)
+  const sin = Math.sin(rad) * (n.factor ?? 1)
+  const move = (p: Pt): Pt => {
+    const x = p.x - n.pivot.x
+    const y = p.y - n.pivot.y
+    return { x: n.pivot.x + x * cos - y * sin + (n.dx ?? 0), y: n.pivot.y + x * sin + y * cos + (n.dy ?? 0) }
+  }
+  return { a: move(align.a), b: move(align.b) }
+}

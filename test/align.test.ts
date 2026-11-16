@@ -88,3 +88,24 @@ test('warren align records the points in metres and reports the floors', () => {
   assert.equal(report.sheets[1].against.scale, 1)
   assert.equal(report.calibration[0].agrees, true)
 })
+
+test('nudging this floor\'s pair moves, turns and sizes the floor seen through it by exactly that', async () => {
+  const { nudgeAlignment } = await import('../src/align.ts')
+  const pivot = { x: 30, y: 40 }
+  const ghostOf = (here: Sheet) => floorMapping(lower, here)!
+  const before = ghostOf(upper)
+  const spot = { x: 70, y: 20 }
+  const was = before.apply(spot)
+
+  const shifted = { ...upper, align: nudgeAlignment(upper.align!, { dx: 3, dy: -2, pivot }) }
+  assert.ok(near(ghostOf(shifted).apply(spot), { x: was.x + 3, y: was.y - 2 }))
+
+  const turned = { ...upper, align: nudgeAlignment(upper.align!, { turnDeg: 90, pivot }) }
+  // A quarter turn clockwise on screen (y down) about the pivot: (dx, dy) -> (-dy, dx).
+  assert.ok(near(ghostOf(turned).apply(spot), { x: pivot.x - (was.y - pivot.y), y: pivot.y + (was.x - pivot.x) }))
+  assert.equal(Math.round(ghostOf(turned).turnDeg), Math.round(before.turnDeg + 90))
+
+  const grown = { ...upper, align: nudgeAlignment(upper.align!, { factor: 1.01, pivot }) }
+  assert.ok(Math.abs(ghostOf(grown).scale / before.scale - 1.01) < 1e-12)
+  assert.ok(near(ghostOf(grown).apply(spot), { x: pivot.x + (was.x - pivot.x) * 1.01, y: pivot.y + (was.y - pivot.y) * 1.01 }))
+})
