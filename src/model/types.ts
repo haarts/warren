@@ -63,6 +63,7 @@ const MARKER_LABELS_SRC = {
   'air-valve': 'Ventiel / rooster (air valve)',
   'riser-up': 'Standleiding omhoog (riser up)',
   'riser-down': 'Standleiding omlaag (riser down)',
+  'riser-through': 'Standleiding doorgaand (riser passing through)',
   penetration: 'Sparing (penetration)',
   drain: 'Afvoerput (gully)',
   cleanout: 'Ontstoppingsstuk (cleanout)',

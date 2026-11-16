@@ -87,7 +87,8 @@ export function riserPointFor(app: App, item: Item): Pt | null {
  * Takes the selected run (or marker) through the floor to another sheet: a riser marker here
  * pointing the way it goes, its partner at the same spot on the other sheet pointing back, each
  * labelled with the other sheet's name. Then it follows the pipe there, with the partner
- * selected, so the next thing you draw carries on from it.
+ * selected, so the next thing you draw carries on from it. Floors it passes on the way - the
+ * sheets between the two, in tab order - each get a riser that says it only passes through.
  *
  * Sheets do not know which floor is above which, so `way` is said, not worked out. Nor do
  * they know where the other floor's drawing sits on its page: that is what the alignment is
@@ -107,6 +108,12 @@ export function riseToSheet(app: App, sheetId: string, way: 'up' | 'down'): void
     return
   }
   const there = mapping.apply(at)
+  // Tab order is the only order sheets have, so that is what "between" means.
+  const sheets = store.project.sheets
+  const [lo, hi] = [sheets.indexOf(source), sheets.indexOf(target)].sort((a, b) => a - b)
+  const between = sheets.slice(lo + 1, hi)
+  const passed = between.filter((s) => s.align)
+  const unaligned = between.filter((s) => !s.align)
 
   const hereSymbol: MarkerItem['symbol'] = way === 'up' ? 'riser-up' : 'riser-down'
   const thereSymbol: MarkerItem['symbol'] = way === 'up' ? 'riser-down' : 'riser-up'
@@ -128,6 +135,13 @@ export function riseToSheet(app: App, sheetId: string, way: 'up' | 'down'): void
       arrival = riser(there, thereSymbol, source.name)
       target.items.push(arrival)
     }
+    for (const floor of passed) {
+      const p = floorMapping(source, floor)!.apply(at)
+      // Any riser of this system already on the spot will do: it is the same pipe.
+      const standing = floor.items.some((i) =>
+        i.kind === 'marker' && i.symbol.startsWith('riser-') && i.systemId === item.systemId && dist(i, p) <= toleranceFor(floor))
+      if (!standing) floor.items.push(riser(p, 'riser-through', `${source.name} – ${target.name}`))
+    }
     store.project.activeSheetId = target.id
     store.selection.clear()
     store.selection.add(arrival.id)
@@ -138,7 +152,9 @@ export function riseToSheet(app: App, sheetId: string, way: 'up' | 'down'): void
   // The camera stays put: the riser is at the same coordinates up there, so it lands right
   // where your eye already is.
   app.editor.invalidateBackground()
-  app.editor.flash(`${way === 'up' ? 'Up' : 'Down'} to ${target.name} — the riser is selected here; press L and start on it to carry on`)
+  const via = passed.length ? `, passing ${passed.map((s) => s.name).join(', ')}` : ''
+  const gap = unaligned.length ? ` (${unaligned.map((s) => s.name).join(', ')} is not aligned, so nothing was put there)` : ''
+  app.editor.flash(`${way === 'up' ? 'Up' : 'Down'} to ${target.name}${via} — the riser is selected here; press L and start on it to carry on${gap}`)
 }
 
 /** Rise/Drop needs both floors aligned. Says which is not, and offers to go and do it. */

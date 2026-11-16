@@ -88,7 +88,7 @@ export function drawGhost(dc: DrawCtx, ghost: GhostLayer): void {
       ctx.closePath()
       ctx.stroke()
     } else if (item.kind === 'marker') {
-      const riser = item.symbol === 'riser-up' || item.symbol === 'riser-down'
+      const riser = item.symbol.startsWith('riser-')
       ctx.setLineDash([])
       ctx.beginPath()
       ctx.arc(item.x, item.y, (riser ? 6 : 2.5) * px * ui, 0, Math.PI * 2)

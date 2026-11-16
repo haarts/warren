@@ -58,16 +58,20 @@ function socketGlyph(ctx: CanvasRenderingContext2D, r: number, gangs: number): v
   line(ctx, 0, 0, 0, r * 1.05)
 }
 
-function riserGlyph(ctx: CanvasRenderingContext2D, r: number, up: boolean): void {
+/** A ring with an arrow the way the pipe goes; both ways for one that only passes this floor. */
+function riserGlyph(ctx: CanvasRenderingContext2D, r: number, way: 'up' | 'down' | 'through'): void {
   ring(ctx, r)
   fillStroke(ctx)
-  const s = r * 0.55
+  const s = r * (way === 'through' ? 0.62 : 0.55)
   ctx.beginPath()
-  ctx.moveTo(0, up ? s : -s)
-  ctx.lineTo(0, up ? -s : s)
-  ctx.moveTo(-s * 0.7, up ? -s * 0.25 : s * 0.25)
-  ctx.lineTo(0, up ? -s : s)
-  ctx.lineTo(s * 0.7, up ? -s * 0.25 : s * 0.25)
+  ctx.moveTo(0, s)
+  ctx.lineTo(0, -s)
+  for (const dir of way === 'through' ? [1, -1] : [way === 'up' ? 1 : -1]) {
+    // dir 1 points the head up the page.
+    ctx.moveTo(-s * 0.7, -dir * s * 0.25)
+    ctx.lineTo(0, -dir * s)
+    ctx.lineTo(s * 0.7, -dir * s * 0.25)
+  }
   ctx.stroke()
 }
 
@@ -122,8 +126,9 @@ const GLYPHS: Record<MarkerSymbol, Glyph> = {
     ctx.stroke()
   },
 
-  'riser-up': (ctx, r) => riserGlyph(ctx, r, true),
-  'riser-down': (ctx, r) => riserGlyph(ctx, r, false),
+  'riser-up': (ctx, r) => riserGlyph(ctx, r, 'up'),
+  'riser-down': (ctx, r) => riserGlyph(ctx, r, 'down'),
+  'riser-through': (ctx, r) => riserGlyph(ctx, r, 'through'),
 
   penetration: (ctx, r) => {
     square(ctx, r)

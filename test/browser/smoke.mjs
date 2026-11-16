@@ -1223,6 +1223,35 @@ try {
     rose.onSecond && rose.here.length === 1 && rose.there?.symbol === 'riser-down'
     && Math.abs(rose.there.dx - 50) < 0.5 && Math.abs(rose.there.dy - 20) < 0.5,
     JSON.stringify(rose))
+  // A third floor, with the second now in between: rising from the first to the third leaves
+  // a pass-through riser on the second, where its plan puts that spot (+50, +20).
+  const through = await page.evaluate(() => {
+    const app = window.warren
+    const [first, second] = app.store.project.sheets
+    const before = app.store.undoStack.length
+    app.store.mutate(() => {
+      app.store.project.sheets.push({ ...structuredClone(second), id: 'sheet_third', name: 'Third', items: [], align: structuredClone(first.align) })
+    })
+    const run = first.items.find((i) => i.kind === 'run')
+    const end = run.points[run.points.length - 1]
+    app.store.selection.clear()
+    app.store.selection.add(run.id)
+    app.store.activeVertex = { itemId: run.id, index: run.points.length - 1 }
+    app.riseToSheet('sheet_third', 'up')
+    const mid = second.items.filter((i) => i.kind === 'marker' && i.symbol === 'riser-through')
+    const result = {
+      onThird: app.store.project.activeSheetId === 'sheet_third',
+      mid: mid.map((m) => ({ label: m.label, dx: m.x - end.x, dy: m.y - end.y })),
+      top: app.store.selectedItems()[0]?.symbol,
+    }
+    while (app.store.undoStack.length > before) app.store.undo()
+    app.store.setActiveSheet(first.id)
+    return { ...result, sheets: app.store.project.sheets.length }
+  })
+  check('rising past a floor leaves a pass-through riser on it',
+    through.onThird && through.mid.length === 1 && Math.abs(through.mid[0].dx - 50) < 0.5 && Math.abs(through.mid[0].dy - 20) < 0.5
+    && through.top === 'riser-down' && through.sheets === 2,
+    JSON.stringify(through))
   // The rest of the script was written against unaligned floors.
   await page.evaluate(() => {
     const app = window.warren

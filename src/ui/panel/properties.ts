@@ -475,8 +475,8 @@ function buildBetweenFloors(app: App, body: HTMLElement): void {
       sheetPicker('↑ Rise to…', (id) => app.riseToSheet(id, 'up')),
       sheetPicker('↓ Drop to…', (id) => app.riseToSheet(id, 'down')),
     ), only.kind === 'run'
-      ? 'Through the floor at the end of this run (or the end corner you picked): a riser here, its partner at the same spot in the building on the other floor, and you follow it there.'
-      : 'A riser at this spot, its partner at the same spot in the building on the other floor, and you follow it there.'))
+      ? 'Through the floor at the end of this run (or the end corner you picked): a riser here, its partner at the same spot in the building on the other floor, and you follow it there. Floors in between get one that passes through.'
+      : 'A riser at this spot, its partner at the same spot in the building on the other floor, and you follow it there. Floors in between get one that passes through.'))
   }
   body.appendChild(field('Copy', sheetPicker('Copy to sheet…', (id) => app.duplicateSelectionToSheet(id)),
     'Copies land at the same spot in the building - or, until both floors are aligned, at the same page position.'))
