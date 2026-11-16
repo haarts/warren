@@ -188,6 +188,25 @@ try {
   check('redo reapplies it',
     Math.hypot((await items())[0].points[1].x - afterV[1].x, (await items())[0].points[1].y - afterV[1].y) < 1e-6)
 
+  // --- a corner dropped on the one next to it becomes that corner ---------------------------------
+  const ends = await page.evaluate(() => {
+    const app = window.warren
+    const pts = app.store.items()[0].points
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    const s = (p) => ({ x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) })
+    return { from: s(pts[1]), to: s(pts[2]), n: pts.length, last: { ...pts[2] } }
+  })
+  await page.mouse.move(ends.from.x, ends.from.y)
+  await page.mouse.down()
+  await page.mouse.move(ends.to.x, ends.to.y, { steps: 8 })
+  await page.mouse.up()
+  const merged = (await items())[0].points
+  check('a corner dragged onto its neighbour merges with it',
+    merged.length === ends.n - 1 && Math.hypot(merged[1].x - ends.last.x, merged[1].y - ends.last.y) < 1e-6,
+    `${ends.n} corners → ${merged.length}`)
+  await page.evaluate(() => window.warren.store.undo())
+  check('and one undo brings it back', (await items())[0].points.length === ends.n)
+
   // --- alt+click inserts and removes corners ------------------------------------------------
   const mid = await page.evaluate(() => {
     const app = window.warren
