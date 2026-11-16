@@ -23,11 +23,11 @@ export interface AddOp { op: 'add'; sheet?: string; item: Record<string, unknown
 export type Op = SetOp | DeleteOp | MoveOp | AddOp
 
 /** The kinds `add` knows how to build. Named once, so the manifest cannot promise more. */
-export const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'wall', 'window', 'marker', 'note']
+export const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'wall', 'window', 'box', 'marker', 'note']
 
 export const PATCHABLE = new Set([
   'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride',
-  'locked', 'symbol', 'name', 'use', 'ref', 'swing', 'status', 'thicknessM', 'depthM',
+  'locked', 'symbol', 'name', 'use', 'ref', 'swing', 'status', 'thicknessM', 'depthM', 'pointsM', 'rotationDeg',
 ])
 
 export interface Plan {
@@ -60,9 +60,34 @@ function doSet(op: SetOp, ctx: Ctx): void {
   if (typeof op.patch.level === 'string' && !LEVELS.includes(op.patch.level as Level)) {
     return void problems.push(`${at}: level "${op.patch.level}" is not one of ${LEVELS.join(', ')}`)
   }
-  const { thicknessM, depthM, ...patch } = op.patch as Record<string, unknown>
+  const { thicknessM, depthM, pointsM, ...patch } = op.patch as Record<string, unknown>
   let thickness: number | null = null
   let depth: number | null = null
+  let points: Pt[] | null = null
+  if (pointsM !== undefined) {
+    // The whole outline, replaced: the way to straighten a wall or move one corner of a room
+    // without deleting the item and losing its id.
+    const kind = target!.item.kind
+    if (!pointsOf(target!.item)) return void problems.push(`${at}: pointsM is for items with an outline; ${op.id} is a ${kind} — use move`)
+    const exact = kind === 'door' || kind === 'window'
+    const least = kind === 'room' ? 3 : 2
+    if (!Array.isArray(pointsM) || pointsM.length < least || (exact && pointsM.length !== 2)) {
+      return void problems.push(`${at}: a ${kind} takes ${exact ? 'exactly 2' : `at least ${least}`} points`)
+    }
+    points = []
+    for (const pair of pointsM as unknown[]) {
+      const [mx, my] = Array.isArray(pair) ? pair : []
+      if (typeof mx !== 'number' || typeof my !== 'number') return void problems.push(`${at}: pointsM is [[x, y], ...] in metres`)
+      const x = pointsFromMetres(target!.sheet, mx)
+      const y = pointsFromMetres(target!.sheet, my)
+      if (x === null || y === null) return void problems.push(`${at}: sheet "${target!.sheet.name}" has no scale, so pointsM mean nothing here`)
+      points.push({ x, y })
+    }
+  }
+  if ('rotationDeg' in patch) {
+    if (target!.item.kind !== 'box') return void problems.push(`${at}: rotationDeg is for boxes; ${op.id} is a ${target!.item.kind}`)
+    if (typeof patch.rotationDeg !== 'number' || !isFinite(patch.rotationDeg)) return void problems.push(`${at}: rotationDeg must be a number of degrees`)
+  }
   if (depthM !== undefined) {
     if (target!.item.kind !== 'window') return void problems.push(`${at}: depthM is for windows; ${op.id} is a ${target!.item.kind}`)
     if (typeof depthM !== 'number' || !(depthM > 0)) return void problems.push(`${at}: depthM must be a positive number of metres`)
@@ -83,6 +108,7 @@ function doSet(op: SetOp, ctx: Ctx): void {
   describe.push(`${at}: ${Object.keys(op.patch).join(', ')} on ${op.id}`)
   planned.push(() => {
     Object.assign(target!.item, patch)
+    if (points) (target!.item as { points: Pt[] }).points = points
     if (thickness !== null && target!.item.kind === 'wall') target!.item.thickness = thickness
     if (depth !== null && target!.item.kind === 'window') target!.item.depth = depth
     // Editing claims machine output, whoever does the editing. Without this a later
@@ -233,6 +259,27 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
         })
       }
+    })
+  } else if (raw.kind === 'box') {
+    // A piece of equipment in plan: its unturned rectangle by one corner and its size, then
+    // turned about its centre if it does not sit square to the page.
+    const dim = (metres: unknown, pts: unknown): number | null =>
+      typeof metres === 'number' ? pointsFromMetres(sheet, metres) : typeof pts === 'number' ? pts : null
+    const [x, y, w, h] = [dim(raw.xM, raw.x), dim(raw.yM, raw.y), dim(raw.wM, raw.w), dim(raw.hM, raw.h)]
+    if (x === null || y === null || w === null || h === null) {
+      return void problems.push(`${at}: a box needs xM, yM (its top-left corner) and wM, hM in metres on a calibrated sheet — or x, y, w, h in points`)
+    }
+    if (!(w > 0) || !(h > 0)) return void problems.push(`${at}: a box needs a positive wM and hM`)
+    if (raw.rotationDeg !== undefined && (typeof raw.rotationDeg !== 'number' || !isFinite(raw.rotationDeg))) {
+      return void problems.push(`${at}: rotationDeg must be a number of degrees`)
+    }
+    describe.push(`${at}: add box ${raw.label ?? ''} to ${sheet.name}`.replace(/\s+/g, ' '))
+    planned.push(() => {
+      sheet.items.push({
+        kind: 'box', id: newId('box'), systemId: raw.systemId as string, level, x, y, w, h,
+        ...(typeof raw.rotationDeg === 'number' && raw.rotationDeg % 360 !== 0 ? { rotationDeg: raw.rotationDeg } : {}),
+        ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+      })
     })
   } else if (raw.kind === 'marker' || raw.kind === 'note') {
     const x = typeof raw.xM === 'number' ? pointsFromMetres(sheet, raw.xM) : typeof raw.x === 'number' ? raw.x : null

@@ -20,10 +20,10 @@ export const pointsFromMetres = (sheet: Sheet, m: number): number | null =>
 
 export const round = (n: number, places = 2): number => Number(n.toFixed(places))
 
-export function pointAtM(sheet: Sheet, p: Pt): [number, number] | null {
+export function pointAtM(sheet: Sheet, p: Pt, digits = 2): [number, number] | null {
   const x = metres(sheet, p.x)
   const y = metres(sheet, p.y)
-  return x === null || y === null ? null : [round(x), round(y)]
+  return x === null || y === null ? null : [round(x, digits), round(y, digits)]
 }
 
 /** The non-failing core, so a long-lived process can report a bad selector rather than exit. */

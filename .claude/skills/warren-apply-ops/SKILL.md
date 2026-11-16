@@ -55,6 +55,8 @@ project's catalogue" no matter how correct the id is, because the checker never 
 - Shaped items (`run`, `room`, `door`) take `item.pointsM` (metres) or `item.points` (raw PDF
   points) — a run needs 2+, a room 3+, a door exactly 2 (hinge jamb first).
 - Positioned items (`marker`, `note`) take `item.xM`/`item.yM` (or `item.x`/`item.y`).
+- A `box` (a piece of equipment in plan) takes `item.xM`/`item.yM` — its top-left corner — plus
+  `item.wM`/`item.hM`, and optionally `item.rotationDeg` and `item.label`.
 - `item.level` defaults to `wall` if omitted — set it explicitly for `crawl`/`ceiling`/roof runs.
 - A room can carry `item.expectM2`: the plan's printed area. The whole batch is refused if the
   traced polygon is more than 8% off — this is a self-check, use it whenever the plan prints
@@ -68,6 +70,10 @@ project's catalogue" no matter how correct the id is, because the checker never 
 { "op": "move", "id": "run_abc123", "byM": [0.2, 0] }
 { "op": "delete", "id": "run_abc123" }
 ```
+
+To reshape an item without losing its id, `set` its whole outline: `"patch": { "pointsM": [[x, y], ...] }`
+(read the current one with `warren items <file> --id <id> --json`, which returns `pointsM`, or
+`rectM` for a box).
 
 `set.patch` only accepts the patchable fields listed in `help --json`; setting `systemId` there
 must also match an existing catalogue id. Editing an item via `apply` un-stamps any `generated`

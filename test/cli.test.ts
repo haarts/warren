@@ -145,6 +145,32 @@ test('apply accepts metres and converts them to the sheet scale', async () => {
   assert.equal(rows[0].size, '3×2.5mm²', 'a new run takes its system default')
 })
 
+test('apply adds a box by corner and size, and reshapes an item in place', async () => {
+  const { dir, file } = await fixture()
+  writeFileSync(join(dir, 'ops.json'), JSON.stringify({
+    ops: [
+      { op: 'add', item: { kind: 'box', systemId: 'power.230v', level: 'on-floor', label: 'rack', xM: 2, yM: 3, wM: 0.6, hM: 0.8, rotationDeg: 90 } },
+      { op: 'add', item: { kind: 'run', systemId: 'power.230v', pointsM: [[1, 1], [6, 1]] } },
+    ],
+  }))
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 0)
+  const sheet = (): { mmPerPoint: number; items: Record<string, never>[] } => JSON.parse(readFileSync(join(dir, file), 'utf8')).sheets[0]
+  const box = sheet().items.find((i) => i.kind === 'box' && i.label === 'rack') as unknown as { x: number; w: number; h: number; rotationDeg: number }
+  const m = (pt: number): number => Math.round(pt * sheet().mmPerPoint) / 1000
+  assert.deepEqual([m(box.x), m(box.w), m(box.h), box.rotationDeg], [2, 0.6, 0.8, 90])
+
+  const run = JSON.parse(warren(['items', file, '--system', 'power.230v', '--json'], dir).out).find((r: { lengthM: number }) => r.lengthM === 5)
+  writeFileSync(join(dir, 'ops.json'), JSON.stringify({ ops: [{ op: 'set', id: run.id, patch: { pointsM: [[1, 1], [6, 1], [6, 4]] } }] }))
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 0)
+  const after = JSON.parse(warren(['items', file, '--system', 'power.230v', '--json'], dir).out).find((r: { id: string }) => r.id === run.id)
+  assert.equal(after.lengthM, 8, 'same id, new outline')
+
+  writeFileSync(join(dir, 'ops.json'), JSON.stringify({ ops: [{ op: 'add', item: { kind: 'box', systemId: 'power.230v', xM: 1, yM: 1 } }] }))
+  const refused = warren(['apply', file, 'ops.json'], dir)
+  assert.equal(refused.code, 1)
+  assert.match(refused.out, /wM, hM/)
+})
+
 test('split and bundle are inverses', async () => {
   const { dir, file } = await fixture()
   const original = JSON.parse(readFileSync(join(dir, file), 'utf8'))

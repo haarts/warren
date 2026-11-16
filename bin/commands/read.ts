@@ -5,6 +5,7 @@
 import { computeTakeoff } from '../../src/takeoff.ts'
 import { countBySeverity, runChecks } from '../../src/check.ts'
 import { buildGraph, connectionsOf, networkOf } from '../../src/topology.ts'
+import { pointsOf, type Item, type Sheet } from '../../src/model/types.ts'
 import { fail, type Args } from '../args.ts'
 import { load } from '../project.ts'
 import { globToRegExp, pointAtM, reportItem, round, sheetOf, type ItemReport } from '../units.ts'
@@ -51,21 +52,43 @@ export async function cmdSummary(args: Args): Promise<void> {
   if (missingAssets.length) console.log(`  plan PDF not found beside this file (${missingAssets.length})`)
 }
 
+/** The whole shape, in metres - what `set` with pointsM, or an `add` beside it, has to be worked out from. */
+interface Geometry {
+  pointsM?: ([number, number] | null)[]
+  /** A box: its unturned rectangle, top-left corner first. */
+  rectM?: { xM: number; yM: number; wM: number; hM: number } | null
+  rotationDeg?: number
+}
+
+function geometryOf(sheet: Sheet, item: Item): Geometry {
+  const points = pointsOf(item)
+  if (points) return { pointsM: points.map((p) => pointAtM(sheet, p, 3)) }
+  if (item.kind !== 'box') return {}
+  const corner = pointAtM(sheet, item, 3)
+  const size = pointAtM(sheet, { x: item.w, y: item.h }, 3)
+  return {
+    rectM: corner && size ? { xM: corner[0], yM: corner[1], wM: size[0], hM: size[1] } : null,
+    ...(item.rotationDeg ? { rotationDeg: item.rotationDeg } : {}),
+  }
+}
+
 export async function cmdItems(args: Args): Promise<void> {
   const { store, project } = await load(args)
   const sheets = sheetOf(project, args.flags.sheet)
   const systemPattern = typeof args.flags.system === 'string' ? globToRegExp(args.flags.system) : null
   const level = typeof args.flags.level === 'string' ? args.flags.level : null
   const kind = typeof args.flags.kind === 'string' ? args.flags.kind : null
+  const ids = typeof args.flags.id === 'string' ? new Set(args.flags.id.split(',').map((s) => s.trim()).filter(Boolean)) : null
 
-  const rows: ItemReport[] = []
+  const rows: (ItemReport & Geometry)[] = []
   for (const sheet of sheets) {
     store.setActiveSheet(sheet.id)
     for (const item of sheet.items) {
       if (systemPattern && !systemPattern.test(item.systemId)) continue
       if (level && item.level !== level) continue
       if (kind && item.kind !== kind) continue
-      rows.push(reportItem(store, sheet, item))
+      if (ids && !ids.has(item.id)) continue
+      rows.push({ ...reportItem(store, sheet, item), ...geometryOf(sheet, item) })
     }
   }
 

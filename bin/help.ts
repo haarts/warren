@@ -32,6 +32,7 @@ const FILTERS: [string, string][] = [
   ['--system <glob>', "system ids, `*` allowed — e.g. 'power.*'"],
   ['--level <level>', `one of ${LEVELS.join(', ')}`],
   ['--kind <kind>', `one of ${ITEM_KINDS.join(', ')}`],
+  ['--id <id[,id…]>', 'only these items'],
 ]
 
 const MANUAL = {
@@ -51,7 +52,10 @@ const MANUAL = {
       "warren items house.warren.json --system 'power.*' --level wall",
       'warren items house.warren.json --kind room --json',
     ],
-    notes: ['The id on each row is what `trace` and `apply` address items by.'],
+    notes: [
+      'The id on each row is what `trace` and `apply` address items by.',
+      '--json carries the whole shape as well: pointsM for anything with an outline (every corner, in metres) and rectM for a box. That is what to read before a `set` with pointsM, or before placing something against a wall.',
+    ],
   },
   takeoff: {
     summary: 'metres per system — the thing you order from',
@@ -315,7 +319,7 @@ const OPS: Record<string, { does: string; fields: Record<string, string> }> = {
     does: 'change fields on an existing item',
     fields: {
       id: 'the item to change, as printed by `items`',
-      patch: `object — any of: ${[...PATCHABLE].join(', ')}`,
+      patch: `object — any of: ${[...PATCHABLE].join(', ')}. pointsM replaces the whole outline of a run, room, wall, door or window ([[x, y], ...] in metres), keeping its id; rotationDeg turns a box about its centre`,
     },
   },
   delete: {
@@ -341,12 +345,14 @@ const OPS: Record<string, { does: string; fields: Record<string, string> }> = {
       'item.thicknessM': 'wall — required: its full thickness in metres, centred on the line (half each side)',
       'item.depthM': 'window — the frame depth across the wall in metres; leave it out to take the thickness of the wall both jambs sit on (which must then already exist — the wall stays continuous behind the window)',
       'item.status': `wall — one of ${WALL_STATUSES.join(', ')} (default existing)`,
-      'item.xM, item.yM': 'marker/note — position in metres',
+      'item.xM, item.yM': 'marker/note — position in metres. box — its top-left corner, before any turning',
+      'item.wM, item.hM': 'box — required: its size in metres, across the page and down it',
+      'item.rotationDeg': 'box — optional: turned about its own centre, degrees clockwise',
       'item.name, item.ref': 'room — its name, and the number printed on the plan',
       'item.use': `room — one of ${ROOM_USES.join(', ')}`,
       'item.expectM2': 'room — the area printed on the plan; the batch is refused if the outline is more than 8% out',
       'item.swing': 'door — 1 or -1',
-      'item.label': 'run/door/wall/window/marker — the text drawn beside it',
+      'item.label': 'run/door/wall/window/box/marker — the text drawn beside it',
       'item.size, item.flow': `run — size defaults to the system’s; flow is none, forward or reverse`,
       'item.symbol': `marker — one of ${MARKER_SYMBOLS.join(', ')}`,
       'item.text': 'note — its contents',
