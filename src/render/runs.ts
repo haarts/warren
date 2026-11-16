@@ -39,36 +39,72 @@ export function drawRun(dc: DrawCtx, run: RunItem): void {
   }
 
   if (dc.store.project.settings.showFlow && run.flow !== 'none') {
-    drawFlowArrows(dc, pts, run.flow === 'reverse', style.color, run.flowAssumed === true)
+    const lineWidth = Math.max(1.1, style.width * cam.zoom)
+    drawFlowArrows(dc, pts, run.flow === 'reverse', style.color, lineWidth, run.flowAssumed === true)
   }
   ctx.restore()
 }
 
+/** Wider than this on screen, an arrow fits inside the line and is drawn white on it. */
+const INSIDE_FROM_PX = 8
+
+/**
+ * Arrowheads walked along the run, sized from the line as drawn rather than fixed: a thin line
+ * gets a head wider than itself with a white edge, so it reads against neighbours; a thick one
+ * gets a white head inside it, on a disc of the line's colour so a dash gap cannot swallow it.
+ * A direction somebody confirmed is filled; one that was only assumed is an outline.
+ */
 function drawFlowArrows(
-  dc: DrawCtx, screenPts: Pt[], reverse: boolean, color: string, assumed: boolean,
+  dc: DrawCtx, screenPts: Pt[], reverse: boolean, color: string, lineWidth: number, assumed: boolean,
 ): void {
   const { ctx, ui } = dc
   const path = reverse ? [...screenPts].reverse() : screenPts
-  const spacing = 34 * ui
-  const size = 4.5 * ui
+  const inside = lineWidth >= INSIDE_FROM_PX * ui
+  // Half the head's length along the run; it spans 1.5x this across.
+  const size = inside ? lineWidth * 0.55 : Math.max(5 * ui, lineWidth * 1.8)
+  const spacing = Math.max(46 * ui, size * 9)
   const marks = walkPolyline(path, spacing, spacing * 0.5)
+  const head = (): void => {
+    ctx.beginPath()
+    ctx.moveTo(-size * 0.8, -size * 0.75)
+    ctx.lineTo(size * 0.9, 0)
+    ctx.lineTo(-size * 0.8, size * 0.75)
+    ctx.closePath()
+  }
   ctx.save()
-  ctx.strokeStyle = color
-  ctx.lineWidth = 1.6 * ui
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
   ctx.setLineDash([])
-  // Faint means guessed. Solid means somebody looked at it and agreed.
-  if (assumed) ctx.globalAlpha = 0.45
+  ctx.lineJoin = 'round'
   for (const m of marks) {
     ctx.save()
     ctx.translate(m.p.x, m.p.y)
     ctx.rotate(m.angle)
-    ctx.beginPath()
-    ctx.moveTo(-size, -size * 0.8)
-    ctx.lineTo(size * 0.6, 0)
-    ctx.lineTo(-size, size * 0.8)
-    ctx.stroke()
+    if (inside) {
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(0, 0, lineWidth / 2, 0, Math.PI * 2)
+      ctx.fill()
+      head()
+      if (assumed) {
+        ctx.strokeStyle = '#ffffff'
+        ctx.lineWidth = Math.max(1.5 * ui, lineWidth * 0.1)
+        ctx.stroke()
+      } else {
+        ctx.fillStyle = '#ffffff'
+        ctx.fill()
+      }
+    } else {
+      head()
+      ctx.strokeStyle = '#ffffff'
+      ctx.lineWidth = 3 * ui
+      ctx.stroke()
+      ctx.fillStyle = assumed ? '#ffffff' : color
+      ctx.fill()
+      if (assumed) {
+        ctx.strokeStyle = color
+        ctx.lineWidth = 1.4 * ui
+        ctx.stroke()
+      }
+    }
     ctx.restore()
   }
   ctx.restore()
