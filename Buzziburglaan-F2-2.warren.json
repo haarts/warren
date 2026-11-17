@@ -1,0 +1,7256 @@
+{
+  "version": 1,
+  "name": "Buzziburglaan-F2-2",
+  "compass": {
+    "x": 721.5836938164477,
+    "y": 138.54861462067686,
+    "rotationDeg": 0,
+    "tips": [
+      "drieklinken, boven",
+      "tuin, rechts, woonboerderij, achterkant",
+      "beneden, onder, buren",
+      "buzzi, deel, links, voorkant"
+    ]
+  },
+  "systems": [
+    {
+      "id": "water.cold",
+      "category": "water",
+      "name": "Cold water (KW)",
+      "color": "#2563eb",
+      "dash": [],
+      "width": 1.8,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø16",
+      "sizes": [
+        "Ø16",
+        "Ø20",
+        "Ø25",
+        "Ø32"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "water.hot",
+      "category": "water",
+      "name": "Hot water (WW)",
+      "color": "#dc2626",
+      "dash": [],
+      "width": 1.8,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø16",
+      "sizes": [
+        "Ø16",
+        "Ø20",
+        "Ø25"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "water.circ",
+      "category": "water",
+      "name": "DHW circulation",
+      "color": "#dc2626",
+      "dash": [
+        7,
+        4
+      ],
+      "width": 1.3,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø12",
+      "sizes": [
+        "Ø12",
+        "Ø16"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "water.soft",
+      "category": "water",
+      "name": "Softened water",
+      "color": "#0891b2",
+      "dash": [],
+      "width": 1.8,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø16",
+      "sizes": [
+        "Ø16",
+        "Ø20",
+        "Ø25"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "water.outdoor",
+      "category": "water",
+      "name": "Outdoor / garden tap",
+      "color": "#0f766e",
+      "dash": [
+        7,
+        4
+      ],
+      "width": 1.5,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø16",
+      "sizes": [
+        "Ø16",
+        "Ø20"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "water.fill",
+      "category": "water",
+      "name": "Heating fill loop",
+      "color": "#0891b2",
+      "dash": [
+        1.2,
+        3
+      ],
+      "width": 1.2,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø12",
+      "sizes": [
+        "Ø12",
+        "Ø16"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "reuse.supply",
+      "category": "reuse",
+      "name": "Tank → pump suction",
+      "color": "#4d7c0f",
+      "dash": [
+        9,
+        3,
+        1.2,
+        3
+      ],
+      "width": 2.2,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø32",
+      "sizes": [
+        "Ø32",
+        "Ø25",
+        "Ø40"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true,
+      "tag": "NON-POTABLE"
+    },
+    {
+      "id": "reuse.dist",
+      "category": "reuse",
+      "name": "Non-potable distribution",
+      "color": "#4d7c0f",
+      "dash": [],
+      "width": 1.8,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø16",
+      "sizes": [
+        "Ø16",
+        "Ø20",
+        "Ø25",
+        "Ø32"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "tag": "NON-POTABLE"
+    },
+    {
+      "id": "reuse.topup",
+      "category": "reuse",
+      "name": "Mains top-up (air gap)",
+      "color": "#2563eb",
+      "dash": [
+        9,
+        3,
+        1.2,
+        3
+      ],
+      "width": 1.5,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø16",
+      "sizes": [
+        "Ø16",
+        "Ø20"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "reuse.overflow",
+      "category": "reuse",
+      "name": "Tank overflow",
+      "color": "#4d7c0f",
+      "dash": [
+        14,
+        5
+      ],
+      "width": 2.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø110",
+      "sizes": [
+        "Ø110",
+        "Ø75",
+        "Ø125"
+      ],
+      "symbols": [
+        "drain",
+        "cleanout",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "drain.soil",
+      "category": "drain",
+      "name": "Soil / black water",
+      "color": "#b45309",
+      "dash": [],
+      "width": 3,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø110",
+      "sizes": [
+        "Ø110",
+        "Ø32",
+        "Ø40",
+        "Ø50",
+        "Ø75",
+        "Ø90",
+        "Ø125",
+        "Ø160"
+      ],
+      "symbols": [
+        "drain",
+        "cleanout",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "drain.waste",
+      "category": "drain",
+      "name": "Waste / grey water",
+      "color": "#b45309",
+      "dash": [],
+      "width": 2,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø50",
+      "sizes": [
+        "Ø50",
+        "Ø32",
+        "Ø40",
+        "Ø75",
+        "Ø90",
+        "Ø110",
+        "Ø125"
+      ],
+      "symbols": [
+        "drain",
+        "cleanout",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "drain.vent",
+      "category": "drain",
+      "name": "Vent / stack vent",
+      "color": "#b45309",
+      "dash": [
+        9,
+        3,
+        1.2,
+        3
+      ],
+      "width": 1.5,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø75",
+      "sizes": [
+        "Ø75",
+        "Ø50",
+        "Ø110"
+      ],
+      "symbols": [
+        "drain",
+        "cleanout",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "drain.rain",
+      "category": "drain",
+      "name": "Rainwater downpipe (HWA)",
+      "color": "#1e3a8a",
+      "dash": [],
+      "width": 2.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø80",
+      "sizes": [
+        "Ø80",
+        "Ø70",
+        "Ø100",
+        "Ø110",
+        "Ø125"
+      ],
+      "symbols": [
+        "drain",
+        "cleanout",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "drain.condensate",
+      "category": "drain",
+      "name": "Condensate drain",
+      "color": "#0891b2",
+      "dash": [
+        1.2,
+        3
+      ],
+      "width": 1.3,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø20",
+      "sizes": [
+        "Ø20",
+        "Ø25",
+        "Ø32"
+      ],
+      "symbols": [
+        "drain",
+        "cleanout",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "heat.ufh",
+      "category": "heat",
+      "name": "Underfloor heating loop",
+      "color": "#ea580c",
+      "dash": [],
+      "width": 1.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø16",
+      "sizes": [
+        "Ø16",
+        "Ø17",
+        "Ø20"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "heat.flow",
+      "category": "heat",
+      "name": "Heating flow",
+      "color": "#dc2626",
+      "dash": [
+        14,
+        5
+      ],
+      "width": 2.2,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø22",
+      "sizes": [
+        "Ø22",
+        "Ø16",
+        "Ø28",
+        "Ø35"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "heat.return",
+      "category": "heat",
+      "name": "Heating return",
+      "color": "#7c3aed",
+      "dash": [
+        14,
+        5
+      ],
+      "width": 2.2,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø22",
+      "sizes": [
+        "Ø22",
+        "Ø16",
+        "Ø28",
+        "Ø35"
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "heat.hp",
+      "category": "heat",
+      "name": "Heat pump line set",
+      "color": "#a21caf",
+      "dash": [
+        7,
+        4
+      ],
+      "width": 2.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "2×Ø28",
+      "sizes": [
+        "2×Ø28",
+        "2×Ø35",
+        "1/4\"+3/8\"",
+        "1/4\"+5/8\"",
+        "3/8\"+5/8\""
+      ],
+      "symbols": [
+        "valve",
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "air.supply",
+      "category": "air",
+      "name": "Supply air (toevoer)",
+      "color": "#0891b2",
+      "dash": [],
+      "width": 3.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø125",
+      "sizes": [
+        "Ø125",
+        "Ø75",
+        "Ø90",
+        "Ø100",
+        "Ø160",
+        "Ø180"
+      ],
+      "symbols": [
+        "air-valve",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "air.extract",
+      "category": "air",
+      "name": "Extract air (afvoer)",
+      "color": "#ca8a04",
+      "dash": [],
+      "width": 3.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø125",
+      "sizes": [
+        "Ø125",
+        "Ø75",
+        "Ø90",
+        "Ø100",
+        "Ø160",
+        "Ø180"
+      ],
+      "symbols": [
+        "air-valve",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "air.outside",
+      "category": "air",
+      "name": "Outside air / exhaust",
+      "color": "#475569",
+      "dash": [],
+      "width": 3.8,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø160",
+      "sizes": [
+        "Ø160",
+        "Ø125",
+        "Ø180",
+        "Ø200"
+      ],
+      "symbols": [
+        "air-valve",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "air.dryer",
+      "category": "air",
+      "name": "Tumble dryer exhaust",
+      "color": "#475569",
+      "dash": [
+        7,
+        4
+      ],
+      "width": 2.8,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø100",
+      "sizes": [
+        "Ø100",
+        "Ø125",
+        "Ø150"
+      ],
+      "symbols": [
+        "air-valve",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ],
+      "assumeFlow": true
+    },
+    {
+      "id": "power.230v",
+      "category": "power",
+      "name": "230V group",
+      "color": "#ea580c",
+      "dash": [],
+      "width": 1.7,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "3×2.5mm²",
+      "sizes": [
+        "3×2.5mm²",
+        "3×1.5mm²",
+        "3×4mm²",
+        "3×6mm²"
+      ],
+      "symbols": [
+        "socket",
+        "socket-2",
+        "socket-3",
+        "socket-4",
+        "switch",
+        "light",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "power.3ph",
+      "category": "power",
+      "name": "400V 3-phase",
+      "color": "#dc2626",
+      "dash": [
+        9,
+        3,
+        1.2,
+        3
+      ],
+      "width": 2.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "5×2.5mm²",
+      "sizes": [
+        "5×2.5mm²",
+        "5×4mm²",
+        "5×6mm²",
+        "5×10mm²",
+        "5×16mm²"
+      ],
+      "symbols": [
+        "socket",
+        "switch",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "power.earth",
+      "category": "power",
+      "name": "Earthing / bonding",
+      "color": "#16a34a",
+      "dash": [],
+      "width": 1.9,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "6mm²",
+      "sizes": [
+        "6mm²",
+        "4mm²",
+        "10mm²",
+        "16mm²"
+      ],
+      "symbols": [
+        "outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "power.pv",
+      "category": "power",
+      "name": "PV DC string",
+      "color": "#dc2626",
+      "dash": [
+        1.2,
+        3
+      ],
+      "width": 1.5,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "2×6mm²",
+      "sizes": [
+        "2×6mm²",
+        "2×4mm²",
+        "2×10mm²"
+      ],
+      "symbols": [
+        "outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "power.conduit",
+      "category": "power",
+      "name": "Empty conduit (loze leiding)",
+      "color": "#475569",
+      "dash": [
+        1.2,
+        3
+      ],
+      "width": 1.8,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø19",
+      "sizes": [
+        "Ø19",
+        "Ø16",
+        "Ø25",
+        "Ø40",
+        "Ø50"
+      ],
+      "symbols": [
+        "outlet",
+        "riser-up",
+        "riser-down",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "power.smoke",
+      "category": "power",
+      "name": "Smoke detectors (interlinked)",
+      "color": "#db2777",
+      "dash": [
+        9,
+        3,
+        1.2,
+        3,
+        1.2,
+        3
+      ],
+      "width": 1.4,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "2×1.5mm² + interlink",
+      "sizes": [
+        "2×1.5mm² + interlink",
+        "4×1.5mm²",
+        "3×1.5mm² (RF interlink)"
+      ],
+      "symbols": [
+        "detector",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "power.outdoor",
+      "category": "power",
+      "name": "Outdoor / outbuilding feed",
+      "color": "#4d7c0f",
+      "dash": [
+        7,
+        4
+      ],
+      "width": 2,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "XMvK 4×6mm²",
+      "sizes": [
+        "XMvK 4×6mm²",
+        "XMvK 3×2.5mm²",
+        "XMvK 5×2.5mm²",
+        "XMvK 5×6mm²",
+        "XMvK 5×10mm²"
+      ],
+      "symbols": [
+        "socket",
+        "switch",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "data.cat6",
+      "category": "data",
+      "name": "CAT6A",
+      "color": "#7c3aed",
+      "dash": [],
+      "width": 1.3,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "CAT6A",
+      "sizes": [
+        "CAT6A",
+        "CAT6",
+        "2×CAT6A",
+        "CAT7"
+      ],
+      "symbols": [
+        "data-outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "data.fiber",
+      "category": "data",
+      "name": "Fiber / ISP entry",
+      "color": "#6b21a8",
+      "dash": [
+        9,
+        3,
+        1.2,
+        3
+      ],
+      "width": 1.3,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "duplex OS2",
+      "sizes": [
+        "duplex OS2",
+        "G.657.A2"
+      ],
+      "symbols": [
+        "data-outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "data.coax",
+      "category": "data",
+      "name": "Coax",
+      "color": "#b45309",
+      "dash": [
+        1.2,
+        3
+      ],
+      "width": 1.1,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "RG6",
+      "sizes": [
+        "RG6",
+        "RG11"
+      ],
+      "symbols": [
+        "data-outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "data.sensor",
+      "category": "data",
+      "name": "Sensor / bus (KNX, 1-Wire)",
+      "color": "#db2777",
+      "dash": [],
+      "width": 1.1,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "KNX 2×2×0.8",
+      "sizes": [
+        "KNX 2×2×0.8",
+        "2×0.8mm",
+        "4×0.8mm",
+        "CAT6A"
+      ],
+      "symbols": [
+        "sensor",
+        "data-outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "data.speaker",
+      "category": "data",
+      "name": "Speaker",
+      "color": "#db2777",
+      "dash": [
+        1.2,
+        3
+      ],
+      "width": 1.1,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "2×1.5mm²",
+      "sizes": [
+        "2×1.5mm²",
+        "2×2.5mm²",
+        "4×1.5mm²"
+      ],
+      "symbols": [
+        "outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "data.security",
+      "category": "data",
+      "name": "Alarm / camera",
+      "color": "#a21caf",
+      "dash": [
+        7,
+        4
+      ],
+      "width": 1.3,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "CAT6A (PoE)",
+      "sizes": [
+        "CAT6A (PoE)",
+        "6×0.22mm",
+        "8×0.22mm"
+      ],
+      "symbols": [
+        "sensor",
+        "data-outlet",
+        "penetration",
+        "note"
+      ]
+    },
+    {
+      "id": "struct.penetration",
+      "category": "struct",
+      "name": "Penetration (sparing)",
+      "color": "#171717",
+      "dash": [],
+      "width": 1.5,
+      "visible": true,
+      "locked": false,
+      "defaultSize": "Ø110",
+      "sizes": [
+        "Ø110",
+        "Ø50",
+        "Ø75",
+        "Ø125",
+        "Ø160",
+        "200×200"
+      ],
+      "symbols": [
+        "penetration",
+        "riser-up",
+        "riser-down",
+        "note"
+      ]
+    },
+    {
+      "id": "struct.shaft",
+      "category": "struct",
+      "name": "Shaft / chase",
+      "color": "#475569",
+      "dash": [
+        14,
+        5
+      ],
+      "width": 1.8,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "penetration",
+        "riser-up",
+        "riser-down",
+        "note"
+      ]
+    },
+    {
+      "id": "struct.nodrill",
+      "category": "struct",
+      "name": "No-drill zone",
+      "color": "#dc2626",
+      "dash": [
+        9,
+        3,
+        1.2,
+        3,
+        1.2,
+        3
+      ],
+      "width": 1.4,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "penetration",
+        "riser-up",
+        "riser-down",
+        "note"
+      ]
+    },
+    {
+      "id": "struct.airtight",
+      "category": "struct",
+      "name": "Airtightness penetration",
+      "color": "#db2777",
+      "dash": [
+        1.2,
+        3
+      ],
+      "width": 1.5,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "penetration",
+        "riser-up",
+        "riser-down",
+        "note"
+      ]
+    },
+    {
+      "id": "struct.note",
+      "category": "struct",
+      "name": "General note",
+      "color": "#ca8a04",
+      "dash": [],
+      "width": 1.2,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "note",
+        "penetration"
+      ]
+    },
+    {
+      "id": "struct.room",
+      "category": "struct",
+      "name": "Room",
+      "color": "#0f766e",
+      "dash": [],
+      "width": 1,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "note",
+        "penetration"
+      ]
+    },
+    {
+      "id": "struct.door",
+      "category": "struct",
+      "name": "Door",
+      "color": "#7c3aed",
+      "dash": [],
+      "width": 1.6,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "note",
+        "penetration"
+      ]
+    },
+    {
+      "id": "struct.wall",
+      "category": "struct",
+      "name": "Wall",
+      "color": "#57534e",
+      "dash": [],
+      "width": 1,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "note",
+        "penetration"
+      ]
+    },
+    {
+      "id": "struct.window",
+      "category": "struct",
+      "name": "Window",
+      "color": "#0284c7",
+      "dash": [],
+      "width": 1,
+      "visible": true,
+      "locked": false,
+      "symbols": [
+        "note",
+        "penetration"
+      ]
+    }
+  ],
+  "sheets": [
+    {
+      "id": "sh_mw8akr6v581",
+      "name": "begane grond",
+      "pdf": {
+        "assetId": "b4c2b8fe46a3714df820353a920205b8914262f28155606f1d9881567c1d947d",
+        "page": 9,
+        "rotation": 90,
+        "widthPt": 842,
+        "heightPt": 1191
+      },
+      "mmPerPoint": 35.281925481394104,
+      "align": {
+        "a": {
+          "x": 0,
+          "y": 0
+        },
+        "b": {
+          "x": 283.431243152347,
+          "y": 0
+        }
+      },
+      "items": [
+        {
+          "id": "wall_mw908ipf3s8",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "gevel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 214.6538176889985,
+              "y": 457.0810628944954
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 712.2258679802381,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 712.2258679802381,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 590.999490971548,
+              "y": 780.4449338945766
+            }
+          ],
+          "thickness": 5.949221793767764,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf46h",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "gevel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 557.8210296481342,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 732.2389480592255
+            }
+          ],
+          "thickness": 5.949221793767764,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf5vg",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "gevel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 214.6538176889985,
+              "y": 487.1389462308019
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 513.2996499737635
+            }
+          ],
+          "thickness": 5.949221793767764,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf6kt",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "gevel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 214.6538176889985,
+              "y": 677.1002340163678
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 702.181064722919
+            }
+          ],
+          "thickness": 5.949221793767764,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf76",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kolom loggia",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 215.37089873417392,
+              "y": 540.5402267531355
+            },
+            {
+              "x": 215.37089873417392,
+              "y": 557.2201554126511
+            }
+          ],
+          "thickness": 7.380549571687117,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf8p",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kolom loggia",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 215.37089873417392,
+              "y": 633.239249138542
+            },
+            {
+              "x": 215.37089873417392,
+              "y": 649.9191777980577
+            }
+          ],
+          "thickness": 7.380549571687117,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf9wn",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "voorzetwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 220.1750583056062,
+              "y": 457.0810628944954
+            },
+            {
+              "x": 220.1750583056062,
+              "y": 415.5045338364777
+            },
+            {
+              "x": 547.6203392070812,
+              "y": 415.5045338364777
+            }
+          ],
+          "thickness": 5.110265314036816,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfa5k",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "voorzetwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 579.9003234897019,
+              "y": 415.5045338364777
+            },
+            {
+              "x": 706.6762842393154,
+              "y": 415.5045338364777
+            },
+            {
+              "x": 706.6762842393154,
+              "y": 774.9236932779689
+            },
+            {
+              "x": 590.999490971548,
+              "y": 774.9236932779689
+            }
+          ],
+          "thickness": 5.050744752974824,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfbp6",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "voorzetwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 557.8210296481342,
+              "y": 774.9236932779689
+            },
+            {
+              "x": 220.1750583056062,
+              "y": 774.9236932779689
+            },
+            {
+              "x": 220.1750583056062,
+              "y": 732.2389480592255
+            }
+          ],
+          "thickness": 5.110265314036816,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfcqn",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "voorzetwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 220.1750583056062,
+              "y": 487.1389462308019
+            },
+            {
+              "x": 220.1750583056062,
+              "y": 502.441399048597
+            }
+          ],
+          "thickness": 5.110265314036816,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfdv6",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "voorzetwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 220.1750583056062,
+              "y": 687.4199655795449
+            },
+            {
+              "x": 220.1750583056062,
+              "y": 702.181064722919
+            }
+          ],
+          "thickness": 5.110265314036816,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfe7g",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 217.62134280480353,
+              "y": 505.02062336128347
+            },
+            {
+              "x": 282.18131137004514,
+              "y": 505.02062336128347
+            }
+          ],
+          "thickness": 5.1612829378042395,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipffzh",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 217.62134280480353,
+              "y": 684.8407412668585
+            },
+            {
+              "x": 281.2204794557587,
+              "y": 684.8407412668585
+            }
+          ],
+          "thickness": 5.1612829378042395,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfg2b",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 283.8592243295071,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 283.8592243295071,
+              "y": 442.14140206793525
+            }
+          ],
+          "thickness": 3.3586602313553118,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfhe3",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 283.8592243295071,
+              "y": 469.50101996943135
+            },
+            {
+              "x": 283.8592243295071,
+              "y": 502.441399048597
+            }
+          ],
+          "thickness": 3.3586602313553118,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfiny",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 285.5399716014005,
+              "y": 489.63030685811094
+            },
+            {
+              "x": 473.33867900171407,
+              "y": 489.63030685811094
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfjp3",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 475.05060371035427,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 475.05060371035427,
+              "y": 442.14140206793525
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfkek",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 475.05060371035427,
+              "y": 469.50101996943135
+            },
+            {
+              "x": 475.05060371035427,
+              "y": 502.8608772884626
+            },
+            {
+              "x": 520.3202418666472,
+              "y": 502.8608772884626
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfl70",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 547.6175048946496,
+              "y": 546.6821817922469
+            },
+            {
+              "x": 475.05910664764883,
+              "y": 546.6821817922469
+            },
+            {
+              "x": 475.05910664764883,
+              "y": 643.7290394476105
+            },
+            {
+              "x": 510.1195514255941,
+              "y": 643.7290394476105
+            },
+            {
+              "x": 510.1195514255941,
+              "y": 628.6221541875905
+            },
+            {
+              "x": 520.3230761790786,
+              "y": 628.6221541875905
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfm6c",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 475.05060371035427,
+              "y": 698.2186959436492
+            },
+            {
+              "x": 475.05060371035427,
+              "y": 772.3699777771661
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfnvx",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 473.33867900171407,
+              "y": 699.6613609712947
+            },
+            {
+              "x": 551.0413543119299,
+              "y": 699.6613609712947
+            }
+          ],
+          "thickness": 2.8796614304278454,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipforl",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 549.3294296032898,
+              "y": 693.539246119204
+            },
+            {
+              "x": 549.3294296032898,
+              "y": 698.2186959436492
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfpvs",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 512.219776937353,
+              "y": 701.1011916865086
+            },
+            {
+              "x": 512.219776937353,
+              "y": 729.8694628664718
+            },
+            {
+              "x": 551.0413543119299,
+              "y": 729.8694628664718
+            }
+          ],
+          "thickness": 2.851318306112611,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfqli",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 549.3294296032898,
+              "y": 755.4009492496352
+            },
+            {
+              "x": 549.3294296032898,
+              "y": 772.3699777771661
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw908ipfrdj",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 551.4608325517955,
+              "y": 412.9791614599903
+            },
+            {
+              "x": 551.4608325517955,
+              "y": 500.7294743399568
+            },
+            {
+              "x": 575.1613531041947,
+              "y": 500.7294743399568
+            }
+          ],
+          "thickness": 7.680986689428604,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipfsuu",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 686.9409667786173,
+              "y": 500.7294743399568
+            },
+            {
+              "x": 704.1509118628279,
+              "y": 500.7294743399568
+            }
+          ],
+          "thickness": 7.618631815935088,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipftuk",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 551.4608325517955,
+              "y": 531.901242461852
+            },
+            {
+              "x": 551.4608325517955,
+              "y": 630.3000671470523
+            }
+          ],
+          "thickness": 7.680986689428604,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipfu84",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "penant",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 555.3013258965098,
+              "y": 569.039238252104
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 569.039238252104
+            }
+          ],
+          "thickness": 8.51994316915955,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipfvxk",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "penant",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 555.3013258965098,
+              "y": 595.3189831171896
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 595.3189831171896
+            }
+          ],
+          "thickness": 8.51994316915955,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipfwa4",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 547.6203392070812,
+              "y": 661.9791771941901
+            },
+            {
+              "x": 657.2997273697449,
+              "y": 661.9791771941901
+            }
+          ],
+          "thickness": 7.680986689428604,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipfx94",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 701.8211070441156,
+              "y": 661.9791771941901
+            },
+            {
+              "x": 709.1988223033711,
+              "y": 661.9791771941901
+            }
+          ],
+          "thickness": 7.680986689428604,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipfy6x",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 574.2600417509702,
+              "y": 412.9791614599903
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 431.9407116268822
+            }
+          ],
+          "thickness": 3.38983766810207,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipfzi7",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 283.3802255285796,
+              "y": 682.2586826417406
+            },
+            {
+              "x": 283.3802255285796,
+              "y": 698.2810508171427
+            }
+          ],
+          "thickness": 4.319492145641768,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf10gz",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 283.3802255285796,
+              "y": 724.7988779264763
+            },
+            {
+              "x": 283.3802255285796,
+              "y": 772.3699777771661
+            }
+          ],
+          "thickness": 4.319492145641768,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf11a3",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 622.9506950121119,
+              "y": 665.8196705389043
+            },
+            {
+              "x": 622.9506950121119,
+              "y": 724.5012751211665
+            }
+          ],
+          "thickness": 4.259971584579775,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf12tz",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 622.9506950121119,
+              "y": 749.579271515286
+            },
+            {
+              "x": 622.9506950121119,
+              "y": 772.3699777771661
+            }
+          ],
+          "thickness": 4.259971584579775,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf13b7",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 595.3501605539363,
+              "y": 665.8196705389043
+            },
+            {
+              "x": 595.3501605539363,
+              "y": 668.1608126073428
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf14tq",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 595.3501605539363,
+              "y": 694.080599793625
+            },
+            {
+              "x": 595.3501605539363,
+              "y": 703.739936560257
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf15uz",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kolom",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 325.1409848946464,
+              "y": 501.23965057763115
+            },
+            {
+              "x": 331.92066023085056,
+              "y": 501.23965057763115
+            }
+          ],
+          "thickness": 6.77967533620414,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf165c",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kolom",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 433.85954114302365,
+              "y": 500.4006940979002
+            },
+            {
+              "x": 440.6392164792278,
+              "y": 500.4006940979002
+            }
+          ],
+          "thickness": 6.77967533620414,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf17l0",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kolom",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 325.1409848946464,
+              "y": 689.191410849247
+            },
+            {
+              "x": 331.92066023085056,
+              "y": 689.191410849247
+            }
+          ],
+          "thickness": 6.77967533620414,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw908ipf18ss",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kolom",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 433.8311980187084,
+              "y": 689.191410849247
+            },
+            {
+              "x": 440.61087335491254,
+              "y": 689.191410849247
+            }
+          ],
+          "thickness": 6.77967533620414,
+          "status": "existing"
+        },
+        {
+          "id": "room_mw908ipf19hk",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Hal",
+          "use": "hall",
+          "points": [
+            {
+              "x": 551.0413543119299,
+              "y": 666.23914877877
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 666.23914877877
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 665.8196705389043
+            },
+            {
+              "x": 620.8192920636063,
+              "y": 665.8196705389043
+            },
+            {
+              "x": 620.8192920636063,
+              "y": 772.3699777771661
+            },
+            {
+              "x": 551.0413543119299,
+              "y": 772.3699777771661
+            }
+          ],
+          "ref": "0.01"
+        },
+        {
+          "id": "room_mw908ipf1a3w",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Opkamer",
+          "use": "living",
+          "points": [
+            {
+              "x": 625.079263648186,
+              "y": 665.8196705389043
+            },
+            {
+              "x": 704.1509118628279,
+              "y": 665.8196705389043
+            },
+            {
+              "x": 704.1509118628279,
+              "y": 772.3699777771661
+            },
+            {
+              "x": 625.079263648186,
+              "y": 772.3699777771661
+            }
+          ],
+          "ref": "0.02"
+        },
+        {
+          "id": "room_mw908ipf1bsj",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Eetkamer",
+          "use": "dining",
+          "points": [
+            {
+              "x": 555.3013258965098,
+              "y": 504.5387902479245
+            },
+            {
+              "x": 704.1509118628279,
+              "y": 504.5387902479245
+            },
+            {
+              "x": 704.1509118628279,
+              "y": 658.1386838494759
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 658.1386838494759
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 599.5789547017694
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 599.5789547017694
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 591.0590115326099
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 591.0590115326099
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 573.2992098366838
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 573.2992098366838
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 564.7792666675242
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 564.7792666675242
+            }
+          ],
+          "ref": "0.03"
+        },
+        {
+          "id": "room_mw908ipf1cle",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Keuken",
+          "use": "kitchen",
+          "points": [
+            {
+              "x": 555.3013258965098,
+              "y": 434.34137425638266
+            },
+            {
+              "x": 576.6607043804706,
+              "y": 412.9791614599903
+            },
+            {
+              "x": 579.9003234897019,
+              "y": 412.9791614599903
+            },
+            {
+              "x": 579.9003234897019,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 704.1509118628279,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 704.1509118628279,
+              "y": 496.9201584319893
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 496.9201584319893
+            }
+          ],
+          "ref": "0.04"
+        },
+        {
+          "id": "room_mw908ipf1d5a",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Garderobe",
+          "use": "storage",
+          "points": [
+            {
+              "x": 476.7596941065629,
+              "y": 701.1011916865086
+            },
+            {
+              "x": 510.7799462221391,
+              "y": 701.1011916865086
+            },
+            {
+              "x": 510.7799462221391,
+              "y": 731.2809504573705
+            },
+            {
+              "x": 547.6203392070812,
+              "y": 731.2809504573705
+            },
+            {
+              "x": 547.6203392070812,
+              "y": 772.3699777771661
+            },
+            {
+              "x": 476.7596941065629,
+              "y": 772.3699777771661
+            }
+          ],
+          "ref": "0.05"
+        },
+        {
+          "id": "room_mw908ipf1edw",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Toilet",
+          "use": "toilet",
+          "points": [
+            {
+              "x": 513.659607652567,
+              "y": 701.1011916865086
+            },
+            {
+              "x": 551.0413543119299,
+              "y": 701.1011916865086
+            },
+            {
+              "x": 551.0413543119299,
+              "y": 728.4608095880046
+            },
+            {
+              "x": 513.659607652567,
+              "y": 728.4608095880046
+            }
+          ],
+          "ref": "0.06"
+        },
+        {
+          "id": "room_mw908ipf1fme",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Technische ruimte",
+          "use": "technical",
+          "points": [
+            {
+              "x": 476.7596941065629,
+              "y": 548.4111123754763
+            },
+            {
+              "x": 547.6175048946496,
+              "y": 548.4111123754763
+            },
+            {
+              "x": 547.6175048946496,
+              "y": 626.9499098529916
+            },
+            {
+              "x": 508.4473070909953,
+              "y": 626.9499098529916
+            },
+            {
+              "x": 508.4473070909953,
+              "y": 642.0567951130116
+            },
+            {
+              "x": 476.7596941065629,
+              "y": 642.0567951130116
+            }
+          ],
+          "ref": "0.07"
+        },
+        {
+          "id": "room_mw908ipf1gl0",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Woonkamer",
+          "use": "living",
+          "points": [
+            {
+              "x": 285.5286343516744,
+              "y": 491.3280600045935
+            },
+            {
+              "x": 473.3301760644195,
+              "y": 491.3280600045935
+            },
+            {
+              "x": 473.3301760644195,
+              "y": 504.5359559354929
+            },
+            {
+              "x": 547.6175048946496,
+              "y": 504.5359559354929
+            },
+            {
+              "x": 547.6175048946496,
+              "y": 544.9815943333329
+            },
+            {
+              "x": 473.3301760644195,
+              "y": 544.9815943333329
+            },
+            {
+              "x": 473.3301760644195,
+              "y": 645.4296269065246
+            },
+            {
+              "x": 511.791795760193,
+              "y": 645.4296269065246
+            },
+            {
+              "x": 511.791795760193,
+              "y": 630.2943985221892
+            },
+            {
+              "x": 547.6175048946496,
+              "y": 630.2943985221892
+            },
+            {
+              "x": 547.6175048946496,
+              "y": 698.2045243814916
+            },
+            {
+              "x": 473.3301760644195,
+              "y": 698.2045243814916
+            },
+            {
+              "x": 473.3301760644195,
+              "y": 772.3784807144608
+            },
+            {
+              "x": 285.5286343516744,
+              "y": 772.3784807144608
+            },
+            {
+              "x": 285.5286343516744,
+              "y": 682.2473453920145
+            },
+            {
+              "x": 281.2204794557587,
+              "y": 682.2473453920145
+            },
+            {
+              "x": 281.2204794557587,
+              "y": 507.59701336153825
+            },
+            {
+              "x": 285.5286343516744,
+              "y": 507.59701336153825
+            }
+          ],
+          "ref": "0.08"
+        },
+        {
+          "id": "room_mw908ipf1hbn",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Entree",
+          "use": "hall",
+          "points": [
+            {
+              "x": 222.72877380640884,
+              "y": 687.4199655795449
+            },
+            {
+              "x": 281.2204794557587,
+              "y": 687.4199655795449
+            },
+            {
+              "x": 281.2204794557587,
+              "y": 772.3699777771661
+            },
+            {
+              "x": 222.72877380640884,
+              "y": 772.3699777771661
+            }
+          ],
+          "ref": "0.09"
+        },
+        {
+          "id": "room_mw908ipf1igo",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Loggia",
+          "use": "outdoor",
+          "points": [
+            {
+              "x": 211.68062394833035,
+              "y": 507.59984767396975
+            },
+            {
+              "x": 276.6600707534374,
+              "y": 507.59984767396975
+            },
+            {
+              "x": 276.6600707534374,
+              "y": 682.2586826417406
+            },
+            {
+              "x": 211.68062394833035,
+              "y": 682.2586826417406
+            }
+          ],
+          "ref": "0.10"
+        },
+        {
+          "id": "room_mw908ipf1jjh",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Entree werkplaats",
+          "use": "hall",
+          "points": [
+            {
+              "x": 222.72877380640884,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 282.18131137004514,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 282.18131137004514,
+              "y": 502.441399048597
+            },
+            {
+              "x": 222.72877380640884,
+              "y": 502.441399048597
+            }
+          ],
+          "ref": "0.11"
+        },
+        {
+          "id": "room_mw908ipf1kkk",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Werkplaats",
+          "use": "workshop",
+          "points": [
+            {
+              "x": 285.5399716014005,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 473.33867900171407,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 473.33867900171407,
+              "y": 487.9212164619023
+            },
+            {
+              "x": 285.5399716014005,
+              "y": 487.9212164619023
+            }
+          ],
+          "ref": "0.12"
+        },
+        {
+          "id": "room_mw908ipf1lnr",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Bijkeuken",
+          "use": "utility",
+          "points": [
+            {
+              "x": 476.7596941065629,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 547.6203392070812,
+              "y": 418.0299062129651
+            },
+            {
+              "x": 547.6203392070812,
+              "y": 501.1801300165692
+            },
+            {
+              "x": 476.7596941065629,
+              "y": 501.1801300165692
+            }
+          ],
+          "ref": "0.13"
+        },
+        {
+          "id": "door_mw908ipf1mdl",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 285.5399716014005,
+              "y": 443.5188779096556
+            },
+            {
+              "x": 285.5399716014005,
+              "y": 468.18023037634134
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw908ipf1nd7",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 476.7596941065629,
+              "y": 443.5188779096556
+            },
+            {
+              "x": 476.7596941065629,
+              "y": 468.18023037634134
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw908ipf1oky",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 546.2995496139912,
+              "y": 501.1801300165692
+            },
+            {
+              "x": 521.6410314597371,
+              "y": 501.1801300165692
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw908ipf1pec",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 555.3013258965098,
+              "y": 505.9191004020763
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 530.580452868762
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw908ipf1r85",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 546.2995496139912,
+              "y": 630.3000671470523
+            },
+            {
+              "x": 521.6410314597371,
+              "y": 630.3000671470523
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw908ipf1syo",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 555.3013258965098,
+              "y": 656.2793748943965
+            },
+            {
+              "x": 555.3013258965098,
+              "y": 631.6208567401422
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw908ipf1tx1",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 551.0413543119299,
+              "y": 667.55993837186
+            },
+            {
+              "x": 551.0413543119299,
+              "y": 692.2212908385455
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw908ipf1uw6",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 593.6410701577278,
+              "y": 669.5411227614946
+            },
+            {
+              "x": 593.6410701577278,
+              "y": 692.7598102005351
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw908ipf1vy8",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 551.0413543119299,
+              "y": 702.419146967167
+            },
+            {
+              "x": 551.0413543119299,
+              "y": 727.0804994338527
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw908ipf1w1",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 285.5399716014005,
+              "y": 723.4809226458179
+            },
+            {
+              "x": 285.5399716014005,
+              "y": 699.7208815323567
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw908ipf1x7s",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 625.079263648186,
+              "y": 748.1989613611341
+            },
+            {
+              "x": 625.079263648186,
+              "y": 725.8192304018247
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw908ipf1yhe",
+          "systemId": "struct.door",
+          "level": "floor",
+          "label": "buitendeur werkplaats",
+          "kind": "door",
+          "points": [
+            {
+              "x": 222.72877380640884,
+              "y": 459.6602872071818
+            },
+            {
+              "x": 222.72877380640884,
+              "y": 484.61924247917744
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw908ipf1znj",
+          "systemId": "struct.door",
+          "level": "floor",
+          "label": "buitendeur entree",
+          "kind": "door",
+          "points": [
+            {
+              "x": 222.72877380640884,
+              "y": 729.659723746539
+            },
+            {
+              "x": 222.72877380640884,
+              "y": 704.7602890356055
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw908ipf207t",
+          "systemId": "struct.door",
+          "level": "floor",
+          "label": "voordeur",
+          "kind": "door",
+          "points": [
+            {
+              "x": 588.4202666588615,
+              "y": 772.3699777771661
+            },
+            {
+              "x": 560.4002539608205,
+              "y": 772.3699777771661
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "wall_mw9mqhn03hd",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "gevel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 214.6538176889985,
+              "y": 513.2996499737635
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 540.5402267531355
+            }
+          ],
+          "thickness": 5.949221793767764,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw9mqhn04pl",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "gevel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 214.6538176889985,
+              "y": 649.9191777980577
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 677.1002340163678
+            }
+          ],
+          "thickness": 5.949221793767764,
+          "status": "existing"
+        },
+        {
+          "id": "window_mw9mz5j93wd",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 285.72136759701795,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 302.40129625653356,
+              "y": 409.9549500955547
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j94lw",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 309.48140871047923,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 331.62022311310903,
+              "y": 409.9549500955547
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j95b3",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 384.3611088388978,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 401.1005580594754,
+              "y": 409.9549500955547
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j96ce",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 423.48028901878473,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 466.85944078325133,
+              "y": 409.9549500955547
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j97sl",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 522.1795508217265,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 541.9800574683494,
+              "y": 409.9549500955547
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j98e4",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 599.7603506973868,
+              "y": 409.9549500955547
+            },
+            {
+              "x": 662.1010526287457,
+              "y": 409.9549500955547
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9940",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 234.9588319484326,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 266.09942263358096,
+              "y": 780.4449338945766
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9ajm",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 323.9392364236804,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 355.1393476698908,
+              "y": 780.4449338945766
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9ba4",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 384.2987539654042,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 401.0410374984134,
+              "y": 780.4449338945766
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9cn8",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 442.14140206793525,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 460.13928600810925,
+              "y": 780.4449338945766
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9dor",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 479.2793978581873,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 518.4014123505057,
+              "y": 780.4449338945766
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9eta",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 601.2001814126008,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 617.0411535923855,
+              "y": 780.4449338945766
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9f6t",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 659.5813488771213,
+              "y": 780.4449338945766
+            },
+            {
+              "x": 674.0391765903225,
+              "y": 780.4449338945766
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9geg",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 712.2258679802381,
+              "y": 439.3807817596314
+            },
+            {
+              "x": 712.2258679802381,
+              "y": 479.0413156139393
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9h8x",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 712.2258679802381,
+              "y": 504.30070800367645
+            },
+            {
+              "x": 712.2258679802381,
+              "y": 543.9612418579844
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9ine",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 712.2258679802381,
+              "y": 562.8604371513828
+            },
+            {
+              "x": 712.2258679802381,
+              "y": 602.5804915667528
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9jrr",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 712.2258679802381,
+              "y": 621.4796868601512
+            },
+            {
+              "x": 712.2258679802381,
+              "y": 661.1997412755211
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9kxt",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 712.2258679802381,
+              "y": 700.3189214554081
+            },
+            {
+              "x": 712.2258679802381,
+              "y": 739.9794553097161
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9lxc",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 214.6538176889985,
+              "y": 513.2996499737635
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 540.5402267531355
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9mfp",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 214.6538176889985,
+              "y": 649.9191777980577
+            },
+            {
+              "x": 214.6538176889985,
+              "y": 677.1002340163678
+            }
+          ],
+          "depth": 5.949221793767764
+        },
+        {
+          "id": "window_mw9mz5j9nvn",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "pui",
+          "kind": "window",
+          "points": [
+            {
+              "x": 278.9388579483823,
+              "y": 512.9992128560219
+            },
+            {
+              "x": 278.9388579483823,
+              "y": 550.380959515385
+            }
+          ],
+          "depth": 4.560408702321262
+        },
+        {
+          "id": "window_mw9mz5j9opj",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "pui",
+          "kind": "window",
+          "points": [
+            {
+              "x": 278.9388579483823,
+              "y": 554.1590979866058
+            },
+            {
+              "x": 278.9388579483823,
+              "y": 591.4813240849069
+            }
+          ],
+          "depth": 4.560408702321262
+        },
+        {
+          "id": "window_mw9mz5j9p4a",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "pui",
+          "kind": "window",
+          "points": [
+            {
+              "x": 278.9388579483823,
+              "y": 598.9809147787179
+            },
+            {
+              "x": 278.9388579483823,
+              "y": 636.3003065645875
+            }
+          ],
+          "depth": 4.560408702321262
+        },
+        {
+          "id": "window_mw9mz5j9q7h",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "pui",
+          "kind": "window",
+          "points": [
+            {
+              "x": 278.9388579483823,
+              "y": 640.08127934824
+            },
+            {
+              "x": 278.9388579483823,
+              "y": 677.4006711341093
+            }
+          ],
+          "depth": 4.560408702321262
+        },
+        {
+          "id": "box_mwjgerom32g",
+          "systemId": "heat.hp",
+          "level": "on-floor",
+          "label": "Warmtepomp (1,5 m²)",
+          "kind": "box",
+          "x": 478.1485071980094,
+          "y": 549.8566117155532,
+          "w": 42.51468647285205,
+          "h": 28.3431243152347
+        },
+        {
+          "id": "box_mwjgerom4es",
+          "systemId": "water.hot",
+          "level": "on-floor",
+          "label": "Nestore E20",
+          "kind": "box",
+          "x": 478.1485071980094,
+          "y": 593.7884544041669,
+          "w": 16.722443345988474,
+          "h": 16.722443345988474
+        },
+        {
+          "id": "box_mwjgerom5fm",
+          "systemId": "data.cat6",
+          "level": "on-floor",
+          "label": "19\" serverrack",
+          "kind": "box",
+          "x": 478.1485071980094,
+          "y": 618.7304038015735,
+          "w": 17.00587458914082,
+          "h": 22.67449945218776
+        },
+        {
+          "id": "box_mwjgerom6cc",
+          "systemId": "power.pv",
+          "level": "on-wall",
+          "label": "Solis omvormer",
+          "kind": "box",
+          "x": 541.0985863021457,
+          "y": 597.4730605651474,
+          "w": 6.518918592503981,
+          "h": 17.00587458914082
+        },
+        {
+          "id": "box_mwjgerom7dh",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "Besturingsbord regenwater",
+          "note": "Heco flow groen",
+          "kind": "box",
+          "x": 540.531723815841,
+          "y": 579.6168922465496,
+          "w": 7.085781078808675,
+          "h": 13.037837185007962
+        },
+        {
+          "id": "box_mwjgf2373sj",
+          "systemId": "reuse.supply",
+          "level": "floor",
+          "label": "Regenwatertank (ondergronds)",
+          "kind": "box",
+          "x": 141.7156215761735,
+          "y": 802.1104181211421,
+          "w": 56.6862486304694,
+          "h": 56.6862486304694
+        },
+        {
+          "id": "run_mwjgf2374he",
+          "systemId": "reuse.supply",
+          "level": "floor",
+          "label": "Regenwater tank → bord",
+          "kind": "run",
+          "points": [
+            {
+              "x": 189.8989329120725,
+              "y": 802.1104181211421
+            },
+            {
+              "x": 189.8989329120725,
+              "y": 587.5529670548153
+            },
+            {
+              "x": 540.531723815841,
+              "y": 587.5529670548153
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø25"
+        },
+        {
+          "id": "run_mwjgf2375if",
+          "systemId": "reuse.topup",
+          "level": "floor",
+          "label": "Suppletie bord → tank",
+          "kind": "run",
+          "points": [
+            {
+              "x": 540.531723815841,
+              "y": 584.7186546232919
+            },
+            {
+              "x": 187.06462048054902,
+              "y": 584.7186546232919
+            },
+            {
+              "x": 187.06462048054902,
+              "y": 802.1104181211421
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwjgf2377vo",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 223.91068209035413,
+              "y": 396.8037404132858
+            },
+            {
+              "x": 223.91068209035413,
+              "y": 406.97892204245505
+            }
+          ],
+          "flow": "none",
+          "size": "Ø25"
+        },
+        {
+          "id": "run_mwjgf2378d9",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "label": "Buitenkranen buren-zijde",
+          "kind": "run",
+          "points": [
+            {
+              "x": 540.5590173104043,
+              "y": 590.6384010583108
+            },
+            {
+              "x": 224.0047783841444,
+              "y": 590.1930047599186
+            },
+            {
+              "x": 224.0047783841444,
+              "y": 770.5767422829124
+            },
+            {
+              "x": 229.2609158238669,
+              "y": 783.4195447914605
+            }
+          ],
+          "flow": "none",
+          "size": "Ø25"
+        },
+        {
+          "id": "mk_mwjgf237af5",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "Buitenkraan regenwater",
+          "kind": "marker",
+          "x": 223.91068209035413,
+          "y": 406.97892204245505,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjgf237bgh",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "Buitenkraan regenwater",
+          "kind": "marker",
+          "x": 702.9094830178205,
+          "y": 406.97892204245505,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjgf237c62",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "Buitenkraan regenwater",
+          "kind": "marker",
+          "x": 229.2609158238669,
+          "y": 783.4195447914605,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjgf237da5",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "Buitenkraan regenwater",
+          "kind": "marker",
+          "x": 702.9094830178205,
+          "y": 783.4322991974024,
+          "symbol": "outlet"
+        },
+        {
+          "id": "box_mwjgual53y7",
+          "systemId": "power.3ph",
+          "level": "on-wall",
+          "label": "Groepenkast (66 cm)",
+          "kind": "box",
+          "x": 543.082605004212,
+          "y": 596.6227668356904,
+          "w": 4.534899890437552,
+          "h": 18.706462048054902
+        },
+        {
+          "id": "box_mwjgual547e",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "label": "Aansluiting gemeentelijk riool",
+          "kind": "box",
+          "x": 167.22443345988472,
+          "y": 376.9635533926215,
+          "w": 17.00587458914082,
+          "h": 17.00587458914082
+        },
+        {
+          "id": "run_mwjgual55vj",
+          "systemId": "reuse.overflow",
+          "level": "floor",
+          "label": "Overloop tank → riool",
+          "kind": "run",
+          "points": [
+            {
+              "x": 175.72737075445514,
+              "y": 802.1104181211421
+            },
+            {
+              "x": 175.72737075445514,
+              "y": 393.96942798176235
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø110"
+        },
+        {
+          "id": "run_mwji4fl43f3",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "label": "Regenwater toilet 0.06",
+          "kind": "run",
+          "points": [
+            {
+              "x": 541.3536744209828,
+              "y": 592.6547294315576
+            },
+            {
+              "x": 541.3536744209828,
+              "y": 712.8295765281528
+            },
+            {
+              "x": 515.8448625372715,
+              "y": 712.8295765281528
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwji4fl5469",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "WC 0.06 (stortbak)",
+          "kind": "marker",
+          "x": 515.8448625372715,
+          "y": 712.8295765281528,
+          "symbol": "outlet",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "run_mwjkq7cb4nd",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 224.0047783841444,
+              "y": 590.1930047599186
+            },
+            {
+              "x": 223.91068209035413,
+              "y": 406.97892204245505
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjkrvrf59v",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "note": "This MUST be a separate run!",
+          "kind": "run",
+          "points": [
+            {
+              "x": 540.531723815841,
+              "y": 582.0431029339206
+            },
+            {
+              "x": 227.15978433898908,
+              "y": 582.0431029339206
+            },
+            {
+              "x": 227.15978433898908,
+              "y": 691.1969939952394
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjks4jb62h",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 227.15978433898908,
+          "y": 691.1969939952394,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjktl6h7fo",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 547.6175048946496,
+              "y": 592.6547294315576
+            },
+            {
+              "x": 547.6189220508654,
+              "y": 768.6489999779144
+            },
+            {
+              "x": 702.0526751221054,
+              "y": 768.6489999779144
+            },
+            {
+              "x": 702.9094830178205,
+              "y": 783.4322991974024
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjkun3v8n1",
+          "systemId": "reuse.dist",
+          "level": "floor",
+          "note": "This run can be connected to the run on the bottom right",
+          "kind": "run",
+          "points": [
+            {
+              "x": 547.6175048946496,
+              "y": 592.6547294315576
+            },
+            {
+              "x": 547.6203392070812,
+              "y": 419.52110176591026
+            },
+            {
+              "x": 702.4295814949191,
+              "y": 419.52110176591026
+            },
+            {
+              "x": 702.9094830178205,
+              "y": 406.97892204245505
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "box_mwjlff8p9s2",
+          "systemId": "power.3ph",
+          "level": "floor",
+          "label": "slimme meter, hoofdschakelaar",
+          "note": "This is where the electricity enters the home from the grid",
+          "kind": "box",
+          "x": 529.4279320615544,
+          "y": 762.702114664306,
+          "w": 17.250427681556403,
+          "h": 9.256317359897935
+        },
+        {
+          "id": "run_mwjlhfcja24",
+          "systemId": "power.3ph",
+          "level": "floor",
+          "note": "Over deze draad moet alles heen. Ook het Tepe huis.",
+          "kind": "run",
+          "points": [
+            {
+              "x": 542.0502191194539,
+              "y": 762.702114664306
+            },
+            {
+              "x": 543.082605004212,
+              "y": 615.3292288837454
+            }
+          ],
+          "flow": "forward",
+          "size": "5×10mm²"
+        },
+        {
+          "id": "run_mwjljlhfbb6",
+          "systemId": "power.230v",
+          "level": "on-wall",
+          "label": "Omvormer → groepenkast (omvormer hangt boven de kast)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 547.0222992840297,
+              "y": 603.7085479144991
+            },
+            {
+              "x": 547.0222992840297,
+              "y": 606.5428603460226
+            }
+          ],
+          "flow": "none",
+          "size": "3×2.5mm²"
+        },
+        {
+          "id": "run_mwjll0zxcp3",
+          "systemId": "power.3ph",
+          "level": "on-wall",
+          "label": "Tepe huis",
+          "kind": "run",
+          "points": [
+            {
+              "x": 547.6175048946496,
+              "y": 615.3292288837454
+            },
+            {
+              "x": 547.3721499123087,
+              "y": 770.9403415184752
+            },
+            {
+              "x": 702.0025600016851,
+              "y": 770.9403415184752
+            },
+            {
+              "x": 702.0025600016851,
+              "y": 712.4589010952462
+            }
+          ],
+          "flow": "forward",
+          "size": "5×2.5mm²"
+        },
+        {
+          "id": "box_mwjlpy2hdrs",
+          "systemId": "water.cold",
+          "level": "on-wall",
+          "label": "watermeter",
+          "kind": "box",
+          "x": 534.2658016065716,
+          "y": 764.2524489834495,
+          "w": 12.689580752746906,
+          "h": 7.548112473288711
+        },
+        {
+          "id": "box_mwjlrfy0eyw",
+          "systemId": "water.cold",
+          "level": "floor",
+          "label": "",
+          "note": "Henco Flow blauw",
+          "kind": "box",
+          "x": 538.4553862487614,
+          "y": 553.4047531394885,
+          "w": 8.269244673737148,
+          "h": 24.4481918795625
+        },
+        {
+          "id": "run_mwjlthvyf9j",
+          "systemId": "water.cold",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 543.1293020826976,
+              "y": 764.2524489834495
+            },
+            {
+              "x": 543.1293020826976,
+              "y": 574.4517701012229
+            }
+          ],
+          "flow": "none",
+          "size": "Ø26"
+        },
+        {
+          "id": "run_mwjltztfgth",
+          "systemId": "water.cold",
+          "level": "floor",
+          "label": "Tepe huis",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.9553823593185,
+              "y": 771.8005614567383
+            },
+            {
+              "x": 703.6878715459748,
+              "y": 771.8005614567383
+            },
+            {
+              "x": 703.6878715459748,
+              "y": 719.292874212854
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjlyyvvhie",
+          "systemId": "water.cold",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 538.4553862487614,
+              "y": 574.4517701012229
+            },
+            {
+              "x": 230.3770596412009,
+              "y": 574.4517701012229
+            },
+            {
+              "x": 230.3770596412009,
+              "y": 770.231779112208
+            },
+            {
+              "x": 278.8154111540539,
+              "y": 770.231779112208
+            },
+            {
+              "x": 278.8154111540539,
+              "y": 751.1378187790833
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjlz98lix9",
+          "systemId": "water.cold",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 278.8154111540539,
+          "y": 751.1378187790833,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjm080ijmo",
+          "systemId": "water.cold",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 541.7610043212584,
+              "y": 574.4517701012229
+            },
+            {
+              "x": 541.7121458669359,
+              "y": 702.9134324973207
+            },
+            {
+              "x": 533.2679278741466,
+              "y": 702.886185615034
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjm0fpgkob",
+          "systemId": "water.cold",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 533.2190694198241,
+          "y": 702.886185615034,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjm1ou9ls8",
+          "systemId": "water.cold",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 230.3770596412009,
+              "y": 574.4517701012229
+            },
+            {
+              "x": 230.3770596412009,
+              "y": 500.0391610733657
+            },
+            {
+              "x": 247.9630854982639,
+              "y": 500.0391610733657
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjm1spxmzi",
+          "systemId": "water.cold",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 247.9630854982639,
+          "y": 500.0391610733657,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjm6bur3kq",
+          "systemId": "water.cold",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.7105249165621,
+              "y": 553.5412178765337
+            },
+            {
+              "x": 546.7105249165621,
+              "y": 418.5429167630708
+            },
+            {
+              "x": 631.5698391163749,
+              "y": 418.5429167630708
+            },
+            {
+              "x": 631.5698391163749,
+              "y": 424.52331599358536
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjm6kzw4b",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 631.5594472029877,
+          "y": 424.5196183672525,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjm6ygf5qp",
+          "systemId": "water.cold",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 626.5617618320277,
+              "y": 418.55465690798616
+            },
+            {
+              "x": 626.5617618320277,
+              "y": 425.0032610238079
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjm7ctm6zk",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "quooker",
+          "kind": "marker",
+          "x": 626.5617618320277,
+          "y": 425.0032610238079,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjm8ygs7s3",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 546.7246309224986,
+          "y": 564.8358448948936,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "mk_mwjshrk16ie",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "RW toiletten boven",
+          "kind": "marker",
+          "x": 546.1011522122997,
+          "y": 594.0718886005742,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "box_mwjt42lx3bk",
+          "systemId": "water.hot",
+          "level": "floor",
+          "kind": "box",
+          "x": 538.4553862487614,
+          "y": 553.4047531394885,
+          "w": 8.269244673737148,
+          "h": 24.4481918795625
+        },
+        {
+          "id": "mk_mwjtbnkt3rq",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW wasbakken",
+          "kind": "marker",
+          "x": 545.3217118251156,
+          "y": 569.6967987362174,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "run_mwjtbnktdnd",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW Nestore → Henco Flow rood",
+          "kind": "run",
+          "points": [
+            {
+              "x": 493.1703630850838,
+              "y": 593.7884544041669
+            },
+            {
+              "x": 493.1703630850838,
+              "y": 580.0420391112782
+            },
+            {
+              "x": 539.9365182052211,
+              "y": 580.0420391112782
+            },
+            {
+              "x": 539.9365182052211,
+              "y": 574.4584436211769
+            }
+          ],
+          "flow": "none",
+          "size": "Ø26"
+        },
+        {
+          "id": "mk_mwjtl28a3em",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW bad",
+          "kind": "marker",
+          "x": 540.7868119346781,
+          "y": 569.6967987362175,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28a5pt",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW douche 1.09",
+          "kind": "marker",
+          "x": 543.6211243662016,
+          "y": 569.6967987362175,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28a772",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW douche 1.07",
+          "kind": "marker",
+          "x": 549.0346611104114,
+          "y": 569.6967987362175,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28a9ud",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW bad",
+          "kind": "marker",
+          "x": 539.3696557189163,
+          "y": 569.6967987362175,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28abk3",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW douche 1.09",
+          "kind": "marker",
+          "x": 542.2039681504398,
+          "y": 569.6967987362175,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28ad6",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW douche 1.07",
+          "kind": "marker",
+          "x": 550.4518173261731,
+          "y": 569.6967987362175,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "run_mwkenc053vo",
+          "systemId": "reuse.dist",
+          "level": "wall",
+          "label": "RW groen → toiletten boven",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.1011477437846,
+              "y": 592.3712981884053
+            },
+            {
+              "x": 546.1011477437846,
+              "y": 594.0718856473193
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "box_mwkezlxi3rh",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "Henco Flow groen",
+          "kind": "box",
+          "x": 540.531723815841,
+          "y": 579.6168922465496,
+          "w": 7.085781078808675,
+          "h": 13.037837185007962
+        },
+        {
+          "id": "run_mwkf4sp210lx",
+          "systemId": "water.cold",
+          "level": "on-wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 538.4626757408288,
+              "y": 553.5412178765337
+            },
+            {
+              "x": 478.1485071980094,
+              "y": 553.5412178765337
+            },
+            {
+              "x": 478.1485071980094,
+              "y": 593.7884544041669
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwkf6dt711qo",
+          "systemId": "water.cold",
+          "level": "on-wall",
+          "note": "Een water punt in de technische ruimte. Handig? Nodig?",
+          "kind": "run",
+          "points": [
+            {
+              "x": 538.4626757408288,
+              "y": 554.9583740922955
+            },
+            {
+              "x": 529.4495622085842,
+              "y": 554.9583740922955
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwkf6i61125w",
+          "systemId": "water.cold",
+          "level": "on-wall",
+          "label": "",
+          "kind": "marker",
+          "x": 529.4122635523692,
+          "y": 554.8631773356132,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwkfbfu313fr",
+          "systemId": "drain.soil",
+          "level": "on-wall",
+          "note": "Bestaand, ook afvoer Tepe huis",
+          "kind": "run",
+          "points": [
+            {
+              "x": 718.8888404864813,
+              "y": 392.57829214562423
+            },
+            {
+              "x": 184.23030804902555,
+              "y": 393.96942798176235
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø125"
+        },
+        {
+          "id": "run_mwkfrpy715t7",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 516.6951562667285,
+              "y": 715.8622908298828
+            },
+            {
+              "x": 545.3217118251156,
+              "y": 715.8622908298828
+            },
+            {
+              "x": 545.3217118251156,
+              "y": 572.531111167741
+            },
+            {
+              "x": 543.1959775014731,
+              "y": 572.531111167741
+            },
+            {
+              "x": 543.1959775014731,
+              "y": 393.0341048793596
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø110"
+        },
+        {
+          "id": "run_mwkfs26r168n",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 631.0516141982271,
+              "y": 427.43971800565976
+            },
+            {
+              "x": 631.0516141982271,
+              "y": 415.00259999544926
+            },
+            {
+              "x": 543.1825665372428,
+              "y": 415.00259027719227
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkfuy9017pm",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "label": "vaatwasser",
+          "kind": "run",
+          "points": [
+            {
+              "x": 611.0441215967501,
+              "y": 428.25082128107937
+            },
+            {
+              "x": 611.0441216090762,
+              "y": 415.00259778263415
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkg5gpi18hr",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 272.03730717762267,
+              "y": 751.8864018345462
+            },
+            {
+              "x": 227.17014138660616,
+              "y": 751.8864018345462
+            },
+            {
+              "x": 228.58729760236784,
+              "y": 593.6467387825908
+            },
+            {
+              "x": 182.81315183326382,
+              "y": 593.4766800366993
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkg61uq19ld",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 247.61368253942152,
+              "y": 496.10853543518135
+            },
+            {
+              "x": 227.83836982403386,
+              "y": 496.10853543518135
+            },
+            {
+              "x": 228.57694055475082,
+              "y": 593.6408554765374
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkg7e0u1a7",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "note": "Deze is nieuw en heeft twee afvoerputten bij de twee buitenkranen",
+          "kind": "run",
+          "points": [
+            {
+              "x": 703.5897180013862,
+              "y": 791.2266583840919
+            },
+            {
+              "x": 182.81315183326382,
+              "y": 792.1903246108099
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø110"
+        },
+        {
+          "id": "run_mwkgboc91bkm",
+          "systemId": "power.3ph",
+          "level": "on-wall",
+          "label": "Tepe huis",
+          "kind": "run",
+          "points": [
+            {
+              "x": 551.6713537462949,
+              "y": 614.8796492000049
+            },
+            {
+              "x": 551.6713537462949,
+              "y": 770.7325664529095
+            },
+            {
+              "x": 706.3017638356713,
+              "y": 770.7325664529095
+            },
+            {
+              "x": 706.3017638356713,
+              "y": 712.2511260296806
+            }
+          ],
+          "flow": "forward",
+          "size": "5×2.5mm²"
+        },
+        {
+          "id": "run_mwkgcqj31c9n",
+          "systemId": "power.3ph",
+          "level": "floor",
+          "note": "Er gaan inderdaad 2 5x6mm2 leidingen naar Tepe huis",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.2003504404399,
+              "y": 615.3269944295332
+            },
+            {
+              "x": 551.6713537462949,
+              "y": 614.8796492000049
+            }
+          ],
+          "flow": "none",
+          "size": "5×2.5mm²"
+        },
+        {
+          "id": "run_mwkgjzmx1dzy",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 535.2599026932073,
+              "y": 701.2088955589065
+            },
+            {
+              "x": 545.3217118251156,
+              "y": 701.2088955589065
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø40"
+        },
+        {
+          "id": "mk_mwkhbscs1hv5",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 545.8966033950344,
+          "y": 550.6472232671834,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "mk_mwkhgi1o1n9r",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 545.7344461833388,
+          "y": 547.3572580485253,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "run_mwkhhlle1obh",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 545.8885743114204,
+              "y": 550.6502191963798
+            },
+            {
+              "x": 543.1959775014731,
+              "y": 550.6502191963798
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø110"
+        },
+        {
+          "id": "run_mwkhisrj1pgu",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "note": "Een aparte GRIJS water afvoer",
+          "kind": "run",
+          "points": [
+            {
+              "x": 545.7344461833388,
+              "y": 547.3572580485253
+            },
+            {
+              "x": 545.7343848843427,
+              "y": 393.0288252499534
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "mk_mwkhnfdl1vk",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "label": "eerste verdieping",
+          "kind": "marker",
+          "x": 544.660125371628,
+          "y": 478.36739220088515,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "mk_mwkhnqa51x7h",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "label": "eerste verdieping",
+          "kind": "marker",
+          "x": 544.5570927884633,
+          "y": 475.39606703667647,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "run_mwkhqsjo1yfp",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 544.660125371628,
+              "y": 478.36739220088515
+            },
+            {
+              "x": 543.182186204817,
+              "y": 478.4196491943226
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkhr75a1zb3",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 544.5564474686043,
+              "y": 475.3992241394316
+            },
+            {
+              "x": 545.7468586898442,
+              "y": 475.3992241394316
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "note_mwkhrplj20ci",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "note",
+          "x": 540.0164006837568,
+          "y": 478.67679695021445,
+          "w": 101.03999999999999,
+          "text": "Hier moet een koof komen"
+        },
+        {
+          "id": "run_mwkiyhw83yi",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "label": "Grijswater → riool",
+          "kind": "run",
+          "points": [
+            {
+              "x": 182.81315183326382,
+              "y": 792.1903246108099
+            },
+            {
+              "x": 182.81315183326382,
+              "y": 393.96942798176235
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø110"
+        },
+        {
+          "id": "mk_mwkiyhw846c",
+          "systemId": "drain.waste",
+          "level": "on-wall",
+          "label": "Trechter met sifon",
+          "kind": "marker",
+          "x": 544.7548493388109,
+          "y": 549.0063179860962,
+          "symbol": "drain",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "run_mwkiyhw85y7",
+          "systemId": "drain.waste",
+          "level": "wall",
+          "label": "Trechter → standleiding",
+          "kind": "run",
+          "points": [
+            {
+              "x": 544.7548493388109,
+              "y": 549.0063179860962
+            },
+            {
+              "x": 544.7548493388109,
+              "y": 547.3624167758126
+            },
+            {
+              "x": 545.7468586898442,
+              "y": 547.3624167758126
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø40"
+        },
+        {
+          "id": "run_mwkmtqd438k",
+          "systemId": "drain.rain",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 216.9522470637948,
+              "y": 785.8038035908878
+            },
+            {
+              "x": 195.3533878642002,
+              "y": 785.8038035908878
+            },
+            {
+              "x": 195.3533878642002,
+              "y": 802.1104181211421
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø110"
+        },
+        {
+          "id": "run_mwkmu6pd4xu",
+          "systemId": "drain.rain",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 216.90163547985918,
+              "y": 402.4755937651965
+            },
+            {
+              "x": 197.22826743544329,
+              "y": 402.4755937651965
+            },
+            {
+              "x": 195.3533878642002,
+              "y": 785.8038035908878
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "110"
+        },
+        {
+          "id": "mk_mwkmyq7c5r4",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "daksproeier",
+          "kind": "marker",
+          "x": 547.9576223864325,
+          "y": 595.2162117797774,
+          "symbol": "riser-up"
+        },
+        {
+          "id": "run_mwkn3roc3hw",
+          "systemId": "reuse.dist",
+          "level": "wall",
+          "label": "daksproeier",
+          "kind": "run",
+          "points": [
+            {
+              "x": 547.0222992840297,
+              "y": 591.2375732157958
+            },
+            {
+              "x": 547.9576223864325,
+              "y": 591.2375732157958
+            },
+            {
+              "x": 547.9576223864325,
+              "y": 595.2056106199287
+            }
+          ],
+          "flow": "none",
+          "size": "Ø32"
+        }
+      ]
+    },
+    {
+      "id": "sh_mw8z4x7162v",
+      "name": "eerste verdieping",
+      "pdf": {
+        "assetId": "b4c2b8fe46a3714df820353a920205b8914262f28155606f1d9881567c1d947d",
+        "page": 10,
+        "rotation": 90,
+        "widthPt": 842,
+        "heightPt": 1191
+      },
+      "mmPerPoint": 35.281925481394104,
+      "align": {
+        "a": {
+          "x": 0,
+          "y": 0
+        },
+        "b": {
+          "x": 283.431243152347,
+          "y": 0
+        }
+      },
+      "items": [
+        {
+          "id": "wall_mw90pcld3jf",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "gevel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 214.94858618187692,
+              "y": 501.4805671343106
+            },
+            {
+              "x": 214.94858618187692,
+              "y": 690.2401064489106
+            }
+          ],
+          "thickness": 6.538758779524645,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld4h8",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "voorzetwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 221.7310958305126,
+              "y": 523.080862174951
+            },
+            {
+              "x": 221.7310958305126,
+              "y": 579.120887571033
+            }
+          ],
+          "thickness": 2.460183190562372,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld5kd",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "voorzetwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 221.7310958305126,
+              "y": 612.5997860121882
+            },
+            {
+              "x": 221.7310958305126,
+              "y": 668.6398114082704
+            }
+          ],
+          "thickness": 2.460183190562372,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld6rl",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "knieschot",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 218.219382727855,
+              "y": 512.2792974984151
+            },
+            {
+              "x": 556.8601977338476,
+              "y": 512.2792974984151
+            }
+          ],
+          "thickness": 21.600295040640365,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld7ni",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "knieschot",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 218.219382727855,
+              "y": 679.4413760848063
+            },
+            {
+              "x": 556.8601977338476,
+              "y": 679.4413760848063
+            }
+          ],
+          "thickness": 21.600295040640365,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld8qb",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 330.20873552221036,
+              "y": 523.080862174951
+            },
+            {
+              "x": 330.20873552221036,
+              "y": 601.5601390914044
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld910",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 330.20873552221036,
+              "y": 627.4204057166245
+            },
+            {
+              "x": 330.20873552221036,
+              "y": 668.6398114082704
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldan9",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 432.150450746815,
+              "y": 523.080862174951
+            },
+            {
+              "x": 432.150450746815,
+              "y": 598.1391239865555
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldbqp",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 331.92066023085056,
+              "y": 599.8510486951957
+            },
+            {
+              "x": 355.62118078324977,
+              "y": 599.8510486951957
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldct0",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 382.9807986847458,
+              "y": 599.8510486951957
+            },
+            {
+              "x": 470.69993412796566,
+              "y": 599.8510486951957
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldd2i",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 498.0000314683997,
+              "y": 599.8510486951957
+            },
+            {
+              "x": 547.2008609672157,
+              "y": 599.8510486951957
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pclde35",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "douchewand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 390.72130593523644,
+              "y": 565.2610997808832
+            },
+            {
+              "x": 430.4413603506063,
+              "y": 565.2610997808832
+            }
+          ],
+          "thickness": 3.3586602313553118,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldfvu",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "schacht",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 544.3495426611031,
+              "y": 564.1188718709792
+            },
+            {
+              "x": 544.3495426611031,
+              "y": 598.1391239865555
+            }
+          ],
+          "thickness": 5.699802299793698,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldgvi",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "schacht",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 531.6008053441105,
+              "y": 605.9986723591701
+            },
+            {
+              "x": 547.2008609672157,
+              "y": 605.9986723591701
+            }
+          ],
+          "thickness": 12.601353070553348,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldhl9",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 551.4296551150487,
+              "y": 507.2398899951663
+            },
+            {
+              "x": 551.4296551150487,
+              "y": 612.2993488944468
+            }
+          ],
+          "thickness": 8.460422608097558,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldix5",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 551.4296551150487,
+              "y": 638.219136080729
+            },
+            {
+              "x": 551.4296551150487,
+              "y": 704.8198095966675
+            }
+          ],
+          "thickness": 8.460422608097558,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldjvk",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakschild",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 563.1296968323777,
+              "y": 523.080862174951
+            },
+            {
+              "x": 563.1296968323777,
+              "y": 423.8090692608414
+            },
+            {
+              "x": 608.8811681020295,
+              "y": 423.8090692608414
+            }
+          ],
+          "thickness": 12.538998197059833,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldkir",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakschild",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 651.5999250699513,
+              "y": 423.8090692608414
+            },
+            {
+              "x": 699.6301835345479,
+              "y": 423.8090692608414
+            },
+            {
+              "x": 699.6301835345479,
+              "y": 562.5600000336412
+            }
+          ],
+          "thickness": 12.538998197059833,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldlfy",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakschild",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 699.6301835345479,
+              "y": 605.278757001563
+            },
+            {
+              "x": 699.6301835345479,
+              "y": 769.2295596030383
+            },
+            {
+              "x": 651.5999250699513,
+              "y": 769.2295596030383
+            }
+          ],
+          "thickness": 12.538998197059833,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldm38",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakschild",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 608.8811681020295,
+              "y": 769.2295596030383
+            },
+            {
+              "x": 563.1296968323777,
+              "y": 769.2295596030383
+            },
+            {
+              "x": 563.1296968323777,
+              "y": 668.6398114082704
+            }
+          ],
+          "thickness": 12.538998197059833,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldn7i",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 609.96104113844,
+              "y": 430.08140267180283
+            },
+            {
+              "x": 609.96104113844,
+              "y": 408.299711635545
+            }
+          ],
+          "thickness": 2.159746072820884,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldo7o",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 609.96104113844,
+              "y": 762.9600605045083
+            },
+            {
+              "x": 609.96104113844,
+              "y": 784.7389172283347
+            }
+          ],
+          "thickness": 2.159746072820884,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldpki",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 650.5200520335408,
+              "y": 430.08140267180283
+            },
+            {
+              "x": 650.5200520335408,
+              "y": 408.299711635545
+            }
+          ],
+          "thickness": 2.159746072820884,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldqtx",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 650.5200520335408,
+              "y": 762.9600605045083
+            },
+            {
+              "x": 650.5200520335408,
+              "y": 784.7389172283347
+            }
+          ],
+          "thickness": 2.159746072820884,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldrjr",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 693.360684436018,
+              "y": 563.6398730700517
+            },
+            {
+              "x": 715.2614165944,
+              "y": 563.6398730700517
+            }
+          ],
+          "thickness": 2.159746072820884,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldsw1",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 693.360684436018,
+              "y": 604.1988839651526
+            },
+            {
+              "x": 715.2614165944,
+              "y": 604.1988839651526
+            }
+          ],
+          "thickness": 2.159746072820884,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcldtz8",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 555.6612835753132,
+              "y": 526.0200441664408
+            },
+            {
+              "x": 597.71964574669,
+              "y": 526.0200441664408
+            }
+          ],
+          "thickness": 5.640281738731705,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldu6o",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 623.1009135709827,
+              "y": 524.6397340122888
+            },
+            {
+              "x": 703.3799788814536,
+              "y": 524.6397340122888
+            }
+          ],
+          "thickness": 2.8796614304278454,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldvfj",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 625.2294822070568,
+              "y": 526.0795647275028
+            },
+            {
+              "x": 625.2294822070568,
+              "y": 641.9405883033193
+            }
+          ],
+          "thickness": 4.259971584579775,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldwhf",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 627.3608851555625,
+              "y": 640.228663594679
+            },
+            {
+              "x": 655.740855532407,
+              "y": 640.228663594679
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldxrs",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 655.1711587336708,
+              "y": 663.960361583825
+            },
+            {
+              "x": 655.1711587336708,
+              "y": 700.9197956908911
+            }
+          ],
+          "thickness": 5.699802299793698,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldyfv",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 655.8003760934689,
+              "y": 669.6913413203655
+            },
+            {
+              "x": 703.3799788814536,
+              "y": 669.6913413203655
+            }
+          ],
+          "thickness": 5.818843421917684,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcldz5v",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kolom",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 658.0196427273519,
+              "y": 676.1394021020814
+            },
+            {
+              "x": 665.0997551812975,
+              "y": 676.1394021020814
+            }
+          ],
+          "thickness": 7.0801124539456275,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld109d",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 555.6612835753132,
+              "y": 697.0793023461767
+            },
+            {
+              "x": 584.9992515540127,
+              "y": 697.0793023461767
+            }
+          ],
+          "thickness": 7.680986689428604,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld11zl",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 584.9992515540127,
+              "y": 699.2107052946824
+            },
+            {
+              "x": 629.2797146717039,
+              "y": 699.2107052946824
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld12fk",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 582.8990260422538,
+              "y": 663.7194450271455
+            },
+            {
+              "x": 582.8990260422538,
+              "y": 697.4987805860424
+            }
+          ],
+          "thickness": 4.2004510235177825,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld13g2",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 595.5287222371223,
+              "y": 528.8401850358067
+            },
+            {
+              "x": 595.5287222371223,
+              "y": 543.5389293056874
+            }
+          ],
+          "thickness": 2.8201408693658525,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld14nm",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 595.5287222371223,
+              "y": 570.9013815196149
+            },
+            {
+              "x": 595.5287222371223,
+              "y": 608.8811681020295
+            }
+          ],
+          "thickness": 2.8201408693658525,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld15nk",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 555.7208041363751,
+              "y": 610.5902584982381
+            },
+            {
+              "x": 596.9402098280211,
+              "y": 610.5902584982381
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld167z",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "schacht",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 561.4206064361689,
+              "y": 569.2206342477216
+            },
+            {
+              "x": 561.4206064361689,
+              "y": 608.8811681020295
+            }
+          ],
+          "thickness": 11.518645721711382,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld1743",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 555.6612835753132,
+              "y": 639.9310607893691
+            },
+            {
+              "x": 585.0587721150747,
+              "y": 639.9310607893691
+            }
+          ],
+          "thickness": 3.4210151048488284,
+          "status": "new"
+        },
+        {
+          "id": "wall_mw90pcld18t0",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kastwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 578.8487935776067,
+              "y": 430.08140267180283
+            },
+            {
+              "x": 578.8487935776067,
+              "y": 439.6812188773729
+            }
+          ],
+          "thickness": 1.9811843896349057,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld196i",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kastwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 578.8487935776067,
+              "y": 467.040836778869
+            },
+            {
+              "x": 578.8487935776067,
+              "y": 484.61924247917744
+            }
+          ],
+          "thickness": 1.9811843896349057,
+          "status": "existing"
+        },
+        {
+          "id": "wall_mw90pcld1anw",
+          "systemId": "struct.wall",
+          "level": "floor",
+          "label": "kastwand",
+          "kind": "wall",
+          "points": [
+            {
+              "x": 578.8487935776067,
+              "y": 511.91933981961154
+            },
+            {
+              "x": 578.8487935776067,
+              "y": 523.1999032970749
+            }
+          ],
+          "thickness": 1.9811843896349057,
+          "status": "existing"
+        },
+        {
+          "id": "room_mw90pcld1bue",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Overloop",
+          "use": "hall",
+          "points": [
+            {
+              "x": 596.9402098280211,
+              "y": 528.8401850358067
+            },
+            {
+              "x": 623.1009135709827,
+              "y": 528.8401850358067
+            },
+            {
+              "x": 623.1009135709827,
+              "y": 641.9405883033193
+            },
+            {
+              "x": 652.3198404275581,
+              "y": 641.9405883033193
+            },
+            {
+              "x": 652.3198404275581,
+              "y": 700.9197956908911
+            },
+            {
+              "x": 629.2797146717039,
+              "y": 700.9197956908911
+            },
+            {
+              "x": 629.2797146717039,
+              "y": 697.4987805860424
+            },
+            {
+              "x": 584.9992515540127,
+              "y": 697.4987805860424
+            },
+            {
+              "x": 585.0587721150747,
+              "y": 641.6401511855777
+            },
+            {
+              "x": 585.0587721150747,
+              "y": 638.219136080729
+            },
+            {
+              "x": 555.6612835753132,
+              "y": 638.219136080729
+            },
+            {
+              "x": 555.6612835753132,
+              "y": 612.2993488944468
+            },
+            {
+              "x": 596.9402098280211,
+              "y": 612.2993488944468
+            }
+          ],
+          "ref": "1.01"
+        },
+        {
+          "id": "room_mw90pcld1c8d",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Kamer",
+          "use": "bedroom",
+          "points": [
+            {
+              "x": 569.3991959309075,
+              "y": 700.9197956908911
+            },
+            {
+              "x": 658.0196427273519,
+              "y": 700.9197956908911
+            },
+            {
+              "x": 658.0196427273519,
+              "y": 672.5993458751085
+            },
+            {
+              "x": 693.360684436018,
+              "y": 672.5993458751085
+            },
+            {
+              "x": 693.360684436018,
+              "y": 762.9600605045083
+            },
+            {
+              "x": 649.4401789971303,
+              "y": 762.9600605045083
+            },
+            {
+              "x": 649.4401789971303,
+              "y": 781.3207364359174
+            },
+            {
+              "x": 611.0409141748504,
+              "y": 781.3207364359174
+            },
+            {
+              "x": 611.0409141748504,
+              "y": 762.9600605045083
+            },
+            {
+              "x": 569.3991959309075,
+              "y": 762.9600605045083
+            }
+          ],
+          "ref": "1.02"
+        },
+        {
+          "id": "room_mw90pcld1dx7",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Kamer",
+          "use": "bedroom",
+          "points": [
+            {
+              "x": 627.3608851555625,
+              "y": 526.0795647275028
+            },
+            {
+              "x": 693.360684436018,
+              "y": 526.0795647275028
+            },
+            {
+              "x": 693.360684436018,
+              "y": 564.7197461064623
+            },
+            {
+              "x": 711.7213603674271,
+              "y": 564.7197461064623
+            },
+            {
+              "x": 711.7213603674271,
+              "y": 603.1190109287422
+            },
+            {
+              "x": 693.360684436018,
+              "y": 603.1190109287422
+            },
+            {
+              "x": 693.360684436018,
+              "y": 666.7805024531909
+            },
+            {
+              "x": 655.740855532407,
+              "y": 666.7805024531909
+            },
+            {
+              "x": 655.740855532407,
+              "y": 638.5195731984703
+            },
+            {
+              "x": 627.3608851555625,
+              "y": 638.5195731984703
+            }
+          ],
+          "ref": "1.03"
+        },
+        {
+          "id": "room_mw90pcld1edl",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Kamer",
+          "use": "bedroom",
+          "points": [
+            {
+              "x": 579.84080292864,
+              "y": 430.08140267180283
+            },
+            {
+              "x": 611.0409141748504,
+              "y": 430.08140267180283
+            },
+            {
+              "x": 611.0409141748504,
+              "y": 411.72072674039384
+            },
+            {
+              "x": 649.4401789971303,
+              "y": 411.72072674039384
+            },
+            {
+              "x": 649.4401789971303,
+              "y": 430.08140267180283
+            },
+            {
+              "x": 693.360684436018,
+              "y": 430.08140267180283
+            },
+            {
+              "x": 693.360684436018,
+              "y": 523.1999032970749
+            },
+            {
+              "x": 579.84080292864,
+              "y": 523.1999032970749
+            }
+          ],
+          "ref": "1.04"
+        },
+        {
+          "id": "room_mw90pcld1f6r",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Toilet",
+          "use": "toilet",
+          "points": [
+            {
+              "x": 555.6612835753132,
+              "y": 641.6401511855777
+            },
+            {
+              "x": 585.0587721150747,
+              "y": 641.6401511855777
+            },
+            {
+              "x": 585.0587721150747,
+              "y": 663.7194450271455
+            },
+            {
+              "x": 555.6612835753132,
+              "y": 663.7194450271455
+            }
+          ],
+          "ref": "1.05"
+        },
+        {
+          "id": "room_mw90pcld1gjf",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Overloop",
+          "use": "hall",
+          "points": [
+            {
+              "x": 331.92066023085056,
+              "y": 601.5601390914044
+            },
+            {
+              "x": 531.6008053441105,
+              "y": 601.5601390914044
+            },
+            {
+              "x": 531.6008053441105,
+              "y": 612.2993488944468
+            },
+            {
+              "x": 547.2008609672157,
+              "y": 612.2993488944468
+            },
+            {
+              "x": 547.2008609672157,
+              "y": 668.6398114082704
+            },
+            {
+              "x": 331.92066023085056,
+              "y": 668.6398114082704
+            }
+          ],
+          "ref": "1.06"
+        },
+        {
+          "id": "room_mw90pcld1hxk",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Badkamer",
+          "use": "bathroom",
+          "points": [
+            {
+              "x": 555.6612835753132,
+              "y": 528.8401850358067
+            },
+            {
+              "x": 594.1200689586552,
+              "y": 528.8401850358067
+            },
+            {
+              "x": 594.1200689586552,
+              "y": 608.8811681020295
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 608.8811681020295
+            },
+            {
+              "x": 567.1799292970245,
+              "y": 569.2206342477216
+            },
+            {
+              "x": 555.6612835753132,
+              "y": 569.2206342477216
+            }
+          ],
+          "ref": "1.07"
+        },
+        {
+          "id": "room_mw90pcld1iak",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Werkkamer",
+          "use": "other",
+          "points": [
+            {
+              "x": 433.85954114302365,
+              "y": 523.080862174951
+            },
+            {
+              "x": 547.2008609672157,
+              "y": 523.080862174951
+            },
+            {
+              "x": 547.2008609672157,
+              "y": 564.1188718709792
+            },
+            {
+              "x": 541.5010586674221,
+              "y": 564.1188718709792
+            },
+            {
+              "x": 541.5010586674221,
+              "y": 598.1391239865555
+            },
+            {
+              "x": 433.85954114302365,
+              "y": 598.1391239865555
+            }
+          ],
+          "ref": "1.08"
+        },
+        {
+          "id": "room_mw90pcld1jap",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Badkamer",
+          "use": "bathroom",
+          "points": [
+            {
+              "x": 331.92066023085056,
+              "y": 523.080862174951
+            },
+            {
+              "x": 430.4413603506063,
+              "y": 523.080862174951
+            },
+            {
+              "x": 430.4413603506063,
+              "y": 598.1391239865555
+            },
+            {
+              "x": 331.92066023085056,
+              "y": 598.1391239865555
+            }
+          ],
+          "ref": "1.09"
+        },
+        {
+          "id": "room_mw90pcld1krp",
+          "systemId": "struct.room",
+          "level": "floor",
+          "kind": "room",
+          "name": "Slaapkamer",
+          "use": "bedroom",
+          "points": [
+            {
+              "x": 222.96118742579378,
+              "y": 523.080862174951
+            },
+            {
+              "x": 328.4996451260017,
+              "y": 523.080862174951
+            },
+            {
+              "x": 328.4996451260017,
+              "y": 668.6398114082704
+            },
+            {
+              "x": 222.96118742579378,
+              "y": 668.6398114082704
+            }
+          ],
+          "ref": "1.10"
+        },
+        {
+          "id": "door_mw90pcld1lm0",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 328.4996451260017,
+              "y": 627.060448037821
+            },
+            {
+              "x": 328.4996451260017,
+              "y": 602.3990955711353
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw90pcld1muu",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 356.9391360639082,
+              "y": 601.5601390914044
+            },
+            {
+              "x": 381.6004885305939,
+              "y": 601.5601390914044
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw90pcld1ny4",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 472.0207237210556,
+              "y": 601.5601390914044
+            },
+            {
+              "x": 496.6792418753099,
+              "y": 601.5601390914044
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw90pcld1o1y",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 621.7206034168307,
+              "y": 528.8401850358067
+            },
+            {
+              "x": 599.0999559008419,
+              "y": 528.8401850358067
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw90pcld1pmf",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 596.9402098280211,
+              "y": 544.9192394598393
+            },
+            {
+              "x": 596.9402098280211,
+              "y": 569.580591926525
+            }
+          ],
+          "swing": -1
+        },
+        {
+          "id": "door_mw90pcld1qq1",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 655.740855532407,
+              "y": 662.6395719907351
+            },
+            {
+              "x": 655.740855532407,
+              "y": 642.2410254210607
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw90pcld1ru3",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 630.6005042647938,
+              "y": 700.9197956908911
+            },
+            {
+              "x": 650.9990508344682,
+              "y": 700.9197956908911
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "door_mw90pcld1sk1",
+          "systemId": "struct.door",
+          "level": "floor",
+          "kind": "door",
+          "points": [
+            {
+              "x": 585.0587721150747,
+              "y": 663.7194450271455
+            },
+            {
+              "x": 585.0587721150747,
+              "y": 641.6401511855777
+            }
+          ],
+          "swing": 1
+        },
+        {
+          "id": "window_mw9mz5j9rx",
+          "systemId": "struct.window",
+          "level": "floor",
+          "kind": "window",
+          "points": [
+            {
+              "x": 214.94858618187692,
+              "y": 579.120887571033
+            },
+            {
+              "x": 214.94858618187692,
+              "y": 612.5997860121882
+            }
+          ],
+          "depth": 6.538758779524645
+        },
+        {
+          "id": "window_mw9mz5j9srq",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 257.27904234667994,
+              "y": 512.2792974984151
+            },
+            {
+              "x": 295.2588289290944,
+              "y": 512.2792974984151
+            }
+          ],
+          "depth": 21.600295040640365
+        },
+        {
+          "id": "window_mw9mz5j9tmz",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 369.35909313884406,
+              "y": 512.2792974984151
+            },
+            {
+              "x": 407.33887972125854,
+              "y": 512.2792974984151
+            }
+          ],
+          "depth": 21.600295040640365
+        },
+        {
+          "id": "window_mw9mz5j9un1",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 478.6813579351358,
+              "y": 512.2792974984151
+            },
+            {
+              "x": 516.6611445175503,
+              "y": 512.2792974984151
+            }
+          ],
+          "depth": 21.600295040640365
+        },
+        {
+          "id": "window_mw9mz5j9vg1",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 257.16000122455597,
+              "y": 679.4413760848063
+            },
+            {
+              "x": 295.19930836803246,
+              "y": 679.4413760848063
+            }
+          ],
+          "depth": 21.600295040640365
+        },
+        {
+          "id": "window_mw9mz5j9wsx",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 365.2209969888198,
+              "y": 679.4413760848063
+            },
+            {
+              "x": 403.20078357123424,
+              "y": 679.4413760848063
+            }
+          ],
+          "depth": 21.600295040640365
+        },
+        {
+          "id": "window_mw9mz5j9xz5",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 454.92131682167457,
+              "y": 679.4413760848063
+            },
+            {
+              "x": 492.90110340408904,
+              "y": 679.4413760848063
+            }
+          ],
+          "depth": 21.600295040640365
+        },
+        {
+          "id": "window_mw9mz5j9yj7",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 520.6801995454506,
+              "y": 679.4413760848063
+            },
+            {
+              "x": 542.8190139480804,
+              "y": 679.4413760848063
+            }
+          ],
+          "depth": 21.600295040640365
+        },
+        {
+          "id": "window_mw9mz5j9zy8",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 699.6301835345479,
+              "y": 460.32068200372674
+            },
+            {
+              "x": 699.6301835345479,
+              "y": 498.3004685861413
+            }
+          ],
+          "depth": 12.538998197059833
+        },
+        {
+          "id": "window_mw9mz5j910s4",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 699.6301835345479,
+              "y": 637.8591784019253
+            },
+            {
+              "x": 699.6301835345479,
+              "y": 659.9413065559247
+            }
+          ],
+          "depth": 12.538998197059833
+        },
+        {
+          "id": "window_mw9mz5j911wd",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 699.6301835345479,
+              "y": 691.5608960420005
+            },
+            {
+              "x": 699.6301835345479,
+              "y": 729.540682624415
+            }
+          ],
+          "depth": 12.538998197059833
+        },
+        {
+          "id": "window_mw9mz5j912bc",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakraam",
+          "kind": "window",
+          "points": [
+            {
+              "x": 563.1296968323777,
+              "y": 730.0792019864047
+            },
+            {
+              "x": 563.1296968323777,
+              "y": 752.2208507014659
+            }
+          ],
+          "depth": 12.538998197059833
+        },
+        {
+          "id": "window_mw9mz5j913i3",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "window",
+          "points": [
+            {
+              "x": 611.0409141748504,
+              "y": 410.00880203175365
+            },
+            {
+              "x": 649.4401789971303,
+              "y": 410.00880203175365
+            }
+          ],
+          "depth": 3.4210151048488284
+        },
+        {
+          "id": "window_mw9mz5j914kk",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "window",
+          "points": [
+            {
+              "x": 611.0409141748504,
+              "y": 783.029826832126
+            },
+            {
+              "x": 649.4401789971303,
+              "y": 783.029826832126
+            }
+          ],
+          "depth": 3.4210151048488284
+        },
+        {
+          "id": "window_mw9mz5j915hj",
+          "systemId": "struct.window",
+          "level": "floor",
+          "label": "dakkapel",
+          "kind": "window",
+          "points": [
+            {
+              "x": 713.4304507636356,
+              "y": 564.7197461064623
+            },
+            {
+              "x": 713.4304507636356,
+              "y": 603.1190109287422
+            }
+          ],
+          "depth": 3.4210151048488284
+        },
+        {
+          "id": "mk_mwjmjwip816",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "wasbakken",
+          "kind": "marker",
+          "x": 546.7246309224986,
+          "y": 564.8358448948936,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "mk_mwjshxks731",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "RW toiletten boven",
+          "kind": "marker",
+          "x": 546.1011522122997,
+          "y": 594.0718886005742,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "run_mwjsixwg8oi",
+          "systemId": "reuse.dist",
+          "level": "wall",
+          "label": "RW toilet 1.09",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.1011477437846,
+              "y": 594.0718856473193
+            },
+            {
+              "x": 546.1011477437846,
+              "y": 601.7528723367479
+            },
+            {
+              "x": 427.98117716004396,
+              "y": 601.7528723367479
+            },
+            {
+              "x": 427.98117716004396,
+              "y": 551.2170816826845
+            },
+            {
+              "x": 427.13088343058695,
+              "y": 551.2170816826845
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjsjo559ic",
+          "systemId": "reuse.dist",
+          "level": "wall",
+          "label": "RW toilet 1.05",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.1011477437846,
+              "y": 601.7528723367479
+            },
+            {
+              "x": 546.1011477437846,
+              "y": 607.9600165617843
+            },
+            {
+              "x": 544.1879868525062,
+              "y": 607.9600165617843
+            },
+            {
+              "x": 544.1879868525062,
+              "y": 681.3687085382422
+            },
+            {
+              "x": 568.8465050067605,
+              "y": 681.3687085382422
+            },
+            {
+              "x": 568.8465050067605,
+              "y": 673.6593787244983
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjsk0daakl",
+          "systemId": "reuse.dist",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 427.1181794211032,
+          "y": 551.22945831789,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjsk28dbda",
+          "systemId": "reuse.dist",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 568.8416771352415,
+          "y": 673.6649588051603,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjsm1o5dol",
+          "systemId": "water.cold",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.7246309224986,
+              "y": 564.8358448948936
+            },
+            {
+              "x": 547.1994438109999,
+              "y": 526.0476556230308
+            },
+            {
+              "x": 574.1194715800659,
+              "y": 526.0476556230308
+            },
+            {
+              "x": 574.1194715800659,
+              "y": 533.7744559999211
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjsm61ne76",
+          "systemId": "water.cold",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 568.4776837249834,
+              "y": 526.0476556230308
+            },
+            {
+              "x": 568.4776837249834,
+              "y": 519.4246878816689
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjsmbwsfju",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 568.4776837249834,
+          "y": 519.4246878816689,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjsmdhpg9n",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 574.1194715800659,
+          "y": 533.7744559999211,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjsnjceh4n",
+          "systemId": "water.cold",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.7246309224986,
+              "y": 564.8358448948936
+            },
+            {
+              "x": 547.1994438109999,
+              "y": 680.0147264988086
+            },
+            {
+              "x": 556.8601977338476,
+              "y": 680.0147264988086
+            },
+            {
+              "x": 556.8601977338476,
+              "y": 654.4102188497443
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjsnn99idc",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 556.8601977338476,
+          "y": 654.4102188497443,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjsoy8ij34",
+          "systemId": "water.cold",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 546.8885197372618,
+              "y": 604.5871847682714
+            },
+            {
+              "x": 328.49681081357016,
+              "y": 604.5871847682714
+            },
+            {
+              "x": 328.49681081357016,
+              "y": 562.5826745330936
+            },
+            {
+              "x": 336.1494543786836,
+              "y": 562.5826745330936
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjsp1k9kew",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 336.1356743456672,
+          "y": 562.584006493401,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjsqxq2nam",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW douche 1.09",
+          "kind": "run",
+          "points": [
+            {
+              "x": 543.6211243662016,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 543.6211243662016,
+              "y": 600.3357161209861
+            },
+            {
+              "x": 429.3983333758057,
+              "y": 600.3357161209861
+            },
+            {
+              "x": 429.3983333758057,
+              "y": 581.9977146890293
+            },
+            {
+              "x": 427.3292853007936,
+              "y": 581.9977146890293
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjsrdqro6i",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW bad 1.09",
+          "kind": "run",
+          "points": [
+            {
+              "x": 540.7868119346781,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 540.7868119346781,
+              "y": 597.5014036894627
+            },
+            {
+              "x": 432.23264580732916,
+              "y": 597.5014036894627
+            },
+            {
+              "x": 432.23264580732916,
+              "y": 509.04251270161524
+            },
+            {
+              "x": 379.5711208296231,
+              "y": 509.04251270161524
+            },
+            {
+              "x": 379.5711208296231,
+              "y": 516.014921283163
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjsrhrfpdu",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 379.57562907577056,
+          "y": 516.0146487424206,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjsrk3bqnr",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 427.3285650841747,
+          "y": 581.9983561163299,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjst4knrq8",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW douche 1.07",
+          "kind": "run",
+          "points": [
+            {
+              "x": 549.0346611104114,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 549.0346611104114,
+              "y": 610.2558096313184
+            },
+            {
+              "x": 580.5805584732676,
+              "y": 610.2558096313184
+            },
+            {
+              "x": 580.5805584732676,
+              "y": 604.6722141412171
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjst89es33",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "",
+          "kind": "marker",
+          "x": 580.5943410592934,
+          "y": 604.6819497488228,
+          "symbol": "outlet"
+        },
+        {
+          "id": "run_mwjt42lx8cl",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW bad 1.09",
+          "kind": "run",
+          "points": [
+            {
+              "x": 539.3696557189163,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 539.3696557189163,
+              "y": 596.084247473701
+            },
+            {
+              "x": 433.6498020230909,
+              "y": 596.084247473701
+            },
+            {
+              "x": 433.6498020230909,
+              "y": 507.6253564858535
+            },
+            {
+              "x": 378.1539646138614,
+              "y": 507.6253564858535
+            },
+            {
+              "x": 378.1539646138614,
+              "y": 516.014921283163
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjt42lx9lb",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW douche 1.09",
+          "kind": "run",
+          "points": [
+            {
+              "x": 542.2039681504398,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 542.2039681504398,
+              "y": 598.9185599052245
+            },
+            {
+              "x": 430.8154895915674,
+              "y": 598.9185599052245
+            },
+            {
+              "x": 430.8154895915674,
+              "y": 580.5805584732676
+            },
+            {
+              "x": 427.3292853007936,
+              "y": 580.5805584732676
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjt42lxapt",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW douche 1.07",
+          "kind": "run",
+          "points": [
+            {
+              "x": 550.4518173261731,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 550.4518173261731,
+              "y": 608.8386534155566
+            },
+            {
+              "x": 579.1634022575058,
+              "y": 608.8386534155566
+            },
+            {
+              "x": 579.1634022575058,
+              "y": 604.6722141412171
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjt42lxbj2",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "bad WW",
+          "kind": "marker",
+          "x": 378.1539646138614,
+          "y": 516.014921283163,
+          "symbol": "outlet",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjt42lxciy",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "douche WW",
+          "kind": "marker",
+          "x": 427.3292853007936,
+          "y": 580.5805584732676,
+          "symbol": "outlet",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjt42lxdp",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "douche WW",
+          "kind": "marker",
+          "x": 579.1634022575058,
+          "y": 604.6722141412171,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjtbnkt4fy",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW wasbakken",
+          "kind": "marker",
+          "x": 545.3217118251156,
+          "y": 569.6967987362174,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "run_mwjtbnkt5kj",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW wasbakken noord",
+          "kind": "run",
+          "points": [
+            {
+              "x": 545.3217118251156,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 545.3217118251156,
+              "y": 524.6312310749943
+            },
+            {
+              "x": 575.5354823451559,
+              "y": 524.6312310749943
+            },
+            {
+              "x": 575.5354823451559,
+              "y": 533.7860602288151
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjtbnkt6tx",
+          "systemId": "water.hot",
+          "level": "wall",
+          "kind": "run",
+          "points": [
+            {
+              "x": 569.8952006064242,
+              "y": 524.6312310749943
+            },
+            {
+              "x": 569.8952006064242,
+              "y": 519.4160962009911
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "run_mwjtbnkt7u9",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW wasbakken 1.09",
+          "kind": "run",
+          "points": [
+            {
+              "x": 545.3217118251156,
+              "y": 569.6967987362175
+            },
+            {
+              "x": 545.3217118251156,
+              "y": 603.1700285525096
+            },
+            {
+              "x": 329.9139670293319,
+              "y": 603.1700285525096
+            },
+            {
+              "x": 329.9139670293319,
+              "y": 563.9998307488553
+            },
+            {
+              "x": 336.1494543786836,
+              "y": 563.9998307488553
+            }
+          ],
+          "flow": "none",
+          "size": "Ø16"
+        },
+        {
+          "id": "mk_mwjtbnkt9vx",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "wastafel WW",
+          "kind": "marker",
+          "x": 575.5354823451559,
+          "y": 533.7860602288151,
+          "symbol": "outlet",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtbnktazu",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW",
+          "kind": "marker",
+          "x": 569.8952006064242,
+          "y": 519.4160962009911,
+          "symbol": "outlet",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtbnktbn6",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "wastafel WW",
+          "kind": "marker",
+          "x": 336.1494543786836,
+          "y": 563.9998307488553,
+          "symbol": "outlet"
+        },
+        {
+          "id": "mk_mwjtl28a47t",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW bad",
+          "kind": "marker",
+          "x": 540.7868119346781,
+          "y": 569.6967987362175,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28a66s",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW douche 1.09",
+          "kind": "marker",
+          "x": 543.6211243662016,
+          "y": 569.6967987362175,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28a8bj",
+          "systemId": "water.cold",
+          "level": "wall",
+          "label": "KW douche 1.07",
+          "kind": "marker",
+          "x": 549.0346611104114,
+          "y": 569.6967987362175,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28aais",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW bad",
+          "kind": "marker",
+          "x": 539.3696557189163,
+          "y": 569.6967987362175,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28actw",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW douche 1.09",
+          "kind": "marker",
+          "x": 542.2039681504398,
+          "y": 569.6967987362175,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwjtl28aehr",
+          "systemId": "water.hot",
+          "level": "wall",
+          "label": "WW douche 1.07",
+          "kind": "marker",
+          "x": 550.4518173261731,
+          "y": 569.6967987362175,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "run_mwkhaesl1ec1",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 567.4293487909988,
+              "y": 675.1939900626013
+            },
+            {
+              "x": 545.8966033950344,
+              "y": 675.1939900626013
+            },
+            {
+              "x": 545.8966033950344,
+              "y": 550.6472232671834
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø110"
+        },
+        {
+          "id": "mk_mwkhbltk1goi",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 545.8966033950344,
+          "y": 550.6472232671834,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "run_mwkhdfn11itn",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 559.6638246209894,
+              "y": 654.6105683037086
+            },
+            {
+              "x": 559.6638246209894,
+              "y": 675.1939900626013
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø40"
+        },
+        {
+          "id": "run_mwkhfe851jkq",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 580.8353923088014,
+              "y": 595.2813975128455
+            },
+            {
+              "x": 580.8353923088014,
+              "y": 547.3572580485253
+            },
+            {
+              "x": 545.7344461833388,
+              "y": 547.3572580485253
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkhfl3i1kdb",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 571.3973861951315,
+              "y": 520.9466249140138
+            },
+            {
+              "x": 571.3973861951315,
+              "y": 547.3624167758126
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkhfovn1ler",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 574.0926643421127,
+              "y": 535.5478118999914
+            },
+            {
+              "x": 574.0926643421127,
+              "y": 547.3572580485253
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø40"
+        },
+        {
+          "id": "mk_mwkhgemm1maz",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 545.7344461833388,
+          "y": 547.3572580485253,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "run_mwkhm2cd1qgp",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 338.8797871211825,
+              "y": 560.432624487367
+            },
+            {
+              "x": 330.13332313683696,
+              "y": 560.432624487367
+            },
+            {
+              "x": 330.13332313683696,
+              "y": 475.39606703667647
+            },
+            {
+              "x": 544.5570927884633,
+              "y": 475.39606703667647
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkhmdq21rp",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 382.85442373810827,
+              "y": 516.3690821409629
+            },
+            {
+              "x": 382.85442373810827,
+              "y": 475.39606703667647
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkhmkd61som",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 418.19755934840833,
+              "y": 582.2074121392218
+            },
+            {
+              "x": 418.19755934840833,
+              "y": 475.39606703667647
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø50"
+        },
+        {
+          "id": "run_mwkhn1151tiv",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "kind": "run",
+          "points": [
+            {
+              "x": 425.8554428364014,
+              "y": 551.0753660611083
+            },
+            {
+              "x": 425.8554428364014,
+              "y": 478.37525219253126
+            },
+            {
+              "x": 544.6698199658653,
+              "y": 478.37525219253126
+            }
+          ],
+          "flow": "forward",
+          "flowAssumed": true,
+          "size": "Ø110"
+        },
+        {
+          "id": "mk_mwkhndjt1unt",
+          "systemId": "drain.soil",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 544.660125371628,
+          "y": 478.36739220088515,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "mk_mwkhnn8t1wa",
+          "systemId": "drain.waste",
+          "level": "floor",
+          "label": "",
+          "kind": "marker",
+          "x": 544.5570927884633,
+          "y": 475.39606703667647,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "mk_mwkmz2dz6wv",
+          "systemId": "reuse.dist",
+          "level": "wall",
+          "label": "begane grond, daksproeier",
+          "kind": "marker",
+          "x": 547.9576223864325,
+          "y": 595.2162117797774,
+          "symbol": "riser-down"
+        },
+        {
+          "id": "run_mwkn0wdg79t",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "daksproeier",
+          "note": "drieklinken zijde",
+          "kind": "run",
+          "points": [
+            {
+              "x": 547.9576223864325,
+              "y": 595.2162117797774
+            },
+            {
+              "x": 547.5395613027828,
+              "y": 590.8535064396689
+            }
+          ],
+          "flow": "none",
+          "size": "Ø32"
+        },
+        {
+          "id": "run_mwkn1maf8s8",
+          "systemId": "reuse.dist",
+          "level": "on-wall",
+          "label": "daksproeier",
+          "note": "buren zijde",
+          "kind": "run",
+          "points": [
+            {
+              "x": 547.9576223864325,
+              "y": 595.2162117797774
+            },
+            {
+              "x": 547.8584214513291,
+              "y": 599.5137655158443
+            }
+          ],
+          "flow": "none",
+          "size": "Ø32"
+        },
+        {
+          "id": "mk_mwknbtl5373",
+          "systemId": "drain.vent",
+          "level": "wall",
+          "label": "Ontluchting door het dak",
+          "kind": "marker",
+          "x": 545.7468586898442,
+          "y": 547.3624167758126,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "run_mwknbtl54c1",
+          "systemId": "drain.vent",
+          "level": "wall",
+          "label": "Ontluchting standleiding zwart",
+          "kind": "run",
+          "points": [
+            {
+              "x": 545.8885743114204,
+              "y": 550.6502191963798
+            },
+            {
+              "x": 545.7468586898442,
+              "y": 547.3624167758126
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø110"
+        }
+      ]
+    }
+  ],
+  "assets": {
+    "b4c2b8fe46a3714df820353a920205b8914262f28155606f1d9881567c1d947d": {
+      "name": "2026-11-05 OV 25-03_Buzziburglaan 16_Driebergen-1.pdf",
+      "bytes": 13272581
+    }
+  },
+  "settings": {
+    "gridMm": 100,
+    "showGrid": false,
+    "snapToGrid": false,
+    "snapToItems": true,
+    "orthoLock": false,
+    "backgroundOpacity": 0.25,
+    "showLabels": true,
+    "showFlow": true,
+    "showNotes": true,
+    "showLevels": true,
+    "takeoffSlackPct": 10,
+    "runSpacingMm": 50,
+    "levelFilter": "all",
+    "labelFilter": "",
+    "roomFocus": null
+  },
+  "activeSheetId": "sh_mw8z4x7162v"
+}
