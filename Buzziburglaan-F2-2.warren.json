@@ -3170,8 +3170,9 @@
         {
           "id": "box_mwjgerom5fm",
           "systemId": "data.cat6",
-          "level": "on-floor",
+          "level": "on-wall",
           "label": "19\" serverrack",
+          "note": "Deze hangt aan de muur zodat daaronder plaats ontstaat voor de vloerverwarmingverdelers.",
           "kind": "box",
           "x": 478.1485071980094,
           "y": 618.7304038015735,
@@ -4026,8 +4027,16 @@
               "y": 553.5412178765337
             },
             {
-              "x": 478.1485071980094,
+              "x": 537.1022057736976,
               "y": 553.5412178765337
+            },
+            {
+              "x": 537.1022057736976,
+              "y": 549.8566117155532
+            },
+            {
+              "x": 478.1485071980094,
+              "y": 549.8566117155532
             },
             {
               "x": 478.1485071980094,
@@ -4553,6 +4562,358 @@
           ],
           "flow": "none",
           "size": "Ø32"
+        },
+        {
+          "id": "box_mwko2yj1dsd",
+          "systemId": "heat.flow",
+          "level": "on-floor",
+          "label": "radiator",
+          "kind": "box",
+          "x": 643.6635064807814,
+          "y": 766.9763610750839,
+          "w": 45.07350322521722,
+          "h": 4.633726939656867
+        },
+        {
+          "id": "box_mwko4fwcecy",
+          "systemId": "heat.flow",
+          "level": "on-floor",
+          "label": "radiator",
+          "kind": "box",
+          "x": 694.3185416896774,
+          "y": 626.871989669719,
+          "w": 7.161223126375148,
+          "h": 28.118286609286088
+        },
+        {
+          "id": "box_mwko4i6afol",
+          "systemId": "heat.flow",
+          "level": "on-floor",
+          "label": "radiator",
+          "kind": "box",
+          "x": 690.6326318460374,
+          "y": 510.7787356692959,
+          "w": 10.320569255783084,
+          "h": 30.22452941421966
+        },
+        {
+          "id": "box_mwko4knjgeg",
+          "systemId": "heat.flow",
+          "level": "on-floor",
+          "label": "radiator",
+          "kind": "box",
+          "x": 690.7379421784848,
+          "y": 443.40541925192235,
+          "w": 8.214326450849512,
+          "h": 33.59451127351616
+        },
+        {
+          "id": "box_mwkpmi003ud",
+          "systemId": "heat.hp",
+          "level": "on-floor",
+          "label": "Buitenunit warmtepomp (monoblock, lucht/water)",
+          "kind": "box",
+          "x": 483.25026957475166,
+          "y": 395.3865841975241,
+          "w": 31.177436746758172,
+          "h": 12.754405941855616
+        },
+        {
+          "id": "run_mwkpmi004n8",
+          "systemId": "heat.hp",
+          "level": "floor",
+          "label": "Warmtepomp buitenunit ↔ technische ruimte (aanvoer + retour, geïsoleerd)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 498.83898794813075,
+              "y": 402.47236527633277
+            },
+            {
+              "x": 498.83898794813075,
+              "y": 555.5252365786001
+            }
+          ],
+          "flow": "none",
+          "size": "2×Ø28"
+        },
+        {
+          "id": "box_mwkpmi0052e",
+          "systemId": "heat.ufh",
+          "level": "crawl",
+          "label": "Verdeler kelder (bestaand): VV 0.03/0.04 + radiatoren — onder de trede 0.03→0.02, positie bij benadering",
+          "kind": "box",
+          "x": 654.7261716819215,
+          "y": 666.0634214080154,
+          "w": 28.3431243152347,
+          "h": 5.66862486304694
+        },
+        {
+          "id": "run_mwkpmi0084p",
+          "systemId": "heat.flow",
+          "level": "floor",
+          "label": "Aanvoer verdeler kelder (via vloer gang en hal 0.01)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 518.679174968795,
+              "y": 567.712780034151
+            },
+            {
+              "x": 530.5832871811936,
+              "y": 567.712780034151
+            },
+            {
+              "x": 530.5832871811936,
+              "y": 679.6681210793281
+            },
+            {
+              "x": 635.7362783907143,
+              "y": 679.6681210793281
+            },
+            {
+              "x": 635.7362783907143,
+              "y": 669.748027568996
+            },
+            {
+              "x": 656.1433278976833,
+              "y": 669.748027568996
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø22"
+        },
+        {
+          "id": "run_mwkpmi009lu",
+          "systemId": "heat.return",
+          "level": "floor",
+          "label": "Retour verdeler kelder (via vloer gang en hal 0.01)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 518.679174968795,
+              "y": 566.012192575237
+            },
+            {
+              "x": 532.2838746401077,
+              "y": 566.012192575237
+            },
+            {
+              "x": 532.2838746401077,
+              "y": 677.9675336204141
+            },
+            {
+              "x": 634.0356909318002,
+              "y": 677.9675336204141
+            },
+            {
+              "x": 634.0356909318002,
+              "y": 668.0474401100819
+            },
+            {
+              "x": 656.1433278976833,
+              "y": 668.0474401100819
+            }
+          ],
+          "flow": "reverse",
+          "size": "Ø22"
+        },
+        {
+          "id": "run_mwkpmi00av3",
+          "systemId": "heat.flow",
+          "level": "ceiling",
+          "label": "Aanvoer verdeler 1.06 (plafond 0.07, omhoog onder de verdeler)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 508.75908145846284,
+              "y": 575.3654235992644
+            },
+            {
+              "x": 508.75908145846284,
+              "y": 602.858254185042
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø22"
+        },
+        {
+          "id": "run_mwkpmi00bcn",
+          "systemId": "heat.return",
+          "level": "ceiling",
+          "label": "Retour verdeler 1.06 (plafond 0.07, omhoog onder de verdeler)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 510.459668917377,
+              "y": 575.3654235992644
+            },
+            {
+              "x": 510.459668917377,
+              "y": 602.858254185042
+            }
+          ],
+          "flow": "reverse",
+          "size": "Ø22"
+        },
+        {
+          "id": "mk_mwkpmi00cxd",
+          "systemId": "heat.flow",
+          "level": "ceiling",
+          "label": "naar verdeler 1.06",
+          "kind": "marker",
+          "x": 508.75908145846284,
+          "y": 602.858254185042,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwkpmi00eza",
+          "systemId": "heat.return",
+          "level": "ceiling",
+          "label": "naar verdeler 1.06",
+          "kind": "marker",
+          "x": 510.459668917377,
+          "y": 602.858254185042,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "run_mwkpmi00ghe",
+          "systemId": "heat.flow",
+          "level": "ceiling",
+          "label": "Aanvoer verdeler 1.01 (plafond 0.07)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 517.2620187530333,
+              "y": 575.3654235992644
+            },
+            {
+              "x": 517.2620187530333,
+              "y": 596.0559043493857
+            },
+            {
+              "x": 524.9146623181466,
+              "y": 596.0559043493857
+            },
+            {
+              "x": 524.9146623181466,
+              "y": 607.3931540754796
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø22"
+        },
+        {
+          "id": "run_mwkpmi00h3",
+          "systemId": "heat.return",
+          "level": "ceiling",
+          "label": "Retour verdeler 1.01 (plafond 0.07)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 518.9626062119473,
+              "y": 575.3654235992644
+            },
+            {
+              "x": 518.9626062119473,
+              "y": 594.3553168904716
+            },
+            {
+              "x": 526.6152497770607,
+              "y": 594.3553168904716
+            },
+            {
+              "x": 526.6152497770607,
+              "y": 607.3931540754796
+            }
+          ],
+          "flow": "reverse",
+          "size": "Ø22"
+        },
+        {
+          "id": "mk_mwkpmi00ibz",
+          "systemId": "heat.flow",
+          "level": "ceiling",
+          "label": "naar verdeler 1.01",
+          "kind": "marker",
+          "x": 524.9146623181466,
+          "y": 607.3931540754796,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwkpmi00k6k",
+          "systemId": "heat.return",
+          "level": "ceiling",
+          "label": "naar verdeler 1.01",
+          "kind": "marker",
+          "x": 526.6152497770607,
+          "y": 607.3931540754796,
+          "symbol": "riser-up",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "box_mwkq2idp32f",
+          "systemId": "heat.ufh",
+          "level": "on-wall",
+          "label": "Verdelers VV begane grond (2 balken, onder het serverrack)",
+          "kind": "box",
+          "x": 477.5816447117047,
+          "y": 638.5705908222378,
+          "w": 30.32714301730113,
+          "h": 2.83431243152347
+        },
+        {
+          "id": "run_mwkq2idp4e9",
+          "systemId": "heat.flow",
+          "level": "floor",
+          "label": "Aanvoer verdelers begane grond",
+          "kind": "run",
+          "points": [
+            {
+              "x": 499.4058504344354,
+              "y": 575.3654235992644
+            },
+            {
+              "x": 499.4058504344354,
+              "y": 639.9877470379995
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø28"
+        },
+        {
+          "id": "run_mwkq2idp57y",
+          "systemId": "heat.return",
+          "level": "floor",
+          "label": "Retour verdelers begane grond",
+          "kind": "run",
+          "points": [
+            {
+              "x": 501.1064378933495,
+              "y": 575.3654235992644
+            },
+            {
+              "x": 501.1064378933495,
+              "y": 639.9877470379995
+            }
+          ],
+          "flow": "reverse",
+          "size": "Ø28"
         }
       ]
     },
@@ -7225,6 +7586,179 @@
           ],
           "flow": "forward",
           "size": "Ø110"
+        },
+        {
+          "id": "box_mwko9da9hcb",
+          "systemId": "heat.flow",
+          "level": "on-wall",
+          "label": "",
+          "kind": "box",
+          "x": 614.2668910785212,
+          "y": 422.994034399074,
+          "w": 31.606229205911063,
+          "h": 8.619877703228155
+        },
+        {
+          "id": "box_mwko9ezjiwc",
+          "systemId": "heat.flow",
+          "level": "on-wall",
+          "label": "",
+          "kind": "box",
+          "x": 689.2598336730506,
+          "y": 565.5093454850936,
+          "w": 12.067841937408843,
+          "h": 33.90486106795697
+        },
+        {
+          "id": "box_mwko9hgzju",
+          "systemId": "heat.flow",
+          "level": "on-wall",
+          "label": "",
+          "kind": "box",
+          "x": 615.4162234506562,
+          "y": 757.4453032592698,
+          "w": 29.882247088820577,
+          "h": 9.481852320661346
+        },
+        {
+          "id": "box_mwkpmi006er",
+          "systemId": "heat.ufh",
+          "level": "on-wall",
+          "label": "Verdeler VV 1.06: 1.08 + 1.09",
+          "kind": "box",
+          "x": 507.3419252427011,
+          "y": 601.5828135908565,
+          "w": 14.17156215761735,
+          "h": 2.83431243152347
+        },
+        {
+          "id": "box_mwkpmi007e0",
+          "systemId": "heat.ufh",
+          "level": "on-wall",
+          "label": "Verdeler VV 1.01: 1.02, 1.03, 1.04, 1.05, 1.07 + 3 radiatoren",
+          "kind": "box",
+          "x": 619.8641287741829,
+          "y": 575.3654235992644,
+          "w": 3.2594592962519906,
+          "h": 22.67449945218776
+        },
+        {
+          "id": "mk_mwkpmi00dnu",
+          "systemId": "heat.flow",
+          "level": "floor",
+          "label": "van warmtepomp 0.07",
+          "kind": "marker",
+          "x": 508.75908145846284,
+          "y": 602.858254185042,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwkpmi00fwo",
+          "systemId": "heat.return",
+          "level": "floor",
+          "label": "van warmtepomp 0.07",
+          "kind": "marker",
+          "x": 510.459668917377,
+          "y": 602.858254185042,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwkpmi00jel",
+          "systemId": "heat.flow",
+          "level": "floor",
+          "label": "van warmtepomp 0.07",
+          "kind": "marker",
+          "x": 524.9146623181466,
+          "y": 607.3931540754796,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "mk_mwkpmi00lbi",
+          "systemId": "heat.return",
+          "level": "floor",
+          "label": "van warmtepomp 0.07",
+          "kind": "marker",
+          "x": 526.6152497770607,
+          "y": 607.3931540754796,
+          "symbol": "riser-down",
+          "generated": {
+            "rule": "claude",
+            "from": "apply"
+          }
+        },
+        {
+          "id": "run_mwkpmi00me1",
+          "systemId": "heat.flow",
+          "level": "floor",
+          "label": "Aanvoer verdeler 1.01 (in de vloer, over de trede 1.06→1.01)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 524.9146623181466,
+              "y": 607.3931540754796
+            },
+            {
+              "x": 524.9146623181466,
+              "y": 616.1795226132024
+            },
+            {
+              "x": 615.89609137005,
+              "y": 616.1795226132024
+            },
+            {
+              "x": 615.89609137005,
+              "y": 587.5529670548153
+            },
+            {
+              "x": 621.564716233097,
+              "y": 587.5529670548153
+            }
+          ],
+          "flow": "forward",
+          "size": "Ø22"
+        },
+        {
+          "id": "run_mwkpmi00nv7",
+          "systemId": "heat.return",
+          "level": "floor",
+          "label": "Retour verdeler 1.01 (in de vloer, over de trede 1.06→1.01)",
+          "kind": "run",
+          "points": [
+            {
+              "x": 526.6152497770607,
+              "y": 607.3931540754796
+            },
+            {
+              "x": 526.6152497770607,
+              "y": 614.4789351542883
+            },
+            {
+              "x": 614.1955039111359,
+              "y": 614.4789351542883
+            },
+            {
+              "x": 614.1955039111359,
+              "y": 585.8523795959013
+            },
+            {
+              "x": 621.564716233097,
+              "y": 585.8523795959013
+            }
+          ],
+          "flow": "reverse",
+          "size": "Ø22"
         }
       ]
     }
@@ -7252,5 +7786,5 @@
     "labelFilter": "",
     "roomFocus": null
   },
-  "activeSheetId": "sh_mw8z4x7162v"
+  "activeSheetId": "sh_mw8akr6v581"
 }
