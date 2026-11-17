@@ -74,7 +74,7 @@ const SEEDS: Seed[] = [
 
   // --- Rainwater reuse (non-potable) -------------------------------------------------
   { id: 'reuse.supply', category: 'reuse', name: 'Tank → pump suction', color: '#4d7c0f', dash: D.dashdot, width: 2.2, sizes: ['Ø32', 'Ø25', 'Ø40'], tag: 'NON-POTABLE', assumeFlow: true, symbols: PIPE_SYMBOLS },
-  { id: 'reuse.dist', category: 'reuse', name: 'Non-potable distribution', color: '#4d7c0f', dash: D.solid, width: 1.8, sizes: ['Ø16', 'Ø20', 'Ø25'], tag: 'NON-POTABLE', symbols: PIPE_SYMBOLS },
+  { id: 'reuse.dist', category: 'reuse', name: 'Non-potable distribution', color: '#4d7c0f', dash: D.solid, width: 1.8, sizes: ['Ø16', 'Ø20', 'Ø25', 'Ø32'], tag: 'NON-POTABLE', symbols: PIPE_SYMBOLS },
   { id: 'reuse.topup', category: 'reuse', name: 'Mains top-up (air gap)', color: '#2563eb', dash: D.dashdot, width: 1.5, sizes: ['Ø16', 'Ø20'], symbols: PIPE_SYMBOLS },
   { id: 'reuse.overflow', category: 'reuse', name: 'Tank overflow', color: '#4d7c0f', dash: D.long, width: 2.4, sizes: ['Ø110', 'Ø75', 'Ø125'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
 
