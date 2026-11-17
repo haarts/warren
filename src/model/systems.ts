@@ -79,8 +79,10 @@ const SEEDS: Seed[] = [
   { id: 'reuse.overflow', category: 'reuse', name: 'Tank overflow', color: '#4d7c0f', dash: D.long, width: 2.4, sizes: ['Ø110', 'Ø75', 'Ø125'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
 
   // --- Drainage ----------------------------------------------------------------------
-  { id: 'drain.soil', category: 'drain', name: 'Soil / black water', color: '#b45309', dash: D.solid, width: 3.0, sizes: ['Ø110', 'Ø125', 'Ø160'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
-  { id: 'drain.waste', category: 'drain', name: 'Waste / grey water', color: '#b45309', dash: D.solid, width: 2.0, sizes: ['Ø50', 'Ø32', 'Ø40', 'Ø75'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
+  // Black and grey both run the whole PVC series: a kitchen sink can be a Ø50 branch on the
+  // black side, and a grey line can collect into a Ø110 trunk.
+  { id: 'drain.soil', category: 'drain', name: 'Soil / black water', color: '#b45309', dash: D.solid, width: 3.0, sizes: ['Ø110', 'Ø32', 'Ø40', 'Ø50', 'Ø75', 'Ø90', 'Ø125', 'Ø160'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
+  { id: 'drain.waste', category: 'drain', name: 'Waste / grey water', color: '#b45309', dash: D.solid, width: 2.0, sizes: ['Ø50', 'Ø32', 'Ø40', 'Ø75', 'Ø90', 'Ø110', 'Ø125'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
   { id: 'drain.vent', category: 'drain', name: 'Vent / stack vent', color: '#b45309', dash: D.dashdot, width: 1.5, sizes: ['Ø75', 'Ø50', 'Ø110'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
   { id: 'drain.rain', category: 'drain', name: 'Rainwater downpipe (HWA)', color: '#1e3a8a', dash: D.solid, width: 2.4, sizes: ['Ø80', 'Ø70', 'Ø100', 'Ø110', 'Ø125'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
   { id: 'drain.condensate', category: 'drain', name: 'Condensate drain', color: '#0891b2', dash: D.dot, width: 1.3, sizes: ['Ø20', 'Ø25', 'Ø32'], assumeFlow: true, symbols: DRAIN_SYMBOLS },
