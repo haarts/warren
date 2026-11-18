@@ -211,6 +211,16 @@ shrinking it, so a quadruple still counts at a glance when zoomed out.
 light point, not a gully. Each system names three to six symbols in the catalogue; a system of your
 own making has no opinion recorded and is offered all of them. A symbol already in use is
 always still listed, so moving an item to another system never silently redraws it.
+A project keeps its own copy of these lists, so one started before a symbol existed will not
+offer it: `warren systems --add-missing` (or the button in the systems editor) adds it.
+
+**A presence sensor shows what it sees.** The aanwezigheidssensor draws its view as a faint cone:
+120° wide and six metres deep unless you say otherwise, cut short by the first wall — or shut
+door — in the way. That is the question the cone is for: does this spot see the sofa, or is the
+sofa round a corner? Drag the knob in front of a selected sensor to aim it, or type the angle,
+the width and the range in its properties. One placed without an aim faces into the room it can
+see most of; on a wall between two rooms that is the bigger one, so check which one you meant.
+On the ceiling a sensor looks down, and its cone becomes a disc round the spot it hangs.
 
 ## Notes
 

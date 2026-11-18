@@ -7,6 +7,7 @@ import {
 import { buildGraph, connectionsOf, networkOf, type Contact } from '../../topology.ts'
 import { adopt, generatedBy } from '../../generate.ts'
 import { symbolsFor } from '../../model/systems.ts'
+import { aimIfUnset, PRESENCE_DEFAULTS, viewOf } from '../../coverage.ts'
 import { formatMetres } from '../../units.ts'
 import { tipBearing } from '../../directions.ts'
 import { nameCompassTip, placeCompass, removeCompass, removeDirection, renameDirection, turnCompass } from '../../interact/compass.ts'
@@ -367,8 +368,43 @@ function buildSelection(app: App, body: HTMLElement): void {
     body.appendChild(field('Symbol', select(
       symbolsFor(store.system(first.systemId), first.symbol).map((s) => [s, MARKER_LABELS[s]] as const),
       first.symbol,
-      (v) => applyToAll((item) => { if (item.kind === 'marker') item.symbol = v as MarkerSymbol }),
+      (v) => applyToAll((item) => {
+        if (item.kind !== 'marker') return
+        item.symbol = v as MarkerSymbol
+        aimIfUnset(item, sheet)
+      }),
     )))
+  }
+
+  if (first.kind === 'marker' && !many && first.symbol === 'presence') {
+    const marker = first
+    const view = viewOf(marker, sheet.mmPerPoint)
+    const row = (...kids: (Node | string)[]): HTMLElement => el('div', { style: { display: 'flex', alignItems: 'center', gap: '4px' } }, ...kids)
+    const degrees = (value: number, step: string, onChange: (v: number) => void): HTMLInputElement => {
+      const input = el('input', { type: 'number', step, value: String(Math.round(value * 10) / 10), style: { width: '70px' } }) as HTMLInputElement
+      input.addEventListener('change', () => { const v = Number(input.value); if (isFinite(v)) onChange(v) })
+      return input
+    }
+    if (marker.level !== 'ceiling') {
+      body.appendChild(field('Aim', row(
+        degrees(marker.aimDeg ?? 0, '15', (v) => applyToAll((item) => { if (item.kind === 'marker') item.aimDeg = ((v % 360) + 360) % 360 })), '°',
+        el('button', {
+          title: 'Face the way it sees the most floor',
+          onclick: () => applyToAll((item) => { if (item.kind === 'marker') { delete item.aimDeg; aimIfUnset(item, sheet) } }),
+        }, 'Face the room'),
+      ), 'Degrees clockwise from up the page. Or drag the round handle in front of it; Shift turns it in 15° steps.'))
+      body.appendChild(field('Field of view', row(
+        degrees(marker.fovDeg ?? PRESENCE_DEFAULTS.fovDeg, '5', (v) => applyToAll((item) => { if (item.kind === 'marker' && v > 0) item.fovDeg = Math.min(360, v) })), '°',
+      )))
+    } else {
+      body.appendChild(field('View', el('span', {}, 'On the ceiling it looks down, so it sees all round.')))
+    }
+    const mmPerPoint = sheet.mmPerPoint
+    if (mmPerPoint && view) {
+      body.appendChild(field('Range', row(
+        degrees((view.range * mmPerPoint) / 1000, '0.5', (v) => applyToAll((item) => { if (item.kind === 'marker' && v > 0) item.range = (v * 1000) / mmPerPoint })), 'm',
+      ), 'How far it sees. The first wall in the way stops it sooner.'))
+    }
   }
 
   if (!many && first.kind !== 'note') {

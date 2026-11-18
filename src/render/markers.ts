@@ -15,6 +15,8 @@ export function drawMarker(dc: DrawCtx, marker: MarkerItem): void {
   // assumed flow direction.
   if (marker.generated) ctx.globalAlpha = 0.5
   ctx.translate(p.x, p.y)
+  // A presence sensor's waves face the way it looks; on the ceiling it looks at the floor.
+  if (marker.symbol === 'presence' && marker.level !== 'ceiling') ctx.rotate(((marker.aimDeg ?? 0) * Math.PI) / 180)
   ctx.setLineDash([])
   ctx.lineWidth = 1.8 * ui
   ctx.strokeStyle = style.color
@@ -165,6 +167,20 @@ const GLYPHS: Record<MarkerSymbol, Glyph> = {
   sensor: (ctx, r) => {
     polygon(ctx, [[0, -r], [r * 0.9, r * 0.7], [-r * 0.9, r * 0.7]])
     fillStroke(ctx)
+  },
+
+  presence: (ctx, r, color) => {
+    // A dot with two waves going out the way it looks - up the glyph, turned to its aim.
+    ring(ctx, r * 0.62)
+    fillStroke(ctx)
+    ring(ctx, r * 0.24)
+    ctx.fillStyle = color
+    ctx.fill()
+    for (const k of [0.95, 1.35]) {
+      ctx.beginPath()
+      ctx.arc(0, 0, r * k, -Math.PI / 2 - 0.75, -Math.PI / 2 + 0.75)
+      ctx.stroke()
+    }
   },
 
   note: (ctx, r, color) => {

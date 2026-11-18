@@ -3,6 +3,7 @@ import type { Store, VertexRef } from '../model/doc.ts'
 import { pointsOf, type Item } from '../model/types.ts'
 import { noteHeight } from '../render/notes.ts'
 import { boxContains, boxCorners, boxRotateHandle, itemBounds } from '../render/bounds.ts'
+import { aimVector } from '../coverage.ts'
 
 /** Screen pixels within which a click or hover counts as "on" a vertex, handle or item. */
 export const HIT_TOL_PX = 9
@@ -136,6 +137,18 @@ export function hitBoxRotate(store: Store, p: Pt, tol: number, offset: number): 
   const box = sel.length === 1 ? sel[0] : null
   if (!box || box.kind !== 'box' || !store.isEditable(box)) return null
   return dist(boxRotateHandle(box, offset), p) <= tol ? box.id : null
+}
+
+/**
+ * The aim handle of a selected presence sensor - a knob out in front of it, the way it looks.
+ * One on the ceiling looks down and has nothing to aim.
+ */
+export function hitMarkerAim(store: Store, p: Pt, tol: number, offset: number): string | null {
+  const sel = store.selectedItems()
+  const marker = sel.length === 1 ? sel[0] : null
+  if (!marker || marker.kind !== 'marker' || marker.symbol !== 'presence' || marker.level === 'ceiling' || !store.isEditable(marker)) return null
+  const d = aimVector(marker.aimDeg ?? 0)
+  return dist({ x: marker.x + d.x * offset, y: marker.y + d.y * offset }, p) <= tol ? marker.id : null
 }
 
 export interface NoteHandleRef { noteId: string }

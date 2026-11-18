@@ -8,7 +8,8 @@ import { ACCENT, HANDLE_FILL, screenPoints, type DrawCtx } from './draw.ts'
 import { pill } from './labels.ts'
 import { MARKER_RADIUS } from './markers.ts'
 import { noteHeight } from './notes.ts'
-import { BOX_ROTATE_OFFSET_PX, boxCentre, boxCorners, boxRotateHandle, boxRotation, rotateAbout } from './bounds.ts'
+import { BOX_ROTATE_OFFSET_PX, MARKER_AIM_OFFSET_PX, boxCentre, boxCorners, boxRotateHandle, boxRotation, rotateAbout } from './bounds.ts'
+import { aimVector } from '../coverage.ts'
 import { formatMetres } from '../units.ts'
 import type { Overlay } from './scene.ts'
 import type { Camera } from './camera.ts'
@@ -102,6 +103,21 @@ export function drawHandles(dc: DrawCtx): void {
         ctx.fill()
         ctx.stroke()
       }
+    } else if (item.kind === 'marker' && item.symbol === 'presence' && item.level !== 'ceiling' && sel.length === 1) {
+      // The aim handle: a knob on a stalk out the way it looks, turned like a box's.
+      const d = aimVector(item.aimDeg ?? 0)
+      const from = cam.toScreen(item)
+      const knob = { x: from.x + d.x * MARKER_AIM_OFFSET_PX * ui, y: from.y + d.y * MARKER_AIM_OFFSET_PX * ui }
+      ctx.beginPath()
+      ctx.moveTo(from.x, from.y)
+      ctx.lineTo(knob.x, knob.y)
+      ctx.strokeStyle = ACCENT
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.arc(knob.x, knob.y, s / 2, 0, Math.PI * 2)
+      ctx.fillStyle = HANDLE_FILL
+      ctx.fill()
+      ctx.stroke()
     } else if (item.kind === 'note') {
       // One handle, bottom-right: a note only has a width. Height follows the text.
       square({ x: item.x + item.w, y: item.y + noteHeight(item) }, false)

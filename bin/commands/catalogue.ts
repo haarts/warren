@@ -6,7 +6,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { rulesOf } from '../../src/generate.ts'
-import { missingDefaults } from '../../src/model/systems.ts'
+import { addMissing, missingDefaults, missingSymbols } from '../../src/model/systems.ts'
 import { fail, type Args } from '../args.ts'
 import { load, persist, type Loaded } from '../project.ts'
 
@@ -14,11 +14,11 @@ type Mode = (loaded: Loaded, args: Args) => Promise<void> | void
 
 const SYSTEMS_MODES: [test: (args: Args) => boolean, run: Mode][] = [
   [(args) => Boolean(args.flags['add-missing']), async (loaded) => {
-    const missing = missingDefaults(loaded.project.systems)
-    if (missing.length === 0) return void console.log('catalogue is already complete')
-    loaded.project.systems.push(...missing)
+    const added = addMissing(loaded.project.systems)
+    if (!added.systems.length && !added.symbols.length) return void console.log('catalogue is already complete')
     await persist(loaded)
-    console.log(`added ${missing.length}: ${missing.map((s) => s.id).join(', ')}`)
+    if (added.systems.length) console.log(`added ${added.systems.length}: ${added.systems.join(', ')}`)
+    if (added.symbols.length) console.log(`added symbol${added.symbols.length === 1 ? '' : 's'}: ${added.symbols.join(', ')}`)
   }],
   [(args) => typeof args.flags['set-sizes'] === 'string', async (loaded, args) => {
     const id = args.flags['set-sizes'] as string
@@ -86,12 +86,15 @@ export async function cmdSystems(args: Args): Promise<void> {
         id: s.id, name: s.name, category: s.category, sizes: s.sizes ?? null, assumeFlow: s.assumeFlow ?? false,
       })),
       missingDefaults: missing.map((s) => s.id),
+      missingSymbols: missingSymbols(project.systems),
     }, null, 2))
   }
   for (const sys of project.systems) {
     console.log(`${sys.id.padEnd(22)} ${sys.category.padEnd(8)} ${sys.name}`)
   }
   if (missing.length) console.log(`\n${missing.length} default system(s) missing: ${missing.map((s) => s.id).join(', ')} — add with --add-missing`)
+  const symbols = missingSymbols(project.systems)
+  if (symbols.length) console.log(`${missing.length ? '' : '\n'}newer symbols not offered yet: ${symbols.map((m) => `${m.id} (${m.symbols.join(', ')})`).join('; ')} — add with --add-missing`)
 }
 
 /** The rules themselves, so they can be read and replaced without opening the app. */

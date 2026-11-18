@@ -67,3 +67,5 @@ export function boxRotateHandle(box: BoxItem, offset: number): Pt {
 
 /** How far out past the top edge the rotate knob sits, in screen pixels. */
 export const BOX_ROTATE_OFFSET_PX = 22
+/** How far in front of a presence sensor its aim knob sits, in screen pixels. */
+export const MARKER_AIM_OFFSET_PX = 30

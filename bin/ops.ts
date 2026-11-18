@@ -14,6 +14,8 @@ import { newId } from '../src/model/ids.ts'
 import type { Store } from '../src/model/doc.ts'
 import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet } from '../src/model/types.ts'
 import { oneOf } from '../src/io/projectFile.ts'
+import { aimIfUnset } from '../src/coverage.ts'
+import type { MarkerItem } from '../src/model/types.ts'
 import { findSheets, pointsFromMetres } from './units.ts'
 
 export interface SetOp { op: 'set'; id: string; patch: Record<string, unknown> }
@@ -28,6 +30,7 @@ export const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'wall', 'wi
 export const PATCHABLE = new Set([
   'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride',
   'locked', 'symbol', 'name', 'use', 'ref', 'swing', 'status', 'thicknessM', 'depthM', 'pointsM', 'rotationDeg',
+  'aimDeg', 'fovDeg', 'rangeM',
 ])
 
 export interface Plan {
@@ -50,6 +53,29 @@ interface Ctx {
   planned: (() => void)[]
 }
 
+/**
+ * A presence sensor's view from an op - aimDeg, fovDeg and rangeM - checked, with the range in
+ * points. Null when something is wrong, after saying what.
+ */
+function readView(raw: Record<string, unknown>, sheet: Sheet, at: string, problems: string[]): Partial<Pick<MarkerItem, 'aimDeg' | 'fovDeg' | 'range'>> | null {
+  const view: Partial<Pick<MarkerItem, 'aimDeg' | 'fovDeg' | 'range'>> = {}
+  if (raw.aimDeg !== undefined) {
+    if (typeof raw.aimDeg !== 'number' || !isFinite(raw.aimDeg)) return void problems.push(`${at}: aimDeg must be a number of degrees, clockwise from up the page`), null
+    view.aimDeg = ((raw.aimDeg % 360) + 360) % 360
+  }
+  if (raw.fovDeg !== undefined) {
+    if (typeof raw.fovDeg !== 'number' || !(raw.fovDeg > 0) || raw.fovDeg > 360) return void problems.push(`${at}: fovDeg must be a number of degrees above 0 and up to 360`), null
+    view.fovDeg = raw.fovDeg
+  }
+  if (raw.rangeM !== undefined) {
+    if (typeof raw.rangeM !== 'number' || !(raw.rangeM > 0)) return void problems.push(`${at}: rangeM must be a positive number of metres`), null
+    const range = pointsFromMetres(sheet, raw.rangeM)
+    if (range === null) return void problems.push(`${at}: sheet "${sheet.name}" has no scale, so rangeM means nothing here`), null
+    view.range = range
+  }
+  return view
+}
+
 function doSet(op: SetOp, ctx: Ctx): void {
   const { target, at, systemIds, problems, describe, planned } = ctx
   const bad = Object.keys(op.patch ?? {}).filter((k) => !PATCHABLE.has(k))
@@ -60,7 +86,13 @@ function doSet(op: SetOp, ctx: Ctx): void {
   if (typeof op.patch.level === 'string' && !LEVELS.includes(op.patch.level as Level)) {
     return void problems.push(`${at}: level "${op.patch.level}" is not one of ${LEVELS.join(', ')}`)
   }
-  const { thicknessM, depthM, pointsM, ...patch } = op.patch as Record<string, unknown>
+  const { thicknessM, depthM, pointsM, aimDeg, fovDeg, rangeM, ...patch } = op.patch as Record<string, unknown>
+  let view: ReturnType<typeof readView> = {}
+  if (aimDeg !== undefined || fovDeg !== undefined || rangeM !== undefined) {
+    if (target!.item.kind !== 'marker') return void problems.push(`${at}: aimDeg, fovDeg and rangeM are for presence markers; ${op.id} is a ${target!.item.kind}`)
+    view = readView({ aimDeg, fovDeg, rangeM }, target!.sheet, at, problems)
+    if (!view) return
+  }
   let thickness: number | null = null
   let depth: number | null = null
   let points: Pt[] | null = null
@@ -111,6 +143,10 @@ function doSet(op: SetOp, ctx: Ctx): void {
     if (points) (target!.item as { points: Pt[] }).points = points
     if (thickness !== null && target!.item.kind === 'wall') target!.item.thickness = thickness
     if (depth !== null && target!.item.kind === 'window') target!.item.depth = depth
+    if (target!.item.kind === 'marker') {
+      Object.assign(target!.item, view)
+      aimIfUnset(target!.item, target!.sheet)
+    }
     // Editing claims machine output, whoever does the editing. Without this a later
     // `generate` would quietly undo the change.
     adopt(target!.item)
@@ -285,19 +321,24 @@ function doAdd(op: AddOp, ctx: Ctx): void {
     const x = typeof raw.xM === 'number' ? pointsFromMetres(sheet, raw.xM) : typeof raw.x === 'number' ? raw.x : null
     const y = typeof raw.yM === 'number' ? pointsFromMetres(sheet, raw.yM) : typeof raw.y === 'number' ? raw.y : null
     if (x === null || y === null) return void problems.push(`${at}: needs x/y in points or xM/yM in metres on a calibrated sheet`)
+    const view = raw.kind === 'marker' ? readView(raw, sheet, at, problems) : {}
+    if (!view) return
     describe.push(`${at}: add ${raw.kind} to ${sheet.name}`)
     planned.push(() => {
       if (raw.kind === 'note') {
         sheet.items.push({ kind: 'note', id: newId('note'), systemId: raw.systemId as string, level, x, y, w: 90, text: String(raw.text ?? '') })
       } else {
-        sheet.items.push({
+        const marker: MarkerItem = {
           kind: 'marker', id: newId('mk'), systemId: raw.systemId as string, level, x, y,
           symbol: (raw.symbol as never) ?? 'note',
+          ...view,
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
           // Whatever placed this - a rule, a person, a model - it arrives unreviewed and
           // is drawn faintly until somebody looks at it and touches it.
           ...(stamp ? { generated: stamp } : {}),
-        })
+        }
+        aimIfUnset(marker, sheet)
+        sheet.items.push(marker)
       }
     })
   } else {

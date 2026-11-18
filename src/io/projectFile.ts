@@ -123,6 +123,9 @@ const ITEM_PARSERS: { [K in Item['kind']]: (raw: Record<string, unknown>, base: 
   marker: (raw, base, shared) => {
     const symbol = oneOf(MARKER_SYMBOLS, raw.symbol, 'note')
     const item: MarkerItem = { ...base, ...shared, ...readLabelled(raw), kind: 'marker', x: num(raw.x), y: num(raw.y), symbol }
+    if (typeof raw.aimDeg === 'number' && isFinite(raw.aimDeg)) item.aimDeg = ((raw.aimDeg % 360) + 360) % 360
+    if (typeof raw.fovDeg === 'number' && raw.fovDeg > 0) item.fovDeg = Math.min(360, raw.fovDeg)
+    if (typeof raw.range === 'number' && raw.range > 0) item.range = raw.range
     if (isObj(raw.generated) && typeof raw.generated.rule === 'string' && typeof raw.generated.from === 'string') {
       item.generated = { rule: raw.generated.rule, from: raw.generated.from }
     }

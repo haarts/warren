@@ -5,7 +5,8 @@
  * a finished calibration or direction answer means.
  */
 import { dist, normalizeRect, type Pt, type Rect } from '../geom.ts'
-import { BOX_ROTATE_OFFSET_PX, boxCentre, boxCorners, rotateAbout } from '../render/bounds.ts'
+import { BOX_ROTATE_OFFSET_PX, MARKER_AIM_OFFSET_PX, boxCentre, boxCorners, rotateAbout } from '../render/bounds.ts'
+import { bearingDeg } from '../coverage.ts'
 import { buildGraph } from '../topology.ts'
 import type { VertexRef } from '../model/doc.ts'
 import { idPrefix, newId } from '../model/ids.ts'
@@ -14,7 +15,7 @@ import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
 import { adopt } from '../generate.ts'
 import { setBoxRotation, shiftItem } from './arrange.ts'
 import { bearingBetween } from '../directions.ts'
-import { HIT_TOL_PX, hitBoxCorner, hitBoxRotate, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
+import { HIT_TOL_PX, hitBoxCorner, hitBoxRotate, hitMarkerAim, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
 import { hitCompass } from './compass.ts'
 import { clearFlashIfStale, zoomToFit } from './view.ts'
 import { TWO_CLICK_TOOLS, type Editor } from './editor.ts'
@@ -40,6 +41,7 @@ export type Drag =
   | { mode: 'vertex'; ref: VertexRef }
   | { mode: 'boxCorner'; boxId: string; anchor: Pt }
   | { mode: 'boxRotate'; boxId: string; grab: number; fromDeg: number }
+  | { mode: 'markerAim'; markerId: string }
   | { mode: 'noteWidth'; noteId: string }
   | { mode: 'rubber'; start: Pt; additive: boolean; current: Pt }
   | { mode: 'newBox'; start: Pt; current: Pt }
@@ -177,6 +179,9 @@ function hitHandle(ed: Editor, world: Pt): Drag | null {
     return { mode: 'boxRotate', boxId: turned.id, grab: Math.atan2(world.y - c.y, world.x - c.x), fromDeg: turned.rotationDeg ?? 0 }
   }
 
+  const aiming = hitMarkerAim(store, world, ed.tol(HIT_TOL_PX), ed.tol(MARKER_AIM_OFFSET_PX))
+  if (aiming) return { mode: 'markerAim', markerId: aiming }
+
   const corner = hitBoxCorner(store, world, ed.tol(HIT_TOL_PX))
   const box = corner ? store.item(corner.boxId) : undefined
   if (corner && box && box.kind === 'box') {
@@ -257,6 +262,17 @@ function onPointerMove(ed: Editor, e: PointerEvent): void {
         const w = Math.abs(d.x)
         const h = Math.abs(d.y)
         Object.assign(box, { x: centre.x - w / 2, y: centre.y - h / 2, w, h })
+      }
+      break
+    }
+    case 'markerAim': {
+      const marker = ed.store.item(ed.drag.markerId)
+      if (marker && marker.kind === 'marker') {
+        let deg = bearingDeg(marker, world)
+        if (ed.store.project.settings.orthoLock !== ed.shiftHeld) deg = (Math.round(deg / 15) * 15) % 360
+        marker.aimDeg = Number(deg.toFixed(1))
+        adopt(marker)
+        ed.onStatus?.(`Aim ${Math.round(marker.aimDeg)}°`)
       }
       break
     }
@@ -370,6 +386,7 @@ function onPointerUp(ed: Editor, e: PointerEvent): void {
       break
     case 'boxCorner':
     case 'boxRotate':
+    case 'markerAim':
     case 'noteWidth':
       store.commit()
       break

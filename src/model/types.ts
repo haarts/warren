@@ -71,6 +71,7 @@ const MARKER_LABELS_SRC = {
   valve: 'Afsluiter (valve)',
   outlet: 'Tappunt (draw-off)',
   sensor: 'Sensor',
+  presence: 'Aanwezigheidssensor (presence)',
   note: 'Dot / reference pin',
 } as const
 
@@ -167,6 +168,14 @@ export interface MarkerItem {
   x: number
   y: number
   symbol: MarkerSymbol
+  /**
+   * A presence sensor's view - which way it faces (degrees clockwise from up the page), how wide
+   * it sees, and how far, in world units like every other length. Only a presence marker has one;
+   * left out, it sees 120° out to six metres.
+   */
+  aimDeg?: number
+  fovDeg?: number
+  range?: number
   label?: string
   note?: string
   colorOverride?: string

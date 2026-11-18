@@ -112,9 +112,9 @@ const SEEDS: Seed[] = [
   { id: 'data.cat6', category: 'data', name: 'CAT6A', color: '#7c3aed', dash: D.solid, width: 1.3, sizes: ['CAT6A', 'CAT6', '2×CAT6A', 'CAT7'], symbols: ['data-outlet', 'penetration', 'note'] },
   { id: 'data.fiber', category: 'data', name: 'Fiber / ISP entry', color: '#6b21a8', dash: D.dashdot, width: 1.3, sizes: ['duplex OS2', 'G.657.A2'], symbols: ['data-outlet', 'penetration', 'note'] },
   { id: 'data.coax', category: 'data', name: 'Coax', color: '#b45309', dash: D.dot, width: 1.1, sizes: ['RG6', 'RG11'], symbols: ['data-outlet', 'penetration', 'note'] },
-  { id: 'data.sensor', category: 'data', name: 'Sensor / bus (KNX, 1-Wire)', color: '#db2777', dash: D.solid, width: 1.1, sizes: ['KNX 2×2×0.8', '2×0.8mm', '4×0.8mm', 'CAT6A'], symbols: ['sensor', 'data-outlet', 'penetration', 'note'] },
+  { id: 'data.sensor', category: 'data', name: 'Sensor / bus (KNX, 1-Wire)', color: '#db2777', dash: D.solid, width: 1.1, sizes: ['KNX 2×2×0.8', '2×0.8mm', '4×0.8mm', 'CAT6A'], symbols: ['presence', 'sensor', 'data-outlet', 'penetration', 'note'] },
   { id: 'data.speaker', category: 'data', name: 'Speaker', color: '#db2777', dash: D.dot, width: 1.1, sizes: ['2×1.5mm²', '2×2.5mm²', '4×1.5mm²'], symbols: ['outlet', 'penetration', 'note'] },
-  { id: 'data.security', category: 'data', name: 'Alarm / camera', color: '#a21caf', dash: D.dash, width: 1.3, sizes: ['CAT6A (PoE)', '6×0.22mm', '8×0.22mm'], symbols: ['sensor', 'data-outlet', 'penetration', 'note'] },
+  { id: 'data.security', category: 'data', name: 'Alarm / camera', color: '#a21caf', dash: D.dash, width: 1.3, sizes: ['CAT6A (PoE)', '6×0.22mm', '8×0.22mm'], symbols: ['presence', 'sensor', 'data-outlet', 'penetration', 'note'] },
 
   // --- Structure / coordination ---------------------------------------------------------
   { id: 'struct.penetration', category: 'struct', name: 'Penetration (sparing)', color: '#171717', dash: D.solid, width: 1.5, sizes: ['Ø110', 'Ø50', 'Ø75', 'Ø125', 'Ø160', '200×200'], symbols: STRUCT_SYMBOLS },
@@ -153,6 +153,36 @@ export function defaultSystems(): System[] {
 export function missingDefaults(systems: System[]): System[] {
   const present = new Set(systems.map((s) => s.id))
   return defaultSystems().filter((seed) => !present.has(seed.id))
+}
+
+/**
+ * Symbols the built-in catalogue now offers for a system this project already has, but which its
+ * own copy predates - a project started before presence sensors existed still lists the sensor
+ * system without them. Only scoped lists can be short of anything: an unscoped one offers all.
+ */
+export function missingSymbols(systems: System[]): { id: string; symbols: MarkerSymbol[] }[] {
+  const seeds = new Map(defaultSystems().map((s) => [s.id, s]))
+  const out: { id: string; symbols: MarkerSymbol[] }[] = []
+  for (const sys of systems) {
+    const seed = seeds.get(sys.id)
+    if (!seed?.symbols || !sys.symbols) continue
+    const have = new Set(sys.symbols)
+    const symbols = seed.symbols.filter((sym) => !have.has(sym))
+    if (symbols.length) out.push({ id: sys.id, symbols })
+  }
+  return out
+}
+
+/** Adds what `missingDefaults` and `missingSymbols` find. Returns what it added, for saying so. */
+export function addMissing(systems: System[]): { systems: string[]; symbols: string[] } {
+  const added = missingDefaults(systems)
+  const symbols = missingSymbols(systems)
+  systems.push(...added)
+  for (const { id, symbols: extra } of symbols) {
+    const sys = systems.find((s) => s.id === id)!
+    sys.symbols = [...sys.symbols!, ...extra]
+  }
+  return { systems: added.map((s) => s.id), symbols: symbols.flatMap(({ id, symbols: extra }) => extra.map((sym) => `${id}:${sym}`)) }
 }
 
 /**

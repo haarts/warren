@@ -1,5 +1,5 @@
 import type { App } from '../app.ts'
-import { DASH_PRESETS, missingDefaults, PALETTE } from '../model/systems.ts'
+import { addMissing, DASH_PRESETS, missingDefaults, missingSymbols, PALETTE } from '../model/systems.ts'
 import { CATEGORIES, CATEGORY_LABELS, type System } from '../model/types.ts'
 import { newId } from '../model/ids.ts'
 import { el, select, swatch } from './dom.ts'
@@ -30,17 +30,22 @@ export function openSystemsEditor(app: App): void {
       // A project carries its own catalogue, so one started before a system existed will not
       // have it. Offer the gap rather than merging it back in behind your back.
       const missing = missingDefaults(store.project.systems)
-      if (missing.length) {
+      const symbols = missingSymbols(store.project.systems)
+      if (missing.length || symbols.length) {
+        const what = [
+          missing.length ? `${missing.length} missing default system${missing.length === 1 ? '' : 's'}` : '',
+          symbols.length ? `newer symbols for ${symbols.length} system${symbols.length === 1 ? '' : 's'}` : '',
+        ].filter(Boolean).join(' and ')
         body.appendChild(el('div', { style: { margin: '6px 0 2px' } },
           el('button', {
-            title: missing.map((m) => m.name).join(', '),
+            title: [...missing.map((m) => m.name), ...symbols.map((m) => `${m.id}: ${m.symbols.join(', ')}`)].join('\n'),
             onclick: () => {
-              store.mutate(() => { store.project.systems.push(...missingDefaults(store.project.systems)) })
+              store.mutate(() => { addMissing(store.project.systems) })
               store.invalidateSystems()
               build()
               rerender()
             },
-          }, `Add ${missing.length} missing default system${missing.length === 1 ? '' : 's'}`),
+          }, `Add ${what}`),
         ))
       }
 

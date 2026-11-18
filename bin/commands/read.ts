@@ -6,6 +6,7 @@ import { computeTakeoff } from '../../src/takeoff.ts'
 import { countBySeverity, runChecks } from '../../src/check.ts'
 import { buildGraph, connectionsOf, networkOf } from '../../src/topology.ts'
 import { pointsOf, type Item, type Sheet } from '../../src/model/types.ts'
+import { viewOf } from '../../src/coverage.ts'
 import { fail, type Args } from '../args.ts'
 import { load } from '../project.ts'
 import { globToRegExp, pointAtM, reportItem, round, sheetOf, type ItemReport } from '../units.ts'
@@ -58,11 +59,19 @@ interface Geometry {
   /** A box: its unturned rectangle, top-left corner first. */
   rectM?: { xM: number; yM: number; wM: number; hM: number } | null
   rotationDeg?: number
+  /** A presence sensor: which way it faces, how wide and how far it sees - what it is drawn with. */
+  view?: { aimDeg: number; fovDeg: number; rangeM: number | null }
 }
 
 function geometryOf(sheet: Sheet, item: Item): Geometry {
   const points = pointsOf(item)
   if (points) return { pointsM: points.map((p) => pointAtM(sheet, p, 3)) }
+  if (item.kind === 'marker') {
+    const view = viewOf(item, sheet.mmPerPoint)
+    if (!view) return {}
+    const rangeM = sheet.mmPerPoint ? Math.round(view.range * sheet.mmPerPoint) / 1000 : null
+    return { view: { aimDeg: Math.round(view.aimDeg * 10) / 10, fovDeg: view.fovDeg, rangeM } }
+  }
   if (item.kind !== 'box') return {}
   const corner = pointAtM(sheet, item, 3)
   const size = pointAtM(sheet, { x: item.w, y: item.h }, 3)

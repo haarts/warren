@@ -13,6 +13,7 @@ import { drawCompass, COMPASS_RADIUS_PX, type CompassPart } from './compass.ts'
 import { isDimmed, type DrawCtx } from './draw.ts'
 import { drawBoxLabel, drawMarkerLabel, drawRoomLabel, drawRunLabel, labelTextFor } from './labels.ts'
 import { drawMarker } from './markers.ts'
+import { drawCoverage } from './coverage.ts'
 import { drawNote, noteHeight } from './notes.ts'
 import type { DetailPatch } from './background.ts'
 import { drawGhost, type GhostLayer } from './ghost.ts'
@@ -121,6 +122,8 @@ export function drawScene(opts: SceneOptions): void {
   // Over the walls, which run on unbroken behind them.
   for (const win of windows) drawWindow(dc, win)
   for (const door of doors) drawDoor(dc, door)
+  // What the presence sensors see: over the rooms and walls it is cut by, under every service.
+  drawCoverage(dc, markers)
   for (const box of boxes) drawBox(dc, box)
   for (const run of runs) drawRun(dc, run)
   for (const marker of markers) drawMarker(dc, marker)
