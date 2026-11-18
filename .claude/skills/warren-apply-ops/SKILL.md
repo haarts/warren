@@ -76,8 +76,10 @@ To reshape an item without losing its id, `set` its whole outline: `"patch": { "
 `rectM` for a box).
 
 `set.patch` only accepts the patchable fields listed in `help --json`; setting `systemId` there
-must also match an existing catalogue id. Editing an item via `apply` un-stamps any `generated`
-provenance it had, which is the intended way to correct a rule-placed item.
+must also match an existing catalogue id. Editing an item via `apply` takes it out of the rule's
+hands, which is the intended way to correct a rule-placed item. Without `--as` the edit un-stamps
+it, as if a person had approved it. With `--as` an item that was still unreviewed stays faint and
+is re-stamped as yours, so pass `--as` on follow-up edits to things you placed.
 
 ## Connections are geometry, not a field
 

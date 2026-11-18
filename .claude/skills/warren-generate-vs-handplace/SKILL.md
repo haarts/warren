@@ -51,8 +51,9 @@ example. If a placement doesn't pass the tell above, it stays hand-placed even t
 ## Practical notes
 
 - Generated items carry a `generated: {rule, from}` stamp and render faint until "adopted" —
-  editing one through `apply` un-stamps it, which is the intended way to correct a rule's
-  placement without fighting the rule on the next run.
+  editing one through `apply` takes it from the rule (un-stamped, or re-stamped as yours with
+  `--as`), which is the intended way to correct a rule's placement without fighting the rule on
+  the next run.
 - Hand-placed items should still carry `--as ai:<something>` when you (not the human) placed
   them, for the same faint-until-reviewed treatment — see `warren-apply-ops`.
 - `generate --dry-run --where <room>` before committing, always — it prints every placement it
