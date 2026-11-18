@@ -335,7 +335,7 @@ const MANUAL = {
       'This is the write path, and the only one that should be used: editing the JSON directly skips every check below.',
       'The ops file is an array of ops, or {"ops": [...]}. All of it is validated before any of it is applied, so a half-understood instruction cannot leave the drawing half-changed. If one op fails, nothing is written.',
       'Coordinates: pointsM / xM / yM are metres and need a calibrated sheet; points / x / y are raw PDF points. Prefer metres — converting at the boundary is this tool’s job, not the caller’s.',
-      '--as stamps everything the batch adds with the standing generated items have: drawn faintly, left alone by a later generate, and yours the moment you touch one. Use it for anything a model suggested, so it does not arrive looking like work the person did.',
+      '--as stamps everything the batch adds with the standing generated items have: drawn faintly, left alone by a later generate, and yours the moment you touch one. Use it for anything a model suggested, so it does not arrive looking like work the person did. A set or move with --as leaves an item nobody has reviewed yet unreviewed; without it, editing claims the item.',
       'A room op may carry expectM2. Dutch architect’s plans print the area of every room, so a traced outline can check itself: the batch is refused if the polygon disagrees by more than 8%.',
     ],
     writes: true,

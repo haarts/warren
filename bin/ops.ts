@@ -77,7 +77,7 @@ function readView(raw: Record<string, unknown>, sheet: Sheet, at: string, proble
 }
 
 function doSet(op: SetOp, ctx: Ctx): void {
-  const { target, at, systemIds, problems, describe, planned } = ctx
+  const { target, at, systemIds, stamp, problems, describe, planned } = ctx
   const bad = Object.keys(op.patch ?? {}).filter((k) => !PATCHABLE.has(k))
   if (bad.length) return void problems.push(`${at}: cannot set ${bad.join(', ')} — patchable fields are ${[...PATCHABLE].join(', ')}`)
   if (typeof op.patch.systemId === 'string' && !systemIds.has(op.patch.systemId)) {
@@ -147,9 +147,7 @@ function doSet(op: SetOp, ctx: Ctx): void {
       Object.assign(target!.item, view)
       aimIfUnset(target!.item, target!.sheet)
     }
-    // Editing claims machine output, whoever does the editing. Without this a later
-    // `generate` would quietly undo the change.
-    adopt(target!.item)
+    claim(target!.item, stamp)
   })
 }
 
@@ -169,6 +167,17 @@ function hostWall(sheet: Sheet, a: Pt, b: Pt): WallItem | null {
   return null
 }
 
+/**
+ * Who an edited item belongs to afterwards. An edit by a person claims machine output, so a later
+ * `generate` never quietly undoes it. An edit made `--as` someone is still unreviewed: an item
+ * nobody has looked at yet stays that way, now stamped with whoever changed it last, rather than
+ * turning solid as if a person had approved it. A person's own item stays theirs either way.
+ */
+function claim(item: Item, stamp: Ctx['stamp']): void {
+  if (stamp && item.kind === 'marker' && item.generated) item.generated = { ...stamp }
+  else adopt(item)
+}
+
 function doDelete(op: DeleteOp, ctx: Ctx): void {
   const { target, at, describe, planned } = ctx
   describe.push(`${at}: delete ${target!.item.kind} ${op.id}`)
@@ -178,7 +187,7 @@ function doDelete(op: DeleteOp, ctx: Ctx): void {
 }
 
 function doMove(op: MoveOp, ctx: Ctx): void {
-  const { target, at, problems, describe, planned } = ctx
+  const { target, at, stamp, problems, describe, planned } = ctx
   let delta: Pt | null = null
   if (op.byPt) delta = { x: op.byPt[0], y: op.byPt[1] }
   else if (op.byM) {
@@ -194,7 +203,7 @@ function doMove(op: MoveOp, ctx: Ctx): void {
     const points = pointsOf(item)
     if (points) (item as { points: Pt[] }).points = points.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y }))
     else if (isPositioned(item)) { item.x += delta.x; item.y += delta.y }
-    adopt(item)
+    claim(item, stamp)
   })
 }
 

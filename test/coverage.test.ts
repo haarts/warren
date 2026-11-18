@@ -175,3 +175,20 @@ test('on a wall between two rooms it faces the room it can see the most of, not 
   const aim = suggestAim({ x: 200, y: 150 }, { fovDeg: 120, range: 600 }, obstaclesOf(sheet), roomsOf(sheet))
   assert.equal(aim, 90)
 })
+
+test('a model editing what it placed leaves it unreviewed; editing without --as claims it', () => {
+  const { project: p, store } = project()
+  const stamp = { rule: 'claude', from: 'apply' }
+  const run = (ops: unknown[], as: typeof stamp | null) => {
+    const plan = planOps(p, store, ops as Op[], as)
+    for (const step of plan.planned) step()
+  }
+  run([{ op: 'add', item: { kind: 'marker', systemId: 'data.sensor', symbol: 'presence', xM: 2, yM: 1.5 } }], stamp)
+  const m = p.sheets[0].items.find((i) => i.kind === 'marker') as MarkerItem
+  run([{ op: 'set', id: m.id, patch: { note: 'CeilSense Mini' } }, { op: 'move', id: m.id, byM: [0.1, 0] }], stamp)
+  assert.deepEqual(m.generated, stamp, 'still nobody has looked at it')
+  run([{ op: 'set', id: m.id, patch: { label: 'P1' } }], null)
+  assert.equal(m.generated, undefined, 'a person edited it, so it is theirs')
+  run([{ op: 'set', id: m.id, patch: { label: 'P1 lux' } }], stamp)
+  assert.equal(m.generated, undefined, 'and a later model edit does not take it back')
+})

@@ -101,8 +101,10 @@ coordinate, within 5 mm of real world. If you want two things joined, give them 
 `graph` and `trace` will then agree they are joined. Nothing else makes it so.
 
 **Do not fight the generator.** Generated items are stamped with the rule that made them and
-their ids are derived, so re-running is idempotent. Editing one through `apply` un-stamps it and
-re-running leaves it alone — that is the intended way to correct a placement.
+their ids are derived, so re-running is idempotent. Editing one through `apply` takes it out of
+the rule's hands and re-running leaves it alone — that is the intended way to correct a placement.
+Without `--as` the edit also un-stamps it, as a person's would; with `--as` it stays faint, now
+stamped as yours, because nobody has reviewed it yet.
 
 ## Exit codes
 
