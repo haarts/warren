@@ -388,7 +388,7 @@ const OPS: Record<string, { does: string; fields: Record<string, string> }> = {
       'item.label': 'run/door/wall/window/box/marker — the text drawn beside it',
       'item.size, item.flow': `run — size defaults to the system’s; flow is none, forward or reverse`,
       'item.symbol': `marker — one of ${MARKER_SYMBOLS.join(', ')}`,
-      'item.aimDeg, item.fovDeg, item.rangeM': 'presence marker — which way it faces (degrees clockwise from up the page), how wide it sees (default 120) and how far in metres (default 6). Left out, aimDeg is worked out as the way that sees the most floor. On the ceiling it looks down and sees all round. Walls stop the view; `items --json` reports it back as `view`',
+      'item.aimDeg, item.fovDeg, item.rangeM': 'presence marker — which way it faces (degrees clockwise from up the page), how wide it sees (default 120) and how far in metres (default 6). Left out, aimDeg is worked out as the way that sees the most floor. On the ceiling (level ceiling) it looks down and sees a disc all round; rangeM is then the radius of that disc on the floor. Walls stop the view; `items --json` reports it back as `view`',
       'item.text': 'note — its contents',
     },
   },

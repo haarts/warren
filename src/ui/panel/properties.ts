@@ -397,13 +397,16 @@ function buildSelection(app: App, body: HTMLElement): void {
         degrees(marker.fovDeg ?? PRESENCE_DEFAULTS.fovDeg, '5', (v) => applyToAll((item) => { if (item.kind === 'marker' && v > 0) item.fovDeg = Math.min(360, v) })), '°',
       )))
     } else {
-      body.appendChild(field('View', el('span', {}, 'On the ceiling it looks down, so it sees all round.')))
+      body.appendChild(field('View', el('span', {}, 'On the ceiling it looks down, so it sees a disc all round. Set the level to wall to aim it instead.')))
     }
     const mmPerPoint = sheet.mmPerPoint
     if (mmPerPoint && view) {
-      body.appendChild(field('Range', row(
+      const ceiling = marker.level === 'ceiling'
+      body.appendChild(field(ceiling ? 'Radius' : 'Range', row(
         degrees((view.range * mmPerPoint) / 1000, '0.5', (v) => applyToAll((item) => { if (item.kind === 'marker' && v > 0) item.range = (v * 1000) / mmPerPoint })), 'm',
-      ), 'How far it sees. The first wall in the way stops it sooner.'))
+      ), ceiling
+        ? 'How far from the spot under it it sees, across the floor. The first wall in the way stops it sooner.'
+        : 'How far it sees. The first wall in the way stops it sooner.'))
     }
   }
 
