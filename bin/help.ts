@@ -386,6 +386,7 @@ const OPS: Record<string, { does: string; fields: Record<string, string> }> = {
       'item.expectM2': 'room — the area printed on the plan; the batch is refused if the outline is more than 8% out',
       'item.swing': 'door — 1 or -1',
       'item.label': 'run/door/wall/window/box/marker — the text drawn beside it',
+      'item.note': 'run/door/wall/window/box/marker — free text kept with it (make, model, why it is there): not drawn on the plan, shown in the properties panel and searched by the label filter',
       'item.size, item.flow': `run — size defaults to the system’s; flow is none, forward or reverse`,
       'item.symbol': `marker — one of ${MARKER_SYMBOLS.join(', ')}`,
       'item.aimDeg, item.fovDeg, item.rangeM': 'presence marker — which way it faces (degrees clockwise from up the page), how wide it sees (default 120) and how far in metres (default 6). Left out, aimDeg is worked out as the way that sees the most floor. On the ceiling (level ceiling) it looks down and sees a disc all round; rangeM is then the radius of that disc on the floor. Walls stop the view; `items --json` reports it back as `view`',

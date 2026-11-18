@@ -271,6 +271,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           status: (raw.status as WallStatus | undefined) ?? 'existing',
           ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+          ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
         })
       } else if (raw.kind === 'window') {
         sheet.items.push({
@@ -278,6 +279,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           points: [points[0], points[1]], depth,
           ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+          ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
         })
       } else if (raw.kind === 'door') {
         sheet.items.push({
@@ -286,6 +288,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           swing: raw.swing === -1 ? -1 : 1,
           ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+          ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
         })
       } else {
         sheet.items.push({
@@ -293,6 +296,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           flow: raw.flow === 'forward' || raw.flow === 'reverse' ? raw.flow : 'none',
           size: typeof raw.size === 'string' ? raw.size : store.system(raw.systemId as string).defaultSize,
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+          ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
         })
       }
     })
@@ -315,6 +319,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
         kind: 'box', id: newId('box'), systemId: raw.systemId as string, level, x, y, w, h,
         ...(typeof raw.rotationDeg === 'number' && raw.rotationDeg % 360 !== 0 ? { rotationDeg: raw.rotationDeg } : {}),
         ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+        ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
       })
     })
   } else if (raw.kind === 'marker' || raw.kind === 'note') {
@@ -333,6 +338,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           symbol: (raw.symbol as never) ?? 'note',
           ...view,
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
+          ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
           // Whatever placed this - a rule, a person, a model - it arrives unreviewed and
           // is drawn faintly until somebody looks at it and touches it.
           ...(stamp ? { generated: stamp } : {}),

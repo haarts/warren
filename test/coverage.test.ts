@@ -113,13 +113,14 @@ const apply = (p: Project, store: Store, ops: unknown[]) => {
 test('apply adds a presence sensor in metres, aims it into the room, and it survives a reload', () => {
   const { project: p, store } = project()
   const plan = apply(p, store, [
-    { op: 'add', item: { kind: 'marker', systemId: 'data.sensor', symbol: 'presence', xM: 4, yM: 1.5, rangeM: 5, fovDeg: 100 } },
+    { op: 'add', item: { kind: 'marker', systemId: 'data.sensor', symbol: 'presence', xM: 4, yM: 1.5, rangeM: 5, fovDeg: 100, note: 'CeilSense Mini' } },
   ])
   assert.deepEqual(plan.problems, [])
   const m = p.sheets[0].items.find((i) => i.kind === 'marker') as MarkerItem
   assert.equal(m.range, 500)
   assert.equal(m.fovDeg, 100)
   assert.equal(m.aimDeg, 270, 'nobody aimed it, so it faces into the room')
+  assert.equal(m.note, 'CeilSense Mini', 'a note given on add is kept')
   const back = parseProject(serialize(p)).sheets[0].items.find((i) => i.kind === 'marker') as MarkerItem
   assert.deepEqual([back.aimDeg, back.fovDeg, back.range], [270, 100, 500])
 })
