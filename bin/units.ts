@@ -4,8 +4,8 @@
  * uncalibrated sheet (`mmPerPoint === null`) yields `null` rather than a guess.
  *
  * Also sheet lookup (by number or name substring, shared by every command that takes `--sheet`
- * or an op's `sheet` field) and item reporting (the shape `items`, `trace` and `generate --where`
- * all print) — both downstream of the same conversion.
+ * or an op's `sheet` field) and item reporting (the shape `items` and `trace`
+ * both print) — both downstream of the same conversion.
  */
 import { polygonArea, polygonCentroid, polylineLength, type Pt } from '../src/geom.ts'
 import type { Item, Level, Project, Sheet } from '../src/model/types.ts'

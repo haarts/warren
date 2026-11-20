@@ -178,7 +178,7 @@ test('on a wall between two rooms it faces the room it can see the most of, not 
 
 test('a model editing what it placed leaves it unreviewed; editing without --as claims it', () => {
   const { project: p, store } = project()
-  const stamp = { rule: 'claude', from: 'apply' }
+  const stamp = { by: 'claude', via: 'apply' }
   const run = (ops: unknown[], as: typeof stamp | null) => {
     const plan = planOps(p, store, ops as Op[], as)
     for (const step of plan.planned) step()
@@ -186,9 +186,17 @@ test('a model editing what it placed leaves it unreviewed; editing without --as 
   run([{ op: 'add', item: { kind: 'marker', systemId: 'data.sensor', symbol: 'presence', xM: 2, yM: 1.5 } }], stamp)
   const m = p.sheets[0].items.find((i) => i.kind === 'marker') as MarkerItem
   run([{ op: 'set', id: m.id, patch: { note: 'CeilSense Mini' } }, { op: 'move', id: m.id, byM: [0.1, 0] }], stamp)
-  assert.deepEqual(m.generated, stamp, 'still nobody has looked at it')
+  assert.deepEqual(m.suggested, stamp, 'still nobody has looked at it')
   run([{ op: 'set', id: m.id, patch: { label: 'P1' } }], null)
-  assert.equal(m.generated, undefined, 'a person edited it, so it is theirs')
+  assert.equal(m.suggested, undefined, 'a person edited it, so it is theirs')
   run([{ op: 'set', id: m.id, patch: { label: 'P1 lux' } }], stamp)
-  assert.equal(m.generated, undefined, 'and a later model edit does not take it back')
+  assert.equal(m.suggested, undefined, 'and a later model edit does not take it back')
+})
+
+test('a marker stamped by an older version still reads as a suggestion', () => {
+  const file = { version: 1, name: 'old', sheets: [{ id: 's', name: 's', items: [
+    { kind: 'marker', id: 'm', systemId: 'power.230v', level: 'on-wall', x: 0, y: 0, symbol: 'socket', generated: { rule: 'claude', from: 'apply' } },
+  ] }] }
+  const marker = parseProject(JSON.stringify(file)).sheets[0].items[0] as MarkerItem
+  assert.deepEqual(marker.suggested, { by: 'claude', via: 'apply' })
 })

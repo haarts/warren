@@ -126,8 +126,11 @@ const ITEM_PARSERS: { [K in Item['kind']]: (raw: Record<string, unknown>, base: 
     if (typeof raw.aimDeg === 'number' && isFinite(raw.aimDeg)) item.aimDeg = ((raw.aimDeg % 360) + 360) % 360
     if (typeof raw.fovDeg === 'number' && raw.fovDeg > 0) item.fovDeg = Math.min(360, raw.fovDeg)
     if (typeof raw.range === 'number' && raw.range > 0) item.range = raw.range
-    if (isObj(raw.generated) && typeof raw.generated.rule === 'string' && typeof raw.generated.from === 'string') {
-      item.generated = { rule: raw.generated.rule, from: raw.generated.from }
+    if (isObj(raw.suggested) && typeof raw.suggested.by === 'string' && typeof raw.suggested.via === 'string') {
+      item.suggested = { by: raw.suggested.by, via: raw.suggested.via }
+    } else if (isObj(raw.generated) && typeof raw.generated.rule === 'string' && typeof raw.generated.from === 'string') {
+      // Files written before suggestions had their own name called them `generated`.
+      item.suggested = { by: raw.generated.rule, via: raw.generated.from }
     }
     return item
   },
@@ -343,14 +346,9 @@ export function parseProject(text: string): Project {
     }
   }
 
-  const rules = Array.isArray(raw.rules)
-    ? (raw.rules.filter(isObj) as unknown as Project['rules'])
-    : undefined
-
   return {
     version: 1,
     name: str(raw.name, 'Untitled'),
-    ...(rules?.length ? { rules } : {}),
     ...(compass ? { compass } : {}),
     ...(directions.length ? { directions } : {}),
     systems: systems.length > 0 ? systems : defaultSystems(),

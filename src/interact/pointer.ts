@@ -12,7 +12,7 @@ import type { VertexRef } from '../model/doc.ts'
 import { idPrefix, newId } from '../model/ids.ts'
 import { coordsOf, pointsOf, type BoxItem, type Item, type MarkerItem, type NoteItem, type RunItem } from '../model/types.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../render/notes.ts'
-import { adopt } from '../generate.ts'
+import { adopt } from '../model/suggested.ts'
 import { setBoxRotation, shiftItem } from './arrange.ts'
 import { bearingBetween } from '../directions.ts'
 import { HIT_TOL_PX, hitBoxCorner, hitBoxRotate, hitMarkerAim, hitNoteHandle, hitSegment, hitTest, hitTestLocked, hitVertex, itemsInRect } from './hittest.ts'
@@ -686,8 +686,8 @@ function leaveCopiesBehind(ed: Editor, originals: Map<string, Item>): void {
   for (const original of originals.values()) {
     const copy = structuredClone(original)
     copy.id = newId(idPrefix(copy.kind))
-    // A copy was placed by a person, not a rule.
-    if (copy.kind === 'marker') delete copy.generated
+    // A copy was placed by a person, whoever suggested the original.
+    adopt(copy)
     store.sheet.items.push(copy)
     store.selection.add(copy.id)
     copies.set(copy.id, original)

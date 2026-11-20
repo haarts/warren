@@ -37,7 +37,7 @@ const options = (file: string) => ({
   root: join(import.meta.dirname, '..', 'dist'),
   hydrate: async (): Promise<string[]> => [],
   applyOps: (project: Project, store: Store, ops: unknown[], as: string | null) => {
-    const plan = planOps(project, store, ops as never[], as ? { rule: as, from: 'apply' } : null)
+    const plan = planOps(project, store, ops as never[], as ? { by: as, via: 'apply' } : null)
     return {
       problems: plan.problems,
       describe: plan.describe,

@@ -25,9 +25,9 @@ answer the question you need.
 ## Tracing a door
 
 A door is exactly two points: **the hinge jamb first, then the strike jamb**, plus `item.swing`
-(`1` or `-1`) for which way it opens. Getting hinge-vs-strike backwards silently breaks any rule
-that places a switch at "the unhinged side" (see `warren-generate-vs-handplace`) — if you're not
-confident which jamb is which from the image, say so rather than picking one.
+(`1` or `-1`) for which way it opens. Getting hinge-vs-strike backwards puts a switch meant for
+the strike side behind the door — if you're not confident which jamb is which from the image,
+say so rather than picking one.
 
 ## Orientation and ambiguity
 

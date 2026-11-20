@@ -11,9 +11,9 @@ export function drawMarker(dc: DrawCtx, marker: MarkerItem): void {
   const p = cam.toScreen(marker)
   const r = MARKER_RADIUS * ui
   ctx.save()
-  // Faint means a rule put it there and nobody has looked yet - the same language as an
-  // assumed flow direction.
-  if (marker.generated) ctx.globalAlpha = 0.5
+  // Faint means somebody else suggested it and nobody has looked yet - the same language as
+  // an assumed flow direction.
+  if (marker.suggested) ctx.globalAlpha = 0.5
   ctx.translate(p.x, p.y)
   // A presence sensor's waves face the way it looks; on the ceiling it looks at the floor.
   if (marker.symbol === 'presence' && marker.level !== 'ceiling') ctx.rotate(((marker.aimDeg ?? 0) * Math.PI) / 180)

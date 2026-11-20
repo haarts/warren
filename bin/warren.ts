@@ -16,11 +16,10 @@ import { pathToFileURL } from 'node:url'
 import { fail, parseArgs, type Args } from './args.ts'
 import { commandHelp, isCommand, manifest, nearest, overview, type Command } from './help.ts'
 import { cmdCheck, cmdGraph, cmdItems, cmdSummary, cmdTakeoff, cmdTrace } from './commands/read.ts'
-import { cmdRules, cmdSystems } from './commands/catalogue.ts'
+import { cmdSystems } from './commands/catalogue.ts'
 import { cmdDirections } from './commands/directions.ts'
 import { cmdCalibrate } from './commands/calibrate.ts'
 import { cmdAlign } from './commands/align.ts'
-import { cmdGenerate } from './commands/generate.ts'
 import { cmdSplit, cmdBundle } from './commands/split-bundle.ts'
 import { cmdApply } from './commands/apply.ts'
 import { cmdSelect, cmdServe } from './commands/serve-select.ts'
@@ -37,8 +36,6 @@ const commands: Record<Command, (a: Args) => Promise<void>> = {
   calibrate: cmdCalibrate,
   align: cmdAlign,
   directions: cmdDirections,
-  generate: cmdGenerate,
-  rules: cmdRules,
   graph: cmdGraph,
   trace: cmdTrace,
   split: cmdSplit,

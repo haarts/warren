@@ -4,7 +4,7 @@
  * box, a run and a marker line up by what you can see of them.
  */
 import { boundsOf, type Pt, type Rect } from '../geom.ts'
-import { adopt } from '../generate.ts'
+import { adopt } from '../model/suggested.ts'
 import { isPositioned, pointsOf, type BoxItem, type Item } from '../model/types.ts'
 import { boxCorners, itemBounds } from '../render/bounds.ts'
 

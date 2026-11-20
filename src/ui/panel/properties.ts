@@ -5,7 +5,7 @@ import {
   type Item, type Level, type MarkerSymbol, type RoomUse, type WallStatus,
 } from '../../model/types.ts'
 import { buildGraph, connectionsOf, networkOf, type Contact } from '../../topology.ts'
-import { adopt, generatedBy } from '../../generate.ts'
+import { adopt, suggestedBy } from '../../model/suggested.ts'
 import { symbolsFor } from '../../model/systems.ts'
 import { aimIfUnset, PRESENCE_DEFAULTS, viewOf } from '../../coverage.ts'
 import { formatMetres } from '../../units.ts'
@@ -436,11 +436,10 @@ function buildSelection(app: App, body: HTMLElement): void {
   }
   body.appendChild(field('Colour', colorRow))
 
-  if (items.some((i) => generatedBy(i))) {
+  if (items.some((i) => suggestedBy(i))) {
     body.appendChild(el('div', { class: 'hint' },
-      'Placed by the ', el('b', {}, generatedBy(first)?.rule ?? 'rules'),
-      ' rule, and drawn faintly until you touch it. Move or change it and it becomes yours — '
-      + 'regenerating will leave it alone after that.'))
+      'Suggested by ', el('b', {}, suggestedBy(first)?.by ?? 'someone else'),
+      ', and drawn faintly until you touch it. Move or change it and it becomes yours.'))
   }
 
   const actions = el('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' } },

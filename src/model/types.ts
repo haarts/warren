@@ -153,11 +153,15 @@ export interface BoxItem {
   locked?: boolean
 }
 
-/** Stamped on anything a rule produced, and dropped the moment a person edits it. */
-export interface GeneratedBy {
-  rule: string
-  /** The room or door it was placed from. */
-  from: string
+/**
+ * Stamped on a marker somebody suggested rather than drew - a model working through
+ * `apply --as` - and dropped the moment a person edits it.
+ */
+export interface Suggestion {
+  /** Who suggested it, as given to `--as`. */
+  by: string
+  /** How it arrived, e.g. "apply". */
+  via: string
 }
 
 export interface MarkerItem {
@@ -180,7 +184,7 @@ export interface MarkerItem {
   note?: string
   colorOverride?: string
   locked?: boolean
-  generated?: GeneratedBy
+  suggested?: Suggestion
 }
 
 /**
@@ -439,8 +443,6 @@ export interface Settings {
 export interface Project {
   version: 1
   name: string
-  /** Placement rules. Data rather than code, so they are yours to change. */
-  rules?: import('../generate.ts').GenerateRule[]
   /**
    * Which way is which - one for the whole project, not one per sheet. Pipes and ducts pass
    * from floor to floor, so every sheet has to be drawn the same way round already; a floor

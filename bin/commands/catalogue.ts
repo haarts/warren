@@ -4,8 +4,6 @@
  * merge are mutually exclusive modes, so a table of {flag → mode} reads better than an if-chain
  * that re-checks flags already ruled out.
  */
-import { readFileSync } from 'node:fs'
-import { rulesOf } from '../../src/generate.ts'
 import { addMissing, missingDefaults, missingSymbols } from '../../src/model/systems.ts'
 import { fail, type Args } from '../args.ts'
 import { load, persist, type Loaded } from '../project.ts'
@@ -95,24 +93,4 @@ export async function cmdSystems(args: Args): Promise<void> {
   if (missing.length) console.log(`\n${missing.length} default system(s) missing: ${missing.map((s) => s.id).join(', ')} — add with --add-missing`)
   const symbols = missingSymbols(project.systems)
   if (symbols.length) console.log(`${missing.length ? '' : '\n'}newer symbols not offered yet: ${symbols.map((m) => `${m.id} (${m.symbols.join(', ')})`).join('; ')} — add with --add-missing`)
-}
-
-/** The rules themselves, so they can be read and replaced without opening the app. */
-export async function cmdRules(args: Args): Promise<void> {
-  const loaded = await load(args)
-  const { project, store } = loaded
-  if (typeof args.flags.set === 'string') {
-    const incoming: unknown = JSON.parse(readFileSync(args.flags.set, 'utf8'))
-    const list = Array.isArray(incoming) ? incoming : (incoming as { rules?: unknown }).rules
-    if (!Array.isArray(list)) fail('expected an array of rules, or {"rules": [...]}')
-    project.rules = list as typeof project.rules
-    await persist(loaded)
-    return void console.log(`set ${list.length} rule(s)`)
-  }
-  const rules = rulesOf(store)
-  if (args.flags.json) return void console.log(JSON.stringify(rules, null, 2))
-  for (const r of rules) {
-    console.log(`${r.id.padEnd(12)} ${r.enabled ? 'on ' : 'off'} ${r.place.padEnd(16)} ${r.systemId.padEnd(16)} ${r.uses?.join(',') ?? 'any room'}`)
-  }
-  console.log(`\n${project.rules ? 'from this project' : 'built-in defaults; --set rules.json to replace them'}`)
 }

@@ -25,9 +25,9 @@ export async function cmdApply(args: Args): Promise<void> {
     fail(`could not read ${opsPath}: ${err instanceof Error ? err.message : err}`)
   }
 
-  // `--as <who>` marks everything this batch adds as placed-but-unreviewed, the same standing
-  // a generated item has. Without it a model's suggestions would arrive looking like your work.
-  const stamp = typeof args.flags.as === 'string' ? { rule: args.flags.as, from: 'apply' } : null
+  // `--as <who>` marks what this batch adds as a suggestion nobody has reviewed yet. Without
+  // it a model's suggestions would arrive looking like your work.
+  const stamp = typeof args.flags.as === 'string' ? { by: args.flags.as, via: 'apply' } : null
 
   const { problems, describe, planned } = planOps(project, store, ops, stamp)
 

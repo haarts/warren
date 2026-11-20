@@ -11,7 +11,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { LEVELS, ITEM_KINDS, MARKER_SYMBOLS, ROOM_USES } from '../src/model/types.ts'
-import { PLACEMENTS } from '../src/generate.ts'
 
 const CLI = fileURLToPath(new URL('../bin/warren.ts', import.meta.url))
 
@@ -83,7 +82,6 @@ test('the manifest enums are the enums the code uses', () => {
   assert.deepEqual(enums.itemKind, [...ITEM_KINDS])
   assert.deepEqual(enums.roomUse, [...ROOM_USES])
   assert.deepEqual(enums.markerSymbol, [...MARKER_SYMBOLS])
-  assert.deepEqual(enums.placement, [...PLACEMENTS])
   assert.ok(enums.addableKind.every((k) => ITEM_KINDS.includes(k as never)), 'you cannot add a kind that is not a kind')
 })
 

@@ -23,10 +23,10 @@ export function drawCoverage(dc: DrawCtx, markers: MarkerItem[]): void {
       else ctx.lineTo(s.x, s.y)
     })
     ctx.closePath()
-    ctx.globalAlpha = m.generated ? 0.06 : 0.1
+    ctx.globalAlpha = m.suggested ? 0.06 : 0.1
     ctx.fillStyle = color
     ctx.fill()
-    ctx.globalAlpha = m.generated ? 0.25 : 0.45
+    ctx.globalAlpha = m.suggested ? 0.25 : 0.45
     ctx.strokeStyle = color
     ctx.lineWidth = ui
     ctx.setLineDash([4 * ui, 3 * ui])

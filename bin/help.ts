@@ -4,7 +4,6 @@
  * the manifest gets the same facts as someone reading the prose, and the two cannot drift.
  */
 import { readFileSync } from 'node:fs'
-import { PLACEMENTS } from '../src/generate.ts'
 import { CATEGORIES, ITEM_KINDS, LEVELS, MARKER_SYMBOLS, ROOM_USES, WALL_STATUSES } from '../src/model/types.ts'
 import { ADDABLE_KINDS, PATCHABLE } from './ops.ts'
 
@@ -243,41 +242,6 @@ const MANUAL = {
     ],
     writes: true,
   },
-  rules: {
-    summary: 'the placement rules (data, so they are yours)',
-    usage: ['warren rules <file>', 'warren rules <file> --set <rules.json>'],
-    flags: [['--set <rules.json>', 'replace the whole rule set with this file']],
-    notes: [
-      `A rule set is an array of rules. Placements are ${PLACEMENTS.join(', ')}; each rule says which room uses it applies to, which system and level its output belongs to, and the distances involved.`,
-      'Warren executes a rule set rather than believing one, so `--set` replaces them wholesale. There is no merge.',
-    ],
-    writes: true,
-  },
-  generate: {
-    summary: 'run the rules over the rooms and doors',
-    usage: ['warren generate <file> [--rule <name>] [--room <a,b>] [--set <k=v>] [--dry-run|--where|--clear|--save]'],
-    flags: [
-      ['--rule <name>', 'just this rule, instead of all of them'],
-      ['--room <a,b,...>', 'just these rooms, by name substring'],
-      ['--set <k=v,...>', 'override rule parameters for this run'],
-      ['--dry-run', 'report what would happen; write nothing'],
-      ['--where', 'with --dry-run, print the position of every placement'],
-      ['--clear', 'remove what the rule generated, and stop'],
-      ['--save', 'keep a --set override in the project as the new rule'],
-      SHEET_FLAG,
-    ],
-    examples: [
-      'warren generate house.warren.json --rule sockets --room Keuken --dry-run --where',
-      'warren generate house.warren.json --rule sockets --room Keuken --set perWall=3 --save',
-    ],
-    notes: [
-      'This is the repetitive half of an electrical layout — two sockets per wall, a switch by each door, a detector in the halls. It needs rooms and doors to exist first; `apply` is how they get there.',
-      'Generated items are stamped with the rule that made them, and their ids are derived from rule and room rather than random, so re-running produces the same file instead of a diff full of new identifiers.',
-      'Move or change one and it becomes yours: the stamp comes off and re-running leaves it exactly where you put it. That holds whoever did the editing, `apply` included.',
-      'Scoping with --room limits what gets replaced, so regenerating one room never disturbs another. Whatever the name matched is printed, so a mis-scope is visible rather than silent.',
-    ],
-    writes: true,
-  },
   split: {
     summary: 'move the PDF out beside the file',
     usage: ['warren split <file>'],
@@ -335,7 +299,7 @@ const MANUAL = {
       'This is the write path, and the only one that should be used: editing the JSON directly skips every check below.',
       'The ops file is an array of ops, or {"ops": [...]}. All of it is validated before any of it is applied, so a half-understood instruction cannot leave the drawing half-changed. If one op fails, nothing is written.',
       'Coordinates: pointsM / xM / yM are metres and need a calibrated sheet; points / x / y are raw PDF points. Prefer metres — converting at the boundary is this tool’s job, not the caller’s.',
-      '--as stamps everything the batch adds with the standing generated items have: drawn faintly, left alone by a later generate, and yours the moment you touch one. Use it for anything a model suggested, so it does not arrive looking like work the person did. A set or move with --as leaves an item nobody has reviewed yet unreviewed; without it, editing claims the item.',
+      '--as stamps the markers the batch adds as suggested by whoever you name: drawn faintly until a person touches one, which makes it theirs. Use it for anything a model suggested, so it does not arrive looking like work the person did. A set or move with --as leaves a suggestion nobody has reviewed yet unreviewed; without it, editing claims the item.',
       'A room op may carry expectM2. Dutch architect’s plans print the area of every room, so a traced outline can check itself: the batch is refused if the polygon disagrees by more than 8%.',
     ],
     writes: true,
@@ -519,7 +483,6 @@ export function manifest() {
       markerSymbol: [...MARKER_SYMBOLS],
       category: [...CATEGORIES],
       flow: ['none', 'forward', 'reverse'],
-      placement: [...PLACEMENTS],
     },
     exitCodes: EXIT,
   }

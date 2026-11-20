@@ -284,56 +284,14 @@ read the rest against.
 Reshape one the way you reshape a run: click its outline to select it, then drag a corner. Add
 a corner with `Alt`+click to turn a rectangle into the L-shape most rooms actually are.
 
-This is not drawing for its own sake. What a room is *for* is what lets rules act on it: a
+This is not drawing for its own sake. What a room is *for* is what a layout is reasoned from: a
 bedroom wants sockets and a smoke detector, a toilet wants neither, and a light switch belongs
-by the strike jamb rather than behind the door. Recording the building once turns the
-repetitive half of an electrical layout into something that can be generated instead of typed.
+by the strike jamb rather than behind the door. Recording the building once gives whoever
+places the services, you or an AI, something to reason about instead of a picture.
 
 Rooms show their computed floor area, which is also how a traced outline checks itself — Dutch
 architect's plans print the area of every room, so `warren apply` accepts an `expectM2` on a
 room and refuses the op if the polygon disagrees by more than 8%.
-
-## Generating the repetitive half
-
-Two sockets on each wall of every room, a switch by each door on the side it opens, a detector
-in the halls. That is not design work, it is typing — and it is why the electrical layer starts
-as a blank page you do not want to look at.
-
-`File → Generate from rooms…`, or `warren generate`, runs a set of placement rules over the
-rooms and doors. It shows you what it will do first.
-
-**Do one room at a time.** Placing a hundred markers in one go only moves the problem: instead
-of a blank page you have a hundred things to check, and you are really only checking one
-decision — does this rule give sensible results in this house? So check it hard in one room,
-then trust it in the others:
-
-```bash
-warren generate house.warren.json --rule sockets --room Keuken --dry-run --where
-warren generate house.warren.json --rule sockets --room Keuken --set perWall=3,insetMm=600
-warren generate house.warren.json --rule sockets --room Keuken --clear     # start over
-warren generate house.warren.json --rule sockets --room Keuken --set perWall=3 --save
-```
-
-`--set` changes a rule for that run only; `--save` keeps the change. `--room` takes a name or a
-plan ref, and an exact match always wins over a partial one — asking for `Keuken` must never
-quietly take the *Bij*keuken with it. Whatever it matched is printed, so a mis-scope is visible
-rather than silent. Scoping also limits what gets replaced, so regenerating one room never
-disturbs another's.
-
-**The rules are data, not code.** "Two sockets per wall" is an opinion about one house, so
-Warren executes a rule set rather than believing one — `warren rules --set mine.json` replaces
-them wholesale. Three placements exist: `along-walls`, `at-door-strike`, `centre`. Each rule
-says which room uses it applies to, which system and level the result belongs to, and the
-distances involved.
-
-Generated items are **drawn faintly** and stamped with the rule that made them. Move or change
-one and it becomes yours: the stamp comes off, and re-running the rule leaves it exactly where
-you put it. That holds whoever does the editing — the app, or `warren apply`. Ids are derived
-from the rule and the room rather than being random, so re-running produces the same file
-instead of a diff full of new identifiers.
-
-What Warren will never do is decide *which room is the kitchen*. That is understanding, and it
-comes from you or from something you point at the drawing — see below.
 
 ## Working with an AI
 
@@ -348,9 +306,17 @@ as ops:
 ```bash
 warren systems house.warren.json --add-missing   # a project can predate a system
 warren apply   house.warren.json rooms.json      # rooms and doors, validated
-warren generate house.warren.json                # the repetitive half, by rule
+warren apply   house.warren.json sockets.json --as ai:sockets   # its suggestions
 warren check   house.warren.json                 # a second pair of eyes
 ```
+
+**What an AI places arrives as a suggestion.** `apply --as <who>` stamps the markers a batch
+adds as suggested by whoever it names, and they are **drawn faintly** until you look. Move or
+change one and it becomes yours: the stamp comes off, and the properties panel stops saying who
+suggested it. Further edits the AI makes `--as` itself leave a suggestion a suggestion rather
+than passing it off as reviewed, and never take back one you have made yours. Without `--as`
+an edit is indistinguishable from your own, which is the right default for a change you asked
+for in so many words.
 
 Warren cannot trace a room, but it can grade one. Dutch plans print the area of every room, so
 a room op takes an `expectM2` and the whole batch is refused if the polygon disagrees by more
@@ -451,8 +417,6 @@ warren items   house.warren.json --system 'power.*' --level wall
 warren takeoff house.warren.json --csv
 warren check   house.warren.json --strict   # exits 1 on errors, so CI can use it
 warren systems house.warren.json            # the catalogue; --add-missing fills in newer defaults
-warren rules   house.warren.json            # the placement rules; --set replaces them
-warren generate house.warren.json           # run the rules over the rooms and doors
 warren graph   house.warren.json            # derived networks, junctions, loose ends
 warren trace   house.warren.json --id run_x # what one run is joined to, and what it reaches
 warren split   house.warren.json            # move the PDF out beside the file
@@ -507,7 +471,7 @@ drawing you can read.
 ```
 bin/
   warren.ts        the command line: argv → a command, over the same modules the app runs on
-  commands/        one file per family: read, catalogue, directions, generate, apply, …
+  commands/        one file per family: read, catalogue, directions, apply, …
   ops.ts           what `apply` validates and does, one handler per op
   help.ts          the manual behind `help` and `help --json`
   project.ts       loading and saving, and routing through a running `warren serve`
@@ -519,7 +483,6 @@ src/
   topology.ts      what is joined to what, read from the geometry
   rooms.ts         which room a thing is in, read from where it is
   check.ts         the rules, shared by the Check tab and `warren check`
-  generate.ts      placement rules: arithmetic here, opinions in the data
   takeoff.ts       metres per system
   units.ts         metric formatting
   model/           types, the systems catalogue, the document store + undo

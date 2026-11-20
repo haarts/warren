@@ -167,14 +167,6 @@ test('symbols are scoped to the system, and never silently changed', async () =>
   assert.equal(moved[0], 'drain')
 })
 
-test('the rules place the symbols a Dutch drawing expects', async () => {
-  const { DEFAULT_RULES } = await import('../src/generate.ts')
-  const symbolOf = (id: string) => DEFAULT_RULES.find((r) => r.id === id)?.symbol
-  assert.equal(symbolOf('sockets'), 'socket')
-  assert.equal(symbolOf('switches'), 'switch')
-  assert.equal(symbolOf('detectors'), 'detector')
-})
-
 test('the takeoff splits a system by cable size, because that is what you order', () => {
   const store = new Store()
   store.sheet.mmPerPoint = 10

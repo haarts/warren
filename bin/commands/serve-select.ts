@@ -29,7 +29,7 @@ export async function cmdServe(args: Args): Promise<void> {
     root,
     hydrate: (project, path) => resolveAssets(project, path),
     applyOps: (project, store, ops, as) => {
-      const plan = planOps(project, store, ops as Op[], as ? { rule: as, from: 'apply' } : null)
+      const plan = planOps(project, store, ops as Op[], as ? { by: as, via: 'apply' } : null)
       return {
         problems: plan.problems,
         describe: plan.describe,

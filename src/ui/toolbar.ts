@@ -12,7 +12,7 @@ import { symbolsFor } from '../model/systems.ts'
 import { saveCapabilityNote } from '../io/projectFile.ts'
 import { alertDialog } from './modal.ts'
 import { clear, el, groupedSelect, select } from './dom.ts'
-import { openExportDialog, openGenerateDialog, openPrintDialog } from './outputDialogs.ts'
+import { openExportDialog, openPrintDialog } from './outputDialogs.ts'
 import { openSystemsEditor } from './systemsEditor.ts'
 
 const TOOLS: { id: ToolId; label: string; key: string; title: string }[] = [
@@ -232,8 +232,6 @@ function fileMenu(app: App): HTMLElement {
       entry('Import PDF page → new sheet', '', () => void importPdf(app, 'new')),
       sheet.pdf ? entry('Rotate plan 90°', '', () => rotateSheet(app, 90)) : null,
       sheet.pdf ? entry('Remove plan from sheet', '', () => detachPdf(app)) : null,
-      el('hr'),
-      entry('Generate from rooms…', '', () => openGenerateDialog(app)),
       el('hr'),
       entry('Export PNG…', '', () => openExportDialog(app)),
       entry('Print / PDF…', '', () => openPrintDialog(app)),

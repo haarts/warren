@@ -74,10 +74,6 @@ warren check    house.warren.json --strict        # always, after any write
 warren render   house.warren.json --id <ids> --grid   # and look at what you placed
 ```
 
-`warren generate` does the repetitive half — two sockets per wall, a switch by each door, a
-detector in the halls — once rooms and doors exist. Look before you leap:
-`--dry-run --where` prints every placement it would make.
-
 ## Rules
 
 **Write through `warren apply`, never by editing the JSON.** The parser is forgiving on purpose,
@@ -100,11 +96,10 @@ run `systems --add-missing` if the one you want is not in the catalogue yet.
 coordinate, within 5 mm of real world. If you want two things joined, give them the same point —
 `graph` and `trace` will then agree they are joined. Nothing else makes it so.
 
-**Do not fight the generator.** Generated items are stamped with the rule that made them and
-their ids are derived, so re-running is idempotent. Editing one through `apply` takes it out of
-the rule's hands and re-running leaves it alone — that is the intended way to correct a placement.
-Without `--as` the edit also un-stamps it, as a person's would; with `--as` it stays faint, now
-stamped as yours, because nobody has reviewed it yet.
+**What you place, place `--as` yourself.** `apply --as <who>` stamps the markers a batch adds
+as your suggestion, drawn faintly until the person touches one and makes it theirs. Pass the
+same `--as` on later edits to them too: with it a suggestion stays a suggestion, without it the
+edit claims the item as if the person had reviewed it.
 
 ## Exit codes
 
@@ -124,7 +119,6 @@ bin/ops.ts        what `apply` validates and does, one handler per op
 bin/help.ts       the manual behind `help` and `help --json` — the contract
 src/model/        the document: types, systems catalogue, ids
 src/check.ts      the rules behind `warren check` and the app's Check tab
-src/generate.ts   placement rules, and running them over rooms
 src/takeoff.ts    metres per system
 src/topology.ts   connections, derived from coordinates
 test/             node --test, no framework. `npm test`

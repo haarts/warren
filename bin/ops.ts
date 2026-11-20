@@ -9,10 +9,10 @@
  */
 import type { Pt } from '../src/geom.ts'
 import { closestOnSegment, polygonArea } from '../src/geom.ts'
-import { adopt } from '../src/generate.ts'
+import { adopt } from '../src/model/suggested.ts'
 import { newId } from '../src/model/ids.ts'
 import type { Store } from '../src/model/doc.ts'
-import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet } from '../src/model/types.ts'
+import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet, type Suggestion } from '../src/model/types.ts'
 import { oneOf } from '../src/io/projectFile.ts'
 import { aimIfUnset } from '../src/coverage.ts'
 import type { MarkerItem } from '../src/model/types.ts'
@@ -45,7 +45,7 @@ interface Ctx {
   project: Project
   store: Store
   systemIds: Set<string>
-  stamp: { rule: string; from: string } | null
+  stamp: Suggestion | null
   target?: { sheet: Sheet; item: Item }
   at: string
   problems: string[]
@@ -168,13 +168,13 @@ function hostWall(sheet: Sheet, a: Pt, b: Pt): WallItem | null {
 }
 
 /**
- * Who an edited item belongs to afterwards. An edit by a person claims machine output, so a later
- * `generate` never quietly undoes it. An edit made `--as` someone is still unreviewed: an item
- * nobody has looked at yet stays that way, now stamped with whoever changed it last, rather than
- * turning solid as if a person had approved it. A person's own item stays theirs either way.
+ * Who an edited item belongs to afterwards. An edit by a person makes it theirs. An edit made
+ * `--as` someone is still unreviewed: a suggestion nobody has looked at yet stays one, now
+ * stamped with whoever changed it last, rather than turning solid as if a person had approved
+ * it. A person's own item stays theirs either way.
  */
 function claim(item: Item, stamp: Ctx['stamp']): void {
-  if (stamp && item.kind === 'marker' && item.generated) item.generated = { ...stamp }
+  if (stamp && item.kind === 'marker' && item.suggested) item.suggested = { ...stamp }
   else adopt(item)
 }
 
@@ -348,9 +348,9 @@ function doAdd(op: AddOp, ctx: Ctx): void {
           ...view,
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
           ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),
-          // Whatever placed this - a rule, a person, a model - it arrives unreviewed and
-          // is drawn faintly until somebody looks at it and touches it.
-          ...(stamp ? { generated: stamp } : {}),
+          // Placed --as someone else, it arrives unreviewed and is drawn faintly until a
+          // person looks at it and touches it.
+          ...(stamp ? { suggested: { ...stamp } } : {}),
         }
         aimIfUnset(marker, sheet)
         sheet.items.push(marker)
@@ -369,7 +369,7 @@ const HANDLERS = { set: doSet, delete: doDelete, move: doMove, add: doAdd }
  * drawing half-changed.
  */
 export function planOps(
-  project: Project, store: Store, ops: Op[], stamp: { rule: string; from: string } | null,
+  project: Project, store: Store, ops: Op[], stamp: Suggestion | null,
 ): Plan {
   const index = new Map<string, { sheet: Sheet; item: Item }>()
   for (const sheet of project.sheets) for (const item of sheet.items) index.set(item.id, { sheet, item })
