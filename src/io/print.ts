@@ -1,8 +1,10 @@
 import type { Store } from '../model/doc.ts'
-import { CATEGORY_LABELS, type Category } from '../model/types.ts'
+import { CATEGORY_LABELS, type Category, type Sheet } from '../model/types.ts'
 import { computeTakeoff, systemsInUse } from '../takeoff.ts'
 import { formatMetres } from '../units.ts'
 import { renderSheetImage } from './exportImage.ts'
+
+export type Paper = 'A3' | 'A4'
 
 export interface PrintOptions {
   scale: number
@@ -10,7 +12,14 @@ export interface PrintOptions {
   includeLegend: boolean
   includeTakeoff: boolean
   backgroundOpacity: number
+  /** Every sheet, one to a page, or just the one on screen. */
+  sheets: 'all' | 'current'
+  paper: Paper
 }
+
+/** Paper in millimetres, short side first. */
+const PAPER_MM: Record<Paper, [number, number]> = { A3: [297, 420], A4: [210, 297] }
+const MARGIN_MM = 10
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string)
@@ -32,7 +41,14 @@ function dashSvg(color: string, dash: number[], width: number): string {
  * electrician" a one-click thing.
  */
 export async function openPrintView(store: Store, opts: PrintOptions): Promise<void> {
+  await printHtml(await printDocument(store, opts))
+}
+
+/** The print view as a document: one page per floor, then the legend and takeoff. */
+export async function printDocument(store: Store, opts: PrintOptions): Promise<string> {
   const previous = store.project.systems.map((s) => s.visible)
+  const active = store.project.activeSheetId
+  const sheets = opts.sheets === 'all' ? store.project.sheets : [store.sheet]
   if (opts.categories) {
     for (const sys of store.project.systems) sys.visible = opts.categories.includes(sys.category)
     store.invalidateSystems()
@@ -42,23 +58,30 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
   // which Chrome stops in a backgrounded page - so opening a popup first and rendering second
   // deadlocks. Same reason we print from a hidden same-origin iframe rather than a new tab:
   // no popup blocker, no backgrounding, no stall.
-  let canvas: HTMLCanvasElement
+  const pages: { sheet: Sheet; url: string; portrait: boolean }[] = []
   try {
-    canvas = await renderSheetImage(store, {
-      scale: opts.scale,
-      includeBackground: true,
-      backgroundOpacity: opts.backgroundOpacity,
-    })
+    for (const sheet of sheets) {
+      // The renderer draws the active sheet; switch quietly, without the selection reset and
+      // redraw a person switching tabs gets, and switch back below whatever happens.
+      store.project.activeSheetId = sheet.id
+      const canvas = await renderSheetImage(store, {
+        scale: opts.scale,
+        includeBackground: true,
+        backgroundOpacity: opts.backgroundOpacity,
+      })
+      pages.push({ sheet, url: canvas.toDataURL('image/png'), portrait: canvas.height > canvas.width })
+    }
   } finally {
+    store.project.activeSheetId = active
     store.project.systems.forEach((s, i) => { s.visible = previous[i] })
     store.invalidateSystems()
   }
 
-  const sheet = store.sheet
-  const usedSystems = systemsInUse(store, 'sheet').filter(
+  const scope = opts.sheets === 'all' ? 'project' : 'sheet'
+  const usedSystems = systemsInUse(store, scope).filter(
     (s) => !opts.categories || opts.categories.includes(s.category),
   )
-  const takeoff = computeTakeoff(store, 'sheet')
+  const takeoff = computeTakeoff(store, scope)
   const rows = takeoff.rows.filter((r) => !opts.categories || opts.categories.includes(r.system.category))
 
   const legendHtml = opts.includeLegend && usedSystems.length
@@ -69,7 +92,7 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
     : ''
 
   const takeoffHtml = opts.includeTakeoff && rows.length
-    ? `<section><h2>Material takeoff <span class="muted">(plan length + ${takeoff.slackPct}% slack)</span></h2>
+    ? `<section><h2>Material takeoff <span class="muted">(${pages.length > 1 ? 'all sheets, ' : ''}plan length + ${takeoff.slackPct}% slack)</span></h2>
        <table class="takeoff">
          <tr><th>System</th><th class="num">Runs</th><th class="num">Plan length</th><th class="num">Order</th><th class="num">Items</th></tr>
          ${rows.map((r) => `<tr>
@@ -90,26 +113,50 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
        </section>`
     : ''
 
-  const assumedCount = sheet.items.filter((i) => i.kind === 'run' && i.flowAssumed).length
-  const assumedNote = assumedCount
-    ? `<p class="warn">${assumedCount} run${assumedCount === 1 ? ' has a' : 's have an'} <b>assumed</b> direction, drawn faintly: `
-      + 'guessed from the order it was drawn and not confirmed. Do not set out falls from these.</p>'
-    : ''
-
   const categoryNote = opts.categories
     ? `<span class="muted"> · showing ${opts.categories.map((c) => CATEGORY_LABELS[c]).join(', ')}</span>`
     : ''
+  const when = new Date().toLocaleString()
 
-  const dataUrl = canvas.toDataURL('image/png')
+  // One floor to a page, turned whichever way the plan is, and shrunk to fit inside it: a
+  // plan that runs off the bottom onto a second sheet of paper is no use to anybody holding it.
+  const [short, long] = PAPER_MM[opts.paper]
+  const pageHtml = pages.map(({ sheet, url, portrait }) => {
+    const assumed = sheet.items.filter((i) => i.kind === 'run' && i.flowAssumed).length
+    const assumedNote = assumed
+      ? `<p class="warn">${assumed} run${assumed === 1 ? ' has an' : 's have an'} <b>assumed</b> direction, drawn faintly: `
+        + 'guessed from the order it was drawn and not confirmed. Do not set out falls from these.</p>'
+      : ''
+    return `<section class="page ${portrait ? 'portrait' : 'landscape'}">
+      <h1>${escapeHtml(store.project.name)} — ${escapeHtml(sheet.name)}</h1>
+      <div class="meta">${when}${categoryNote}${
+        sheet.mmPerPoint ? ` · calibrated (1 pt = ${sheet.mmPerPoint.toFixed(3)} mm)` : ' · <span class="warn">not calibrated</span>'
+      }</div>
+      <img class="plan" src="${url}" alt="${escapeHtml(sheet.name)}">
+      ${assumedNote}
+    </section>`
+  }).join('')
+  const extras = legendHtml || takeoffHtml ? `<section class="page landscape extras"><div class="sheets">${legendHtml}${takeoffHtml}</div></section>` : ''
+
+  const title = pages.length === 1 ? `${store.project.name} — ${pages[0].sheet.name}` : store.project.name
   const html = `<!doctype html>
-<html><head><meta charset="utf-8"><title>${escapeHtml(store.project.name)} — ${escapeHtml(sheet.name)}</title>
+<html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
 <style>
-  @page { size: A3 landscape; margin: 10mm; }
-  body { font: 12px/1.45 ui-sans-serif, system-ui, sans-serif; color: #16202e; margin: 0; padding: 4px; }
+  @page { size: ${opts.paper} landscape; margin: ${MARGIN_MM}mm; }
+  @page portrait { size: ${opts.paper} portrait; margin: ${MARGIN_MM}mm; }
+  html, body { margin: 0; padding: 0; }
+  body { font: 12px/1.45 ui-sans-serif, system-ui, sans-serif; color: #16202e; }
+  .page { display: flex; flex-direction: column; overflow: hidden; break-after: page; }
+  .page:last-child { break-after: auto; }
+  /* The printable height of the page, a little under so rounding never spills a sliver over. */
+  .page.landscape { height: ${short - 2 * MARGIN_MM - 3}mm; }
+  .page.portrait { page: portrait; height: ${long - 2 * MARGIN_MM - 3}mm; }
+  .page.extras { height: auto; }
   h1 { font-size: 16px; margin: 0 0 2px; }
   h2 { font-size: 13px; margin: 14px 0 4px; }
-  .meta { color: #5b6675; margin-bottom: 8px; font-size: 11px; }
-  .plan { width: 100%; border: 1px solid #d9dde4; break-after: page; }
+  .meta { color: #5b6675; margin-bottom: 6px; font-size: 11px; }
+  .plan { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: contain; object-position: center top; }
+  .page p { margin: 4px 0 0; }
   table { border-collapse: collapse; font-size: 11px; }
   td, th { padding: 2px 8px 2px 0; vertical-align: middle; text-align: left; }
   th { border-bottom: 1px solid #d9dde4; }
@@ -118,17 +165,8 @@ export async function openPrintView(store: Store, opts: PrintOptions): Promise<v
   .warn { color: #b45309; }
   .sheets { display: flex; gap: 40px; align-items: flex-start; flex-wrap: wrap; }
 </style></head>
-<body>
-  <h1>${escapeHtml(store.project.name)} — ${escapeHtml(sheet.name)}</h1>
-  <div class="meta">${new Date().toLocaleString()}${categoryNote}${
-    sheet.mmPerPoint ? ` · calibrated (1 pt = ${sheet.mmPerPoint.toFixed(3)} mm)` : ' · <span class="warn">not calibrated</span>'
-  }</div>
-  <img class="plan" src="${dataUrl}" alt="plan">
-  ${assumedNote}
-  <div class="sheets">${legendHtml}${takeoffHtml}</div>
-</body></html>`
-
-  await printHtml(html)
+<body>${pageHtml}${extras}</body></html>`
+  return html
 }
 
 /** Writes a document into an off-screen same-origin iframe and prints just that. */
@@ -142,7 +180,14 @@ function printHtml(html: string): Promise<void> {
     })
     document.body.appendChild(frame)
 
+    // The frame took the keyboard to print; give it back, or every shortcut in the app goes to
+    // an invisible document until somebody happens to click the drawing.
+    let done = false
     const cleanup = (): void => {
+      if (done) return
+      done = true
+      frame.blur()
+      window.focus()
       window.setTimeout(() => frame.remove(), 1000)
     }
 
@@ -159,7 +204,9 @@ function printHtml(html: string): Promise<void> {
         win.addEventListener('afterprint', cleanup, { once: true })
         try {
           win.focus()
+          // Blocks until the print dialog closes, so by the next line the printing is done.
           win.print()
+          cleanup()
         } catch (err) {
           cleanup()
           reject(err instanceof Error ? err : new Error(String(err)))

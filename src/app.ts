@@ -5,6 +5,7 @@ import { selectionSummary, zoomBy, zoomToFit } from './interact/view.ts'
 import { attachUnloadGuard, autosave, offerRestore, openProject, save, saveAs } from './app/fileOps.ts'
 import { attachPage as attachPageOp, refit } from './app/pdfOps.ts'
 import { addSheet as addSheetOp, duplicateSelectionToSheet as duplicateSelectionToSheetOp, renameSheet, riseToSheet as riseToSheetOp } from './app/sheetOps.ts'
+import { copySelection, cutSelection, paste } from './app/clipboard.ts'
 import { isServed, Session } from './io/session.ts'
 import { Store } from './model/doc.ts'
 import { clear, el } from './ui/dom.ts'
@@ -315,6 +316,15 @@ const MOD_KEY_ACTIONS: Record<string, KeyAction> = {
   y: (app) => app.store.redo(),
   s: (app, e) => void (e.shiftKey ? saveAs(app) : save(app)),
   o: (app) => void openProject(app),
+  c: (app) => {
+    const n = copySelection(app)
+    if (n) app.editor.flash(`Copied ${n} item(s) — Ctrl+V pastes them at the cursor, on this floor or another`)
+  },
+  x: (app) => {
+    const n = cutSelection(app)
+    if (n) app.editor.flash(`Cut ${n} item(s) — Ctrl+V puts them back at the cursor`)
+  },
+  v: (app) => { paste(app) },
   a: (app) => {
     app.store.selection.clear()
     for (const item of app.store.items()) if (app.store.isEditable(item)) app.store.selection.add(item.id)

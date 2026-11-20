@@ -1,6 +1,6 @@
 import type { App } from '../app.ts'
 import { canvasToBlob, downloadBlob, renderSheetImage } from '../io/exportImage.ts'
-import { openPrintView } from '../io/print.ts'
+import { openPrintView, type Paper } from '../io/print.ts'
 import { CATEGORIES, CATEGORY_LABELS, type Category } from '../model/types.ts'
 import { el } from './dom.ts'
 import { dialogFooter, guarded, openModal } from './modal.ts'
@@ -60,6 +60,16 @@ export function openExportDialog(app: App): void {
 export function openPrintDialog(app: App): void {
   openModal((close) => {
     const scale = scaleSelect(4)
+    const { store } = app
+    const many = store.project.sheets.length > 1
+    const sheets = el('select', {},
+      el('option', { value: 'all', selected: true }, `All ${store.project.sheets.length} sheets, one per page`),
+      el('option', { value: 'current' }, `Only this sheet (${store.sheet.name})`),
+    ) as HTMLSelectElement
+    const paper = el('select', {},
+      el('option', { value: 'A3', selected: true }, 'A3'),
+      el('option', { value: 'A4' }, 'A4'),
+    ) as HTMLSelectElement
     const legend = checkbox('Legend (only the systems actually drawn)', true)
     const takeoff = checkbox('Material takeoff table', true)
     const strong = checkbox('Plan at full strength', true)
@@ -67,8 +77,8 @@ export function openPrintDialog(app: App): void {
     const boxes = new Map<Category, HTMLInputElement>()
     const catList = el('div', { style: { margin: '4px 0 8px' } })
     for (const category of CATEGORIES) {
-      const has = app.store.project.systems.some(
-        (s) => s.category === category && app.store.sheet.items.some((i) => i.systemId === s.id),
+      const has = store.project.systems.some(
+        (s) => s.category === category && store.project.sheets.some((sh) => sh.items.some((i) => i.systemId === s.id)),
       )
       const cb = checkbox(CATEGORY_LABELS[category] + (has ? '' : ' (nothing drawn)'), true)
       boxes.set(category, cb.input)
@@ -85,6 +95,8 @@ export function openPrintDialog(app: App): void {
           includeLegend: legend.input.checked,
           includeTakeoff: takeoff.input.checked,
           backgroundOpacity: strong.input.checked ? 1 : app.store.project.settings.backgroundOpacity,
+          sheets: many ? sheets.value as 'all' | 'current' : 'current',
+          paper: paper.value as Paper,
         })
       })
     }
@@ -96,10 +108,13 @@ export function openPrintDialog(app: App): void {
         el('div', { class: 'hint' },
           'Untick disciplines to produce a sheet for one trade — the electrician does not need your drain falls.'),
         catList,
+        many ? el('div', { class: 'field' }, el('label', {}, 'Sheets'), sheets) : null,
+        el('div', { class: 'field' }, el('label', {}, 'Paper'), paper),
         el('div', { class: 'field' }, el('label', {}, 'Resolution'), scale),
         legend.row, takeoff.row, strong.row,
         el('div', { class: 'hint' },
-          'Renders the sheet, then opens your browser print dialog — choose "Save as PDF" there. A3 landscape suits most plans.'),
+          'Each floor gets a page of its own, turned to suit the plan and shrunk to fit it; the legend and takeoff follow on a last page. '
+          + 'It opens your browser print dialog — choose "Save as PDF" there, and leave the paper size and layout to the print view.'),
       ),
       footer: dialogFooter(close, 'Print', () => void run()),
     }

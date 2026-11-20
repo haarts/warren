@@ -1446,11 +1446,14 @@ try {
   const printText = await page.waitForFunction(() => {
     for (const frame of document.querySelectorAll('iframe')) {
       const doc = frame.contentDocument
-      if (doc && doc.querySelectorAll('img.plan').length === 1) return doc.body.innerText.replace(/\s+/g, ' ')
+      const sheets = window.warren.store.project.sheets.length
+      if (doc && doc.querySelectorAll('img.plan').length === sheets && doc.querySelectorAll('.page').length === sheets + 1) {
+        return `${sheets} sheet(s): ` + doc.body.innerText.replace(/\s+/g, ' ')
+      }
     }
     return false
   }, { timeout: 40_000, polling: 300 }).then((h) => h.jsonValue()).catch(() => '')
-  check('print view carries the plan, legend and takeoff',
+  check('print view puts every sheet on a page of its own, then the legend and takeoff',
     /Legend/.test(printText) && /takeoff/i.test(printText), printText.slice(0, 70))
 
   // --- backfilling a catalogue that predates a system -------------------------------------------
@@ -1546,6 +1549,38 @@ try {
   }, suggestion.id)
   check('moving a suggestion makes it yours', protectedEdit.claimed)
   check('and leaves the other suggestions as they were', protectedEdit.othersStill === 7, `${protectedEdit.othersStill} still suggested`)
+
+  // --- Ctrl+C / Ctrl+V paste at the cursor, Ctrl+X takes away -------------------------------------
+  const clipStart = await page.evaluate((id) => {
+    const app = window.warren
+    app.editor.setTool('select')
+    app.store.selection.clear()
+    app.store.selection.add(id)
+    app.store.touch(false)
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    return { count: app.store.items().length, x: r.x + r.width / 2, y: r.y + r.height / 2 }
+  }, suggestion.id)
+  const withCtrl = async (key) => {
+    await page.keyboard.down('Control'); await page.keyboard.press(key); await page.keyboard.up('Control')
+  }
+  await page.mouse.move(clipStart.x, clipStart.y)
+  await withCtrl('c')
+  await withCtrl('v')
+  const pasted = await page.evaluate((id) => {
+    const app = window.warren
+    const [sel] = app.store.selectedItems()
+    const c = app.editor.cursorWorld
+    return { count: app.store.items().length, fresh: sel && sel.id !== id, off: sel && c ? Math.hypot(sel.x - c.x, sel.y - c.y) : null, mine: sel && !sel.suggested }
+  }, suggestion.id)
+  check('Ctrl+C then Ctrl+V pastes a copy, selected, at the cursor',
+    pasted.count === clipStart.count + 1 && pasted.fresh && pasted.off !== null && pasted.off < 0.01, JSON.stringify(pasted))
+  check('and the copy is yours, not a suggestion', pasted.mine)
+  await withCtrl('x')
+  const afterCut = await page.evaluate(() => window.warren.store.items().length)
+  await withCtrl('v')
+  const afterPaste = await page.evaluate(() => window.warren.store.items().length)
+  check('Ctrl+X removes it and Ctrl+V puts it back', afterCut === clipStart.count && afterPaste === clipStart.count + 1,
+    `${afterCut} then ${afterPaste}`)
 
   // --- the fallback path explains itself ------------------------------------------------------
   // Reproduce a browser without the File System Access API (Firefox, or any non-secure origin).

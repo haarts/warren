@@ -117,7 +117,7 @@ function buildSelection(app: App, body: HTMLElement): void {
     body.appendChild(el('div', { class: 'hint' },
       'Draw a run with L, then click it to select the whole thing — corners and all. ' +
       'Drag a corner handle to fix one corner; Alt+click a segment adds a corner; Alt+click a corner removes it. ' +
-      'Start a new run on the loose end of one to carry it on. Ctrl+drag copies whatever you drag.'))
+      'Start a new run on the loose end of one to carry it on. Ctrl+drag copies whatever you drag; Ctrl+C and Ctrl+V copy and paste at the cursor.'))
     return
   }
 
