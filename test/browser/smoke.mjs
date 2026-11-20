@@ -1312,6 +1312,48 @@ try {
     through.onThird && through.mid.length === 1 && Math.abs(through.mid[0].dx - 50) < 0.5 && Math.abs(through.mid[0].dy - 20) < 0.5
     && through.top === 'riser-down' && through.sheets === 2,
     JSON.stringify(through))
+  // Dragging a riser takes the same pipe on the other floor with it.
+  const riserDrag = await page.evaluate(() => {
+    const app = window.warren
+    const [first] = app.store.project.sheets
+    const before = app.store.undoStack.length
+    const run = first.items.find((i) => i.kind === 'run')
+    app.store.selection.clear()
+    app.store.selection.add(run.id)
+    app.store.activeVertex = { itemId: run.id, index: run.points.length - 1 }
+    app.riseToSheet(app.store.project.sheets[1].id, 'up')
+    const down = app.store.selectedItems()[0]
+    app.store.setActiveSheet(first.id)
+    app.editor.setTool('select')
+    const end = run.points[run.points.length - 1]
+    const up = first.items.find((i) => i.kind === 'marker' && i.symbol === 'riser-up' && i.x === end.x && i.y === end.y)
+    app.store.selection.clear()
+    app.store.touch(false)
+    app.refresh()
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    return { before, upId: up.id, downId: down.id, down: { x: down.x, y: down.y }, up: { x: up.x, y: up.y },
+      at: { x: r.x + app.editor.cam.toScreenX(up.x), y: r.y + app.editor.cam.toScreenY(up.y) } }
+  })
+  await page.mouse.move(riserDrag.at.x, riserDrag.at.y)
+  await page.mouse.down()
+  await page.mouse.move(riserDrag.at.x + 40, riserDrag.at.y + 25, { steps: 8 })
+  await page.mouse.up()
+  const dragged = await page.evaluate((d) => {
+    const app = window.warren
+    const [first, second] = app.store.project.sheets
+    const up = first.items.find((i) => i.id === d.upId)
+    const down = second.items.find((i) => i.id === d.downId)
+    const result = { upMoved: [up.x - d.up.x, up.y - d.up.y], downMoved: [down.x - d.down.x, down.y - d.down.y], status: document.getElementById('status-text').textContent }
+    while (app.store.undoStack.length > d.before) app.store.undo()
+    app.store.setActiveSheet(first.id)
+    return result
+  }, riserDrag)
+  check('dragging a riser moves its partner on the other floor by the same amount',
+    Math.hypot(dragged.upMoved[0], dragged.upMoved[1]) > 1
+    && Math.abs(dragged.downMoved[0] - dragged.upMoved[0]) < 0.01 && Math.abs(dragged.downMoved[1] - dragged.upMoved[1]) < 0.01,
+    JSON.stringify(dragged))
+  check('and says so, since that floor is out of sight', /same riser on 1 other floor/.test(dragged.status), dragged.status)
+
   // The rest of the script was written against unaligned floors.
   await page.evaluate(() => {
     const app = window.warren

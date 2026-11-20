@@ -1,5 +1,6 @@
 import { defaultSystems, FALLBACK_SYSTEM } from './systems.ts'
 import { newId } from './ids.ts'
+import { carryRisers } from '../risers.ts'
 import { ARCHITECTURE_KINDS, DEFAULT_SETTINGS, searchTextOf, type Item, type Project, type Sheet, type System } from './types.ts'
 
 /** Everything under undo control. Assets (PDF bytes) sit outside - they are big and never edited. */
@@ -147,6 +148,9 @@ export class Store {
     this.activeVertex = null
   }
 
+  /** How many risers on other floors the last edit carried along, so the app can say so. */
+  lastCarried = 0
+
   begin(): void {
     if (this.pending) return
     this.pending = this.snapshot()
@@ -155,6 +159,9 @@ export class Store {
   /** Commit the open transaction. Emits regardless so live drags repaint. */
   commit(): void {
     if (!this.pending) return
+    // A riser is one pipe on every floor it passes: moved on one, it moves on all of them, in
+    // the same undo step.
+    this.lastCarried = carryRisers(this.pending.sheets, this.project.sheets)
     this.undoStack.push(this.pending)
     if (this.undoStack.length > 100) this.undoStack.shift()
     this.redoStack.length = 0

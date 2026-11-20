@@ -300,6 +300,7 @@ const MANUAL = {
       'The ops file is an array of ops, or {"ops": [...]}. All of it is validated before any of it is applied, so a half-understood instruction cannot leave the drawing half-changed. If one op fails, nothing is written.',
       'Coordinates: pointsM / xM / yM are metres and need a calibrated sheet; points / x / y are raw PDF points. Prefer metres — converting at the boundary is this tool’s job, not the caller’s.',
       '--as stamps the markers the batch adds as suggested by whoever you name: drawn faintly until a person touches one, which makes it theirs. Use it for anything a model suggested, so it does not arrive looking like work the person did. A set or move with --as leaves a suggestion nobody has reviewed yet unreviewed; without it, editing claims the item.',
+      'Moving a riser (riser-up, riser-down, riser-through) moves the risers of the same system standing on that spot on the other lined-up floors with it: they are one pipe. apply says how many it carried.',
       'A room op may carry expectM2. Dutch architect’s plans print the area of every room, so a traced outline can check itself: the batch is refused if the polygon disagrees by more than 8%.',
     ],
     writes: true,

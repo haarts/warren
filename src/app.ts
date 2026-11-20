@@ -43,6 +43,13 @@ export class App {
     this.editor.onCalibrateRequest = () => void this.promptCalibration()
     this.editor.onDirectionRequest = (bearingDeg) => void this.promptDirection(bearingDeg)
     this.store.subscribe(() => this.refresh())
+    // The other floors are out of sight, so say when a riser took its partners there with it.
+    this.store.subscribe(() => {
+      const n = this.store.lastCarried
+      if (!n) return
+      this.store.lastCarried = 0
+      this.editor.flash(`Moved the same riser on ${n} other floor${n === 1 ? '' : 's'} too`)
+    })
   }
 
   async init(): Promise<void> {

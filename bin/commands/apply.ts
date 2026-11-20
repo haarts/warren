@@ -29,7 +29,7 @@ export async function cmdApply(args: Args): Promise<void> {
   // it a model's suggestions would arrive looking like your work.
   const stamp = typeof args.flags.as === 'string' ? { by: args.flags.as, via: 'apply' } : null
 
-  const { problems, describe, planned } = planOps(project, store, ops, stamp)
+  const { problems, describe, planned, carried } = planOps(project, store, ops, stamp)
 
   if (problems.length) {
     for (const p of problems) process.stderr.write(`warren: ${p}\n`)
@@ -42,4 +42,5 @@ export async function cmdApply(args: Args): Promise<void> {
   for (const apply of planned) apply()
   await persist(loaded)
   console.log(`applied ${planned.length} op(s) to ${basename(path)}`)
+  if (carried()) console.log(`${carried()} riser(s) of the same pipe on other floors moved with it`)
 }

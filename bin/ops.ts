@@ -10,6 +10,7 @@
 import type { Pt } from '../src/geom.ts'
 import { closestOnSegment, polygonArea } from '../src/geom.ts'
 import { adopt } from '../src/model/suggested.ts'
+import { carryRisers } from '../src/risers.ts'
 import { newId } from '../src/model/ids.ts'
 import type { Store } from '../src/model/doc.ts'
 import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet, type Suggestion } from '../src/model/types.ts'
@@ -37,6 +38,8 @@ export interface Plan {
   problems: string[]
   describe: string[]
   planned: (() => void)[]
+  /** After the planned steps have run: risers on other floors that moved with the ones moved. */
+  carried: () => number
 }
 
 /** What one op handler shares: the sheet+item it targets (id-based ops only), and where to
@@ -389,5 +392,16 @@ export function planOps(
     handler(op, { project, store, systemIds, stamp, target, at, problems, describe, planned })
   })
 
-  return { problems, describe, planned }
+  // Moving a riser moves the same pipe on the other floors, as it does in the app: look at the
+  // risers before the first op runs, and carry their partners after the last.
+  let carried = 0
+  if (planned.length) {
+    let before: Sheet[] = []
+    const first = planned[0]
+    planned[0] = () => { before = structuredClone(project.sheets); first() }
+    const last = planned.length - 1
+    const finish = planned[last]
+    planned[last] = () => { finish(); carried = carryRisers(before, project.sheets) }
+  }
+  return { problems, describe, planned, carried: () => carried }
 }
