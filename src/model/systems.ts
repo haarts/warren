@@ -113,6 +113,11 @@ const SEEDS: Seed[] = [
   { id: 'data.fiber', category: 'data', name: 'Fiber / ISP entry', color: '#6b21a8', dash: D.dashdot, width: 1.3, sizes: ['duplex OS2', 'G.657.A2'], symbols: ['data-outlet', 'penetration', 'note'] },
   { id: 'data.coax', category: 'data', name: 'Coax', color: '#b45309', dash: D.dot, width: 1.1, sizes: ['RG6', 'RG11'], symbols: ['data-outlet', 'penetration', 'note'] },
   { id: 'data.sensor', category: 'data', name: 'Sensor / bus (KNX, 1-Wire)', color: '#db2777', dash: D.solid, width: 1.1, sizes: ['KNX 2×2×0.8', '2×0.8mm', '4×0.8mm', 'CAT6A'], symbols: ['presence', 'sensor', 'data-outlet', 'penetration', 'note'] },
+  // A presence sensor says someone is here; a location sensor (a tracking radar such as the
+  // LD2450) also says where. They are wired the same, but placed and ordered differently, so
+  // they are told apart in a pair - amber and blue - that colour-blind eyes can still separate.
+  { id: 'data.presence', category: 'data', name: 'Presence sensor', color: '#d97706', dash: D.solid, width: 1.1, sizes: ['CAT6A (PoE)', 'CAT6 (PoE)'], symbols: ['presence', 'sensor', 'note'] },
+  { id: 'data.location', category: 'data', name: 'Location sensor (tracking)', color: '#2563eb', dash: D.solid, width: 1.1, sizes: ['CAT6A (PoE)', 'CAT6 (PoE)'], symbols: ['presence', 'sensor', 'note'] },
   { id: 'data.speaker', category: 'data', name: 'Speaker', color: '#db2777', dash: D.dot, width: 1.1, sizes: ['2×1.5mm²', '2×2.5mm²', '4×1.5mm²'], symbols: ['outlet', 'penetration', 'note'] },
   { id: 'data.security', category: 'data', name: 'Alarm / camera', color: '#a21caf', dash: D.dash, width: 1.3, sizes: ['CAT6A (PoE)', '6×0.22mm', '8×0.22mm'], symbols: ['presence', 'sensor', 'data-outlet', 'penetration', 'note'] },
 
