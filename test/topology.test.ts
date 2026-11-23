@@ -120,3 +120,53 @@ test('two runs meeting in open space are still joined to each other', () => {
   ]))
   assert.deepEqual(connectionsOf(g, 'a').map((c) => c.otherId), ['b'])
 })
+
+test('things join only when they carry the same thing', () => {
+  // A UTP cable ending inside the rainwater manifold's box is drawn there, not plugged into it.
+  const manifold: Item = { kind: 'box', id: 'manifold', systemId: 'reuse.dist', level: 'on-wall', x: 0, y: 0, w: 40, h: 40 }
+  const rainPipe = run('rain', 'reuse.dist', [[20, 20], [20, 300]])
+  const g = buildGraph(sheet([
+    manifold, rainPipe,
+    run('utp', 'data.cat6', [[20, 20], [300, 20]]),
+    run('utp2', 'data.cat6', [[20, 20], [20, -300]]),
+    { kind: 'marker', id: 'sensor', systemId: 'data.presence', level: 'ceiling', x: 300, y: 20, symbol: 'presence' },
+  ]))
+  assert.deepEqual(connectionsOf(g, 'manifold').map((c) => c.otherId), ['rain'], 'the box sees only its own pipe')
+  assert.deepEqual(connectionsOf(g, 'utp').map((c) => c.otherId).sort(), ['sensor', 'utp2'],
+    'the cable meets its sensor, and the other cable at the shared point - not through somebody else\'s box')
+  assert.equal(g.freeEnds.some((f) => f.itemId === 'rain' && f.end === 'start'), false)
+})
+
+test('pipes join across categories - a gutter into the tank, a fill loop into the heating', () => {
+  const g = buildGraph(sheet([
+    { kind: 'box', id: 'tank', systemId: 'reuse.supply', level: 'crawl', x: 0, y: 0, w: 40, h: 40 },
+    run('gutter', 'drain.rain', [[20, 20], [20, 300]]),
+    run('fill', 'water.fill', [[100, 0], [200, 0]]),
+    run('flow', 'heat.flow', [[200, 0], [200, 100]]),
+  ]))
+  assert.deepEqual(connectionsOf(g, 'gutter').map((c) => c.otherId), ['tank'])
+  assert.deepEqual(connectionsOf(g, 'fill').map((c) => c.otherId), ['flow'])
+})
+
+test('structure joins only its own kind: a shaft connects nothing that passes through it', () => {
+  const g = buildGraph(sheet([
+    { kind: 'box', id: 'shaft', systemId: 'struct.shaft', level: 'wall', x: 0, y: 0, w: 40, h: 40 },
+    run('pipe', 'water.cold', [[20, 20], [20, 300]]),
+    run('cable', 'power.230v', [[20, 20], [300, 20]]),
+    run('seal', 'struct.airtight', [[0, 500], [100, 500]]),
+    run('seal2', 'struct.airtight', [[100, 500], [100, 600]]),
+  ]))
+  assert.deepEqual(connectionsOf(g, 'shaft'), [])
+  assert.deepEqual(connectionsOf(g, 'pipe'), [])
+  assert.deepEqual(connectionsOf(g, 'seal').map((c) => c.otherId), ['seal2'])
+})
+
+test('the catalogue decides the category, so a custom system joins its family', () => {
+  const g = buildGraph(sheet([
+    run('a', 'my-own-pipe', [[0, 0], [100, 0]]),
+    run('b', 'water.cold', [[100, 0], [100, 100]]),
+    run('c', 'no-idea', [[100, 100], [200, 100]]),
+  ]), (id) => (id === 'my-own-pipe' ? 'heat' : id === 'water.cold' ? 'water' : undefined))
+  assert.deepEqual(connectionsOf(g, 'a').map((c) => c.otherId), ['b'])
+  assert.deepEqual(connectionsOf(g, 'c'), [], 'a system of unknown category joins only itself')
+})

@@ -94,7 +94,10 @@ run `systems --add-missing` if the one you want is not in the catalogue yet.
 
 **Connections are read from the geometry, not recorded.** Endpoints that meet share a
 coordinate, within 5 mm of real world. If you want two things joined, give them the same point —
-`graph` and `trace` will then agree they are joined. Nothing else makes it so.
+`graph` and `trace` will then agree they are joined. Nothing else makes it so. And only things
+that carry the same join: pipes with pipes (any of water, rainwater, drain, heating), ducts with
+ducts, power with power, data with data; structure only with its own system. A cable ending
+inside a pipe manifold's box is not connected to it.
 
 **What you place, place `--as` yourself.** `apply --as <who>` stamps the markers a batch adds
 as your suggestion, drawn faintly until the person touches one and makes it theirs. Pass the

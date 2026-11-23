@@ -1,5 +1,5 @@
 import { closestOnPolyline, dist, type Pt } from './geom.ts'
-import type { Item, RunItem, Sheet } from './model/types.ts'
+import { CATEGORIES, type Category, type Item, type RunItem, type Sheet } from './model/types.ts'
 import { boxContains } from './render/bounds.ts'
 
 /**
@@ -26,6 +26,36 @@ export const TOUCH_MM = 5
 
 export function toleranceFor(sheet: Sheet): number {
   return sheet.mmPerPoint ? TOUCH_MM / sheet.mmPerPoint : 0.25
+}
+
+/**
+ * Things join only when they carry the same thing. A data cable that ends inside the rainwater
+ * manifold's box is drawn there, not plugged into it - overlap across systems is a coincidence
+ * of the drawing, and reading it as a joint merges two installations into one network.
+ *
+ * Pipes are one family whatever they carry. A fill loop does join the heating to the mains, a
+ * gutter does run into the rain tank, and the check that non-potable water can never reach
+ * drinking water depends on seeing exactly such a joint. Structure carries nothing, so it joins
+ * only its own kind: a shaft holds everything that passes through it without connecting any of it.
+ */
+const CARRIES: Record<Category, string | null> = {
+  water: 'pipe', reuse: 'pipe', drain: 'pipe', heat: 'pipe',
+  air: 'duct', power: 'power', data: 'data', struct: null,
+}
+
+/** Which category a system id belongs to - the project's catalogue knows; ids hint. */
+export type CategoryOf = (systemId: string) => Category | undefined
+
+/** Without a catalogue: ids are written `category.name`, or `category_xyz` when made in the app. */
+export const categoryFromId: CategoryOf = (systemId) => {
+  const head = systemId.split(/[._]/)[0]
+  return (CATEGORIES as readonly string[]).includes(head) ? (head as Category) : undefined
+}
+
+/** What an item carries. Structure, or a system of unknown category, joins only its own system. */
+function carrierOf(item: Item, categoryOf: CategoryOf): string {
+  const category = categoryOf(item.systemId)
+  return (category && CARRIES[category]) || `system:${item.systemId}`
 }
 
 export type Contact = 'end-to-end' | 'tee' | 'equipment'
@@ -86,8 +116,10 @@ function contactBetween(p: Pt, other: Item, tol: number): { how: Contact; at: Pt
   return null
 }
 
-export function buildGraph(sheet: Sheet, tolerance = toleranceFor(sheet)): Graph {
+export function buildGraph(sheet: Sheet, categoryOf: CategoryOf = categoryFromId, tolerance = toleranceFor(sheet)): Graph {
   const items = sheet.items.filter((i) => i.kind !== 'note')
+  const carrier = new Map(items.map((i) => [i.id, carrierOf(i, categoryOf)]))
+  const joinable = (a: Item, b: Item): boolean => carrier.get(a.id) === carrier.get(b.id)
   const connections = new Map<string, Connection[]>()
   const add = (a: string, b: string, at: Pt, how: Contact): void => {
     const list = connections.get(a) ?? []
@@ -103,10 +135,10 @@ export function buildGraph(sheet: Sheet, tolerance = toleranceFor(sheet)): Graph
       // several runs meeting at an appliance point share another; in both cases they are
       // joined to the thing, not to each other, and saying otherwise buries the connection
       // that matters under several that do not.
-      const insideEquipment = equipment.some((e) =>
-        e.kind === 'box' ? touchesBox(p, e, tolerance) : dist(p, { x: e.x, y: e.y }) <= tolerance)
+      const insideEquipment = equipment.some((e) => joinable(run, e)
+        && (e.kind === 'box' ? touchesBox(p, e, tolerance) : dist(p, { x: e.x, y: e.y }) <= tolerance))
       for (const other of items) {
-        if (other.id === run.id) continue
+        if (other.id === run.id || !joinable(run, other)) continue
         const contact = contactBetween(p, other, tolerance)
         if (!contact) continue
         if (insideEquipment && other.kind === 'run') continue

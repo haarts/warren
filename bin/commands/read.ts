@@ -180,7 +180,7 @@ export async function cmdGraph(args: Args): Promise<void> {
   const { project, store } = await load(args)
   const sheets = sheetOf(project, args.flags.sheet)
   const out = sheets.map((sheet) => {
-    const graph = buildGraph(sheet)
+    const graph = buildGraph(sheet, (id) => store.system(id).category)
     const name = (id: string): string => {
       const item = sheet.items.find((i) => i.id === id)
       return item ? store.system(item.systemId).name : id
@@ -217,7 +217,7 @@ export async function cmdTrace(args: Args): Promise<void> {
     const item = sheet.items.find((i) => i.id === id)
     if (!item) continue
     store.setActiveSheet(sheet.id)
-    const graph = buildGraph(sheet)
+    const graph = buildGraph(sheet, (id) => store.system(id).category)
     const network = networkOf(graph, id)
     const describe = (other: string): string => {
       const o = sheet.items.find((i) => i.id === other)

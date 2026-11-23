@@ -285,7 +285,7 @@ function buildSelection(app: App, body: HTMLElement): void {
 
       // What this is joined to, derived from where the ends actually land. Stated as fact,
       // not as a complaint - plenty of drawings are half-finished on purpose.
-      const graph = buildGraph(sheet)
+      const graph = buildGraph(sheet, (id) => store.system(id).category)
       const joined = connectionsOf(graph, first.id)
       const network = networkOf(graph, first.id)
       const loose = graph.freeEnds.filter((f) => f.itemId === first.id).length

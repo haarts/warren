@@ -78,7 +78,7 @@ export function riserPointFor(app: App, item: Item): Pt | null {
   const last = item.points.length - 1
   const av = app.store.activeVertex
   if (av?.itemId === item.id && (av.index === 0 || av.index === last)) return { ...item.points[av.index] }
-  const loose = buildGraph(app.store.sheet).freeEnds.filter((f) => f.itemId === item.id)
+  const loose = buildGraph(app.store.sheet, (id) => app.store.system(id).category).freeEnds.filter((f) => f.itemId === item.id)
   const end = loose.find((f) => f.end === 'end') ?? loose[0]
   return { ...(end ? end.at : item.points[last]) }
 }

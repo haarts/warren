@@ -135,7 +135,7 @@ function checkSheet(
     }
   }
 
-  checkTopology(store, sheet, buildGraph(sheet), add)
+  checkTopology(store, sheet, buildGraph(sheet, (id) => store.system(id).category), add)
 }
 
 function checkTopology(store: Store, sheet: Sheet, graph: Graph, add: Add): void {

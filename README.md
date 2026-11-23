@@ -343,6 +343,16 @@ away — so a generous tolerance does not find more connections, it invents them
 look joined but are not will show up as loose ends, which is the honest answer: they are not
 joined.
 
+Only things that carry the same join. A UTP cable that ends inside the rainwater manifold's box
+is drawn there, not plugged into it, and reading it as a joint would merge two installations into
+one network. So pipes join pipes, ducts join ducts, power joins power and data joins data — a
+sensor and its cable are both data, so they do. Pipes are one family whatever they carry: a fill
+loop does join the heating to the mains, a gutter does run into the rain tank, and the
+non-potable cross-connection check depends on seeing exactly such a joint. Structure joins only
+its own system, so a shaft holds everything passing through it without connecting any of it.
+Hiding a layer does not change any of this — what is joined is a fact about the drawing, the same
+for whoever opens it — but snapping never lands on anything hidden.
+
 Select a run and Properties **names** what it is joined to — each one clickable, tagged *end*,
 *tee* or *at* — tells you how many loose ends it has, and offers **Select all n joined** — the quick way to grab a whole circuit or a whole drain line and
 move it. A branch landing part way along a main is recorded as a *tee* rather than a joint,

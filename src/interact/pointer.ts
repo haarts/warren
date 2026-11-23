@@ -485,7 +485,7 @@ function runPointerDown(ed: Editor, world: Pt, separate: boolean): void {
 function freeEndAt(ed: Editor, p: Pt): { runId: string; end: 'start' | 'end'; at: Pt } | null {
   const tol = ed.tol(HIT_TOL_PX)
   let best: { runId: string; end: 'start' | 'end'; at: Pt } | null = null
-  for (const f of buildGraph(ed.store.sheet).freeEnds) {
+  for (const f of buildGraph(ed.store.sheet, (id) => ed.store.system(id).category).freeEnds) {
     const run = ed.store.item(f.itemId)
     if (!run || run.kind !== 'run' || run.systemId !== ed.activeSystemId || !ed.store.isEditable(run)) continue
     if (dist(f.at, p) > tol) continue
