@@ -2,6 +2,7 @@ import { assetData } from '../model/assets.ts'
 import type { Store } from '../model/doc.ts'
 import { Camera } from '../render/camera.ts'
 import { drawScene } from '../render/scene.ts'
+import { asCanvasContext, SvgContext } from '../render/svgContext.ts'
 import { newCanvas, renderPage } from './pdf.ts'
 
 export interface ExportOptions {
@@ -17,6 +18,28 @@ export interface ExportOptions {
  * than a screenshot.
  */
 export async function renderSheetImage(store: Store, opts: ExportOptions): Promise<HTMLCanvasElement> {
+  const page = await preparePage(store, opts)
+  const out = newCanvas(page.width, page.height, 'Canvas 2D unavailable')
+  drawPage(store, opts, page, out.getContext('2d')!)
+  return out
+}
+
+/**
+ * The same drawing as SVG: everything Warren draws stays vector - lines, symbols, every label -
+ * so a PDF printed from it is sharp however far you zoom. The architect's plan underneath is
+ * still a picture, at the resolution asked for: the browser cannot place a PDF page inside a
+ * printed one as vectors.
+ */
+export async function renderSheetSvg(store: Store, opts: ExportOptions): Promise<{ svg: string; width: number; height: number }> {
+  const page = await preparePage(store, opts)
+  const ctx = new SvgContext(page.width, page.height)
+  drawPage(store, opts, page, asCanvasContext(ctx))
+  return { svg: ctx.toSvg(), width: page.width, height: page.height }
+}
+
+interface Page { bg: HTMLCanvasElement | null; widthPt: number; heightPt: number; width: number; height: number; scale: number }
+
+async function preparePage(store: Store, opts: ExportOptions): Promise<Page> {
   const sheet = store.sheet
   const scale = Math.max(0.25, opts.scale)
   let bg: HTMLCanvasElement | null = null
@@ -32,14 +55,14 @@ export async function renderSheetImage(store: Store, opts: ExportOptions): Promi
       heightPt = rendered.heightPt
     }
   }
+  return { bg, widthPt, heightPt, width: Math.round(widthPt * scale), height: Math.round(heightPt * scale), scale }
+}
 
-  const out = newCanvas(Math.round(widthPt * scale), Math.round(heightPt * scale), 'Canvas 2D unavailable')
-  const ctx = out.getContext('2d')!
-
+function drawPage(store: Store, opts: ExportOptions, page: Page, ctx: CanvasRenderingContext2D): void {
   const cam = new Camera()
   cam.x = 0
   cam.y = 0
-  cam.zoom = scale
+  cam.zoom = page.scale
 
   const settings = store.project.settings
   const prevOpacity = settings.backgroundOpacity
@@ -49,18 +72,17 @@ export async function renderSheetImage(store: Store, opts: ExportOptions): Promi
       ctx,
       store,
       cam,
-      width: out.width,
-      height: out.height,
-      background: bg,
-      backgroundSize: bg ? { w: widthPt, h: heightPt } : null,
-      uiScale: scale * 0.65,
+      width: page.width,
+      height: page.height,
+      background: page.bg,
+      backgroundSize: page.bg ? { w: page.widthPt, h: page.heightPt } : null,
+      uiScale: page.scale * 0.65,
       interactive: false,
       paper: true,
     })
   } finally {
     settings.backgroundOpacity = prevOpacity
   }
-  return out
 }
 
 export function canvasToBlob(canvas: HTMLCanvasElement, type = 'image/png'): Promise<Blob> {

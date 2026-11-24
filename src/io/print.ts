@@ -2,7 +2,7 @@ import type { Store } from '../model/doc.ts'
 import { CATEGORY_LABELS, type Category, type Sheet } from '../model/types.ts'
 import { computeTakeoff, systemsInUse } from '../takeoff.ts'
 import { formatMetres } from '../units.ts'
-import { renderSheetImage } from './exportImage.ts'
+import { renderSheetSvg } from './exportImage.ts'
 
 export type Paper = 'A3' | 'A4'
 
@@ -58,18 +58,20 @@ export async function printDocument(store: Store, opts: PrintOptions): Promise<s
   // which Chrome stops in a backgrounded page - so opening a popup first and rendering second
   // deadlocks. Same reason we print from a hidden same-origin iframe rather than a new tab:
   // no popup blocker, no backgrounding, no stall.
-  const pages: { sheet: Sheet; url: string; portrait: boolean }[] = []
+  const pages: { sheet: Sheet; svg: string; portrait: boolean }[] = []
   try {
     for (const sheet of sheets) {
       // The renderer draws the active sheet; switch quietly, without the selection reset and
       // redraw a person switching tabs gets, and switch back below whatever happens.
       store.project.activeSheetId = sheet.id
-      const canvas = await renderSheetImage(store, {
+      // Vectors, not a picture of them: the labels on a busy plan are only readable when the
+      // PDF can be zoomed into, and a PNG turns to blocks first.
+      const { svg, width, height } = await renderSheetSvg(store, {
         scale: opts.scale,
         includeBackground: true,
         backgroundOpacity: opts.backgroundOpacity,
       })
-      pages.push({ sheet, url: canvas.toDataURL('image/png'), portrait: canvas.height > canvas.width })
+      pages.push({ sheet, svg, portrait: height > width })
     }
   } finally {
     store.project.activeSheetId = active
@@ -121,7 +123,7 @@ export async function printDocument(store: Store, opts: PrintOptions): Promise<s
   // One floor to a page, turned whichever way the plan is, and shrunk to fit inside it: a
   // plan that runs off the bottom onto a second sheet of paper is no use to anybody holding it.
   const [short, long] = PAPER_MM[opts.paper]
-  const pageHtml = pages.map(({ sheet, url, portrait }) => {
+  const pageHtml = pages.map(({ sheet, svg, portrait }) => {
     const assumed = sheet.items.filter((i) => i.kind === 'run' && i.flowAssumed).length
     const assumedNote = assumed
       ? `<p class="warn">${assumed} run${assumed === 1 ? ' has an' : 's have an'} <b>assumed</b> direction, drawn faintly: `
@@ -132,7 +134,7 @@ export async function printDocument(store: Store, opts: PrintOptions): Promise<s
       <div class="meta">${when}${categoryNote}${
         sheet.mmPerPoint ? ` · calibrated (1 pt = ${sheet.mmPerPoint.toFixed(3)} mm)` : ' · <span class="warn">not calibrated</span>'
       }</div>
-      <img class="plan" src="${url}" alt="${escapeHtml(sheet.name)}">
+      <div class="plan" role="img" aria-label="${escapeHtml(sheet.name)}">${svg}</div>
       ${assumedNote}
     </section>`
   }).join('')
@@ -155,7 +157,9 @@ export async function printDocument(store: Store, opts: PrintOptions): Promise<s
   h1 { font-size: 16px; margin: 0 0 2px; }
   h2 { font-size: 13px; margin: 14px 0 4px; }
   .meta { color: #5b6675; margin-bottom: 6px; font-size: 11px; }
-  .plan { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: contain; object-position: center top; }
+  .plan { flex: 1 1 auto; min-height: 0; width: 100%; }
+  /* Shrunk to fit, centred, against the top - what object-fit did for the picture it used to be. */
+  .plan svg { display: block; width: 100%; height: 100%; }
   .page p { margin: 4px 0 0; }
   table { border-collapse: collapse; font-size: 11px; }
   td, th { padding: 2px 8px 2px 0; vertical-align: middle; text-align: left; }
@@ -198,8 +202,15 @@ function printHtml(html: string): Promise<void> {
         reject(new Error('Could not create the print view'))
         return
       }
+      // The plan underneath is an <image> inside the drawing's SVG, which document.images does
+      // not list: decode those too, or the first print can come out with no plan under it.
       const images = [...win.document.images]
-      const ready = Promise.all(images.map((img) => (img.complete ? Promise.resolve() : img.decode().catch(() => undefined))))
+      const inSvg = [...win.document.querySelectorAll('svg image')].map((el) => {
+        const img = win.document.createElement('img')
+        img.src = el.getAttribute('href') ?? ''
+        return img
+      })
+      const ready = Promise.all([...images, ...inSvg].map((img) => (img.complete ? Promise.resolve() : img.decode().catch(() => undefined))))
       void ready.then(() => {
         win.addEventListener('afterprint', cleanup, { once: true })
         try {

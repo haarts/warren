@@ -1489,14 +1489,16 @@ try {
     for (const frame of document.querySelectorAll('iframe')) {
       const doc = frame.contentDocument
       const sheets = window.warren.store.project.sheets.length
-      if (doc && doc.querySelectorAll('img.plan').length === sheets && doc.querySelectorAll('.page').length === sheets + 1) {
-        return `${sheets} sheet(s): ` + doc.body.innerText.replace(/\s+/g, ' ')
+      if (doc && doc.querySelectorAll('.plan svg').length === sheets && doc.querySelectorAll('.page').length === sheets + 1) {
+        const vector = doc.querySelectorAll('.plan svg text').length > 0 && doc.querySelectorAll('.plan img').length === 0
+        return `${sheets} sheet(s), ${vector ? 'vector' : 'RASTER'}: ` + doc.body.innerText.replace(/\s+/g, ' ')
       }
     }
     return false
   }, { timeout: 40_000, polling: 300 }).then((h) => h.jsonValue()).catch(() => '')
   check('print view puts every sheet on a page of its own, then the legend and takeoff',
     /Legend/.test(printText) && /takeoff/i.test(printText), printText.slice(0, 70))
+  check('the printed plan is vector, so its labels stay sharp when the PDF is zoomed', /, vector:/.test(printText), printText.slice(0, 40))
 
   // --- backfilling a catalogue that predates a system -------------------------------------------
   const backfill = await page.evaluate(async () => {
