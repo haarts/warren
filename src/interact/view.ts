@@ -6,7 +6,7 @@
 import { floorMapping } from '../align.ts'
 import type { GhostLayer } from '../render/ghost.ts'
 import { boundsOf, normalizeRect, polylineLength, type Pt } from '../geom.ts'
-import type { Item } from '../model/types.ts'
+import type { Item, Sheet } from '../model/types.ts'
 import { itemBounds } from '../render/bounds.ts'
 import { drawScene, type Overlay } from '../render/scene.ts'
 import { formatMetres } from '../units.ts'
@@ -109,6 +109,25 @@ function cursorFor(ed: Editor): string {
 
 export function zoomBy(ed: Editor, factor: number): void {
   ed.cam.zoomAt(ed.cssWidth / 2, ed.cssHeight / 2, factor)
+  ed.requestRender()
+}
+
+/**
+ * Going to another floor, keep looking at the same spot in the building at the same size, so
+ * a wall you were looking at stays put and the floor above it comes into view around it. That
+ * needs the floors lined up; on one that is not, there is no same spot, and the new sheet fits
+ * the window instead. Call it after the active sheet has changed, with the sheet it changed from.
+ */
+export function carryView(ed: Editor, from: Sheet | null): void {
+  const to = ed.store.sheet
+  const mapping = from && from.id !== to.id ? floorMapping(from, to) : null
+  if (!mapping) return zoomToFit(ed)
+  const cam = ed.cam
+  const centre = mapping.apply(cam.toWorld(ed.cssWidth / 2, ed.cssHeight / 2))
+  // A metre is `scale` times as many points on the new page: zoom out by as much to keep its size.
+  cam.zoom = Math.min(60, Math.max(0.02, cam.zoom / mapping.scale))
+  cam.x = centre.x - ed.cssWidth / 2 / cam.zoom
+  cam.y = centre.y - ed.cssHeight / 2 / cam.zoom
   ed.requestRender()
 }
 

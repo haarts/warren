@@ -1354,6 +1354,27 @@ try {
     JSON.stringify(dragged))
   check('and says so, since that floor is out of sight', /same riser on 1 other floor/.test(dragged.status), dragged.status)
 
+  // Switching floors keeps the same spot in the building in view, at the same size.
+  const carried = await page.evaluate(async () => {
+    const app = window.warren
+    const [first, second] = app.store.project.sheets
+    const ed = app.editor
+    app.store.setActiveSheet(first.id)
+    ed.cam.zoom = 3
+    ed.cam.x = 300 - ed.cssWidth / 2 / 3
+    ed.cam.y = 200 - ed.cssHeight / 2 / 3
+    ;[...document.querySelectorAll('#sheet-tabs button')].find((b) => b.textContent === second.name).click()
+    await new Promise((r) => setTimeout(r, 50))
+    const c = ed.cam.toWorld(ed.cssWidth / 2, ed.cssHeight / 2)
+    const result = { on: app.store.sheet.id === second.id, zoom: ed.cam.zoom, centre: [c.x, c.y] }
+    app.store.setActiveSheet(first.id)
+    return result
+  })
+  check('switching to a lined-up floor keeps the same spot in view at the same zoom',
+    carried.on && Math.abs(carried.zoom - 3) < 1e-9
+    && Math.abs(carried.centre[0] - 350) < 0.01 && Math.abs(carried.centre[1] - 220) < 0.01,
+    JSON.stringify(carried))
+
   // The rest of the script was written against unaligned floors.
   await page.evaluate(() => {
     const app = window.warren

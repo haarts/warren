@@ -1,9 +1,9 @@
 import { Editor, type ToolId } from './interact/editor.ts'
 import { applyCalibration, applyDirection } from './interact/compass.ts'
 import { cancelDraft, cancelMeasurement, finishDraft, removeLastDraftPoint } from './interact/pointer.ts'
-import { selectionSummary, zoomBy, zoomToFit } from './interact/view.ts'
+import { carryView, selectionSummary, zoomBy, zoomToFit } from './interact/view.ts'
 import { attachUnloadGuard, autosave, offerRestore, openProject, save, saveAs } from './app/fileOps.ts'
-import { attachPage as attachPageOp, refit } from './app/pdfOps.ts'
+import { attachPage as attachPageOp } from './app/pdfOps.ts'
 import { addSheet as addSheetOp, duplicateSelectionToSheet as duplicateSelectionToSheetOp, renameSheet, riseToSheet as riseToSheetOp } from './app/sheetOps.ts'
 import { copySelection, cutSelection, paste } from './app/clipboard.ts'
 import { isServed, Session } from './io/session.ts'
@@ -179,8 +179,10 @@ export class App {
       this.sheetTabs.appendChild(el('button', {
         class: sheet.id === this.store.project.activeSheetId ? 'active' : '',
         onclick: () => {
+          const from = this.store.sheet
           this.store.setActiveSheet(sheet.id)
-          refit(this)
+          this.editor.invalidateBackground()
+          carryView(this.editor, from)
         },
         ondblclick: () => void renameSheet(this, sheet),
       }, sheet.name))
