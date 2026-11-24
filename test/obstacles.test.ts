@@ -13,6 +13,7 @@ const light = (id: string, x: number, y: number): Item =>
 
 function findings(items: Item[]): Record<string, string[]> {
   const store = new Store()
+  store.sheet.mmPerPoint = 20
   store.sheet.items.push(...items)
   const out: Record<string, string[]> = {}
   const mine = new Set(['crosses-beam', 'under-beam', 'through-nodrill'])
@@ -47,4 +48,13 @@ test('nothing passes through a no-drill zone, at any level', () => {
   ])
   assert.deepEqual(f.through, ['through-nodrill'])
   assert.equal(f.around, undefined)
+})
+
+test('running along the face of a chimney is not running through it', () => {
+  // 20 mm/pt: the face is at y 100, and the run lies 1 mm inside it.
+  const f = findings([
+    box('chimney', 'struct.nodrill', 100, 100, 20, 60),
+    run('along', 'wall', [[50, 100.05], [200, 100.05]]),
+  ])
+  assert.equal(f.along, undefined)
 })

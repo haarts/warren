@@ -1,6 +1,6 @@
 import type { Store } from './model/doc.ts'
 import { coordsOf, LEVELS, type Item, type Project, type Sheet } from './model/types.ts'
-import { buildGraph, connectionsOf, type Graph } from './topology.ts'
+import { buildGraph, connectionsOf, toleranceFor, type Graph } from './topology.ts'
 import { CALIBRATION_TOLERANCE, calibrationAgreement } from './align.ts'
 import { pointInPolygon, segmentsIntersect, type Pt } from './geom.ts'
 import { boxCorners } from './render/bounds.ts'
@@ -157,8 +157,13 @@ function entersOutline(points: Pt[], outline: Pt[]): boolean {
  * from above. A no-drill zone (a chimney, say) stops everything, at every level.
  */
 function checkObstacles(store: Store, sheet: Sheet, flag: (item: Item, severity: Severity, rule: string, message: string) => void): void {
+  // Shrunk by the joining tolerance: a run laid along a beam's or a chimney's face touches it,
+  // and touching is not going through.
+  const t = toleranceFor(sheet)
   const outlines = (systemId: string): Pt[][] =>
-    sheet.items.filter((i) => i.kind === 'box' && i.systemId === systemId).map((b) => boxCorners(b as Extract<Item, { kind: 'box' }>))
+    sheet.items.flatMap((i) => i.kind === 'box' && i.systemId === systemId && i.w > 2 * t && i.h > 2 * t
+      ? [boxCorners({ ...i, x: i.x + t, y: i.y + t, w: i.w - 2 * t, h: i.h - 2 * t })]
+      : [])
   const beams = outlines('struct.beam')
   const nodrill = outlines('struct.nodrill')
   if (!beams.length && !nodrill.length) return
