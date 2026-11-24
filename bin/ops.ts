@@ -13,7 +13,7 @@ import { adopt } from '../src/model/suggested.ts'
 import { carryRisers } from '../src/risers.ts'
 import { newId } from '../src/model/ids.ts'
 import type { Store } from '../src/model/doc.ts'
-import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet, type Suggestion } from '../src/model/types.ts'
+import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, WALL_CONSTRUCTIONS, type WallConstruction, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet, type Suggestion } from '../src/model/types.ts'
 import { oneOf } from '../src/io/projectFile.ts'
 import { aimIfUnset } from '../src/coverage.ts'
 import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../src/render/notes.ts'
@@ -31,7 +31,7 @@ export const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'wall', 'wi
 
 export const PATCHABLE = new Set([
   'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride',
-  'locked', 'symbol', 'name', 'use', 'ref', 'swing', 'status', 'thicknessM', 'depthM', 'pointsM', 'rotationDeg',
+  'locked', 'symbol', 'name', 'use', 'ref', 'swing', 'status', 'construction', 'thicknessM', 'depthM', 'pointsM', 'rotationDeg',
   'aimDeg', 'fovDeg', 'rangeM', 'widthM',
 ])
 
@@ -130,8 +130,11 @@ function doSet(op: SetOp, ctx: Ctx): void {
     depth = pointsFromMetres(target!.sheet, depthM)
     if (depth === null) return void problems.push(`${at}: sheet "${target!.sheet.name}" has no scale, so depthM means nothing here`)
   }
-  if ('status' in patch || thicknessM !== undefined) {
-    if (target!.item.kind !== 'wall') return void problems.push(`${at}: status and thicknessM are for walls; ${op.id} is a ${target!.item.kind}`)
+  if ('status' in patch || 'construction' in patch || thicknessM !== undefined) {
+    if (target!.item.kind !== 'wall') return void problems.push(`${at}: status, construction and thicknessM are for walls; ${op.id} is a ${target!.item.kind}`)
+  }
+  if ('construction' in patch && patch.construction !== null && !WALL_CONSTRUCTIONS.includes(patch.construction as WallConstruction)) {
+    return void problems.push(`${at}: construction must be one of ${WALL_CONSTRUCTIONS.join(', ')}, or null for not known`)
   }
   if ('status' in patch && !WALL_STATUSES.includes(patch.status as WallStatus)) {
     return void problems.push(`${at}: status must be one of ${WALL_STATUSES.join(', ')}`)
@@ -150,6 +153,7 @@ function doSet(op: SetOp, ctx: Ctx): void {
   describe.push(`${at}: ${Object.keys(op.patch).join(', ')} on ${op.id}`)
   planned.push(() => {
     Object.assign(target!.item, patch)
+    if (patch.construction === null) delete (target!.item as Partial<WallItem>).construction
     if (width !== null && target!.item.kind === 'note') target!.item.w = width
     if (points) (target!.item as { points: Pt[] }).points = points
     if (thickness !== null && target!.item.kind === 'wall') target!.item.thickness = thickness
@@ -260,6 +264,9 @@ function doAdd(op: AddOp, ctx: Ctx): void {
       if (raw.status !== undefined && !WALL_STATUSES.includes(raw.status as WallStatus)) {
         return void problems.push(`${at}: status must be one of ${WALL_STATUSES.join(', ')}`)
       }
+      if (raw.construction !== undefined && !WALL_CONSTRUCTIONS.includes(raw.construction as WallConstruction)) {
+        return void problems.push(`${at}: construction must be one of ${WALL_CONSTRUCTIONS.join(', ')}`)
+      }
     }
     let depth = 0
     if (raw.kind === 'window') {
@@ -297,6 +304,7 @@ function doAdd(op: AddOp, ctx: Ctx): void {
         sheet.items.push({
           kind: 'wall', id: newId('wall'), systemId: raw.systemId as string, level, points, thickness,
           status: (raw.status as WallStatus | undefined) ?? 'existing',
+          ...(raw.construction !== undefined ? { construction: raw.construction as WallConstruction } : {}),
           ...(typeof raw.ref === 'string' ? { ref: raw.ref } : {}),
           ...(typeof raw.label === 'string' ? { label: raw.label } : {}),
           ...(typeof raw.note === 'string' && raw.note ? { note: raw.note } : {}),

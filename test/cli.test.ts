@@ -343,3 +343,21 @@ test('a note can be made narrower with widthM, and is never narrower than one ca
   writeFileSync(join(dir, 'ops.json'), JSON.stringify({ ops: [{ op: 'set', id: 'r1', patch: { widthM: 1 } }] }))
   assert.equal(warren(['apply', file, 'ops.json'], dir).code, 1, 'and only notes have a width to set')
 })
+
+test('a wall says what it is made of, and only something a wall can be made of', async () => {
+  const { dir, file } = await fixture()
+  const ops = (o: unknown[]) => writeFileSync(join(dir, 'ops.json'), JSON.stringify({ ops: o }))
+  ops([{ op: 'add', item: { kind: 'wall', systemId: 'struct.wall', level: 'floor', pointsM: [[1, 1], [4, 1]], thicknessM: 0.2, construction: 'masonry' } }])
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 0)
+  const wall = () => JSON.parse(readFileSync(join(dir, file), 'utf8')).sheets[0].items.find((i: { kind: string }) => i.kind === 'wall')
+  assert.equal(wall().construction, 'masonry')
+
+  ops([{ op: 'set', id: wall().id, patch: { construction: 'cardboard' } }])
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 1, 'not a construction')
+  ops([{ op: 'set', id: 'r1', patch: { construction: 'stud' } }])
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 1, 'a pipe is not built of anything')
+
+  ops([{ op: 'set', id: wall().id, patch: { construction: null } }])
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 0)
+  assert.equal('construction' in wall(), false, 'null clears it rather than storing null')
+})

@@ -1,8 +1,8 @@
 import type { App } from '../../app.ts'
 import { polygonArea, polylineLength } from '../../geom.ts'
 import {
-  CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS, ROOM_USES, ROOM_USE_LABELS, WALL_STATUSES,
-  type Item, type Level, type MarkerSymbol, type RoomUse, type WallStatus,
+  CATEGORIES, CATEGORY_LABELS, LEVELS, LEVEL_LABELS, MARKER_LABELS, ROOM_USES, ROOM_USE_LABELS, WALL_CONSTRUCTIONS, WALL_STATUSES,
+  type Item, type Level, type MarkerSymbol, type RoomUse, type WallStatus, type WallConstruction,
 } from '../../model/types.ts'
 import { buildGraph, connectionsOf, networkOf, type Contact } from '../../topology.ts'
 import { adopt, suggestedBy } from '../../model/suggested.ts'
@@ -224,6 +224,16 @@ function buildSelection(app: App, body: HTMLElement): void {
       common((i) => (i.kind === 'wall' ? i.status : 'existing'), ''),
       (v) => applyToAll((item) => { if (item.kind === 'wall') item.status = v as WallStatus }),
     )))
+    const BUILT: Record<string, string> = { masonry: 'Masonry', stud: 'Stud (hollow)', timber: 'Timber' }
+    body.appendChild(field('Made of', select(
+      [['', 'Not known'] as const, ...WALL_CONSTRUCTIONS.map((c) => [c, BUILT[c]] as const)],
+      common((i) => (i.kind === 'wall' ? i.construction ?? '' : ''), ''),
+      (v) => applyToAll((item) => {
+        if (item.kind !== 'wall') return
+        if (v) item.construction = v as WallConstruction
+        else delete item.construction
+      }),
+    ), 'Decides whether a cable goes through easily or has to be chased.'))
   }
 
   if (!many && first.kind === 'window' && sheet.mmPerPoint) {
@@ -568,7 +578,7 @@ function describeItem(store: App['store'], item: Item): string {
   const sys = store.system(item.systemId).name
   if (item.kind === 'room') return `${item.name} (room)`
   if (item.kind === 'door') return `${item.ref ?? 'door'}`
-  if (item.kind === 'wall') return `${item.label || item.ref || `${item.status} wall`} (wall)`
+  if (item.kind === 'wall') return `${item.label || item.ref || `${item.status} wall`} (${item.construction ? `${item.construction} ` : ''}wall)`
   if (item.kind === 'window') return `${item.label || item.ref || 'window'} (window)`
   const own = item.kind === 'note' ? item.text.slice(0, 24) : (item.label ?? '').trim()
   const size = item.kind === 'run' ? (item.size ?? '').trim() : ''

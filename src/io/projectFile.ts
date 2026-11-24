@@ -6,7 +6,7 @@ import { defaultSystems } from '../model/systems.ts'
 import {
   CATEGORIES, DEFAULT_SETTINGS, LEVELS, MARKER_SYMBOLS,
   ROOM_USES,
-  type BoxItem, type CompassRose, type Direction, type DoorItem, type WallItem, type WindowItem, WALL_STATUSES, type Item, type MarkerItem, type MarkerSymbol, type Project,
+  type BoxItem, type CompassRose, type Direction, type DoorItem, type WallItem, type WindowItem, WALL_STATUSES, WALL_CONSTRUCTIONS, type WallConstruction, type Item, type MarkerItem, type MarkerSymbol, type Project,
   type RoomItem, type RunItem, type Sheet, type System,
 } from '../model/types.ts'
 
@@ -162,6 +162,7 @@ const ITEM_PARSERS: { [K in Item['kind']]: (raw: Record<string, unknown>, base: 
       status: oneOf(WALL_STATUSES, raw.status, 'existing'),
     }
     if (typeof raw.ref === 'string') wall.ref = raw.ref
+    if (WALL_CONSTRUCTIONS.includes(raw.construction as WallConstruction)) wall.construction = raw.construction as WallConstruction
     return wall
   },
   window: (raw, base, shared) => {

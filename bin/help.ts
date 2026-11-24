@@ -4,7 +4,7 @@
  * the manifest gets the same facts as someone reading the prose, and the two cannot drift.
  */
 import { readFileSync } from 'node:fs'
-import { CATEGORIES, ITEM_KINDS, LEVELS, MARKER_SYMBOLS, ROOM_USES, WALL_STATUSES } from '../src/model/types.ts'
+import { CATEGORIES, ITEM_KINDS, LEVELS, MARKER_SYMBOLS, ROOM_USES, WALL_CONSTRUCTIONS, WALL_STATUSES } from '../src/model/types.ts'
 import { ADDABLE_KINDS, PATCHABLE } from './ops.ts'
 
 interface Entry {
@@ -344,6 +344,7 @@ const OPS: Record<string, { does: string; fields: Record<string, string> }> = {
       'item.thicknessM': 'wall — required: its full thickness in metres, centred on the line (half each side)',
       'item.depthM': 'window — the frame depth across the wall in metres; leave it out to take the thickness of the wall both jambs sit on (which must then already exist — the wall stays continuous behind the window)',
       'item.status': `wall — one of ${WALL_STATUSES.join(', ')} (default existing)`,
+      'item.construction': `wall — optional: one of ${WALL_CONSTRUCTIONS.join(', ')}, what decides whether a cable goes through it easily (stud) or has to be chased (masonry); in set, null clears it`,
       'item.xM, item.yM': 'marker/note — position in metres. box — its top-left corner, before any turning',
       'item.wM, item.hM': 'box — required: its size in metres, across the page and down it',
       'item.rotationDeg': 'box — optional: turned about its own centre, degrees clockwise',
@@ -483,6 +484,7 @@ export function manifest() {
       addableKind: [...ADDABLE_KINDS],
       roomUse: [...ROOM_USES],
       wallStatus: [...WALL_STATUSES],
+      wallConstruction: [...WALL_CONSTRUCTIONS],
       markerSymbol: [...MARKER_SYMBOLS],
       category: [...CATEGORIES],
       flow: ['none', 'forward', 'reverse'],

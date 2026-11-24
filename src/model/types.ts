@@ -268,6 +268,13 @@ export const WALL_STATUSES = ['new', 'existing'] as const
 export type WallStatus = typeof WALL_STATUSES[number]
 
 /**
+ * What a wall is made of, which is what decides whether a cable can go through it: a stud wall
+ * is hollow and takes one easily, a masonry wall has to be chased. Unset means nobody has said.
+ */
+export const WALL_CONSTRUCTIONS = ['masonry', 'stud', 'timber'] as const
+export type WallConstruction = typeof WALL_CONSTRUCTIONS[number]
+
+/**
  * A wall, as its centreline and a thickness either side of it. A run of wall with corners is
  * one item, like a run of pipe. Architecture, so never material in the takeoff.
  */
@@ -281,6 +288,7 @@ export interface WallItem {
   /** Full thickness, in world units (PDF points) like every other length in the file. */
   thickness: number
   status: WallStatus
+  construction?: WallConstruction
   ref?: string
   label?: string
   note?: string
