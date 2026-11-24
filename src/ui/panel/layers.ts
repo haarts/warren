@@ -46,12 +46,8 @@ export function buildLayers(app: App, body: HTMLElement): void {
       class: hidden ? 'active' : '',
       onclick: () => { showOnly(app, null) },
     }, hidden ? `Show all (${hidden} hidden)` : 'Show all'),
-    el('button', {
-      onclick: () => {
-        for (const s of store.project.systems) s.visible = counts.has(s.id)
-        store.touch(); editor.requestRender(); app.refresh()
-      },
-    }, 'Only used'),
+    // No "only used": hiding a system with nothing drawn changes nothing you can see - and
+    // counted on this floor alone, it hid what was drawn on the others.
   )
   body.appendChild(buttons)
 
