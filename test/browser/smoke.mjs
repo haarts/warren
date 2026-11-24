@@ -803,7 +803,7 @@ try {
   const noteId = await page.evaluate(() => window.warren.store.items().find((i) => i.kind === 'note')?.id)
   const note = () => page.evaluate((id) => ({ ...window.warren.store.item(id) }), noteId)
   let n = await note()
-  check('note tool places a sticky sized from the sheet', !!noteId && n.w >= 60 && n.w <= 240 && n.text === '',
+  check('note tool places a sticky sized from the sheet', !!noteId && n.w >= 30 && n.w <= 120 && n.text === '',
     `w ${Math.round(n.w)} pt`)
   check('a new note is tied to the active system', n.systemId === 'water.cold', n.systemId)
 

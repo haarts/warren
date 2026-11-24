@@ -5,12 +5,14 @@ import { DIMMED, isDimmed, type DrawCtx } from './draw.ts'
  * Note text is laid out in world units, so a note zooms with the drawing like everything else
  * and needs measuring only once per (width, text) pair rather than once per frame.
  */
-export const NOTE_FONT = 7
+// Sized against the labels around it: at 7 pt of the plan a note's text stood three times as tall
+// as theirs - a quarter of a metre on a 1:100 sheet - and buried the drawing it was about.
+export const NOTE_FONT = 3.5
 export const NOTE_LINE_HEIGHT = NOTE_FONT * 1.35
-export const NOTE_PAD = 4
-export const NOTE_STRIPE = 3
-export const NOTE_DEFAULT_WIDTH = 90
-export const NOTE_MIN_WIDTH = 30
+export const NOTE_PAD = 2
+export const NOTE_STRIPE = 1.5
+export const NOTE_DEFAULT_WIDTH = 45
+export const NOTE_MIN_WIDTH = 15
 
 const NOTE_BODY = '#fef3c7'
 const NOTE_EDGE = '#d4a72c'
@@ -89,7 +91,7 @@ export function noteHeight(note: Pick<NoteItem, 'text' | 'w'>): number {
  * magnifications should still come out the same size on the printed drawing.
  */
 export function defaultNoteWidth(pageWidthPt: number): number {
-  return Math.min(240, Math.max(60, pageWidthPt * 0.12))
+  return Math.min(120, Math.max(30, pageWidthPt * 0.06))
 }
 
 /** A sticky note: a folded-corner card zoomed out to a tab, expanding to wrapped text up close. */

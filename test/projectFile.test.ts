@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { emptyProject } from '../src/model/doc.ts'
 import { parseProject, projectNameFromFileName, serialize, suggestedFileName } from '../src/io/projectFile.ts'
 import type { BoxItem, MarkerItem, NoteItem, RunItem } from '../src/model/types.ts'
+import { NOTE_MIN_WIDTH } from '../src/render/notes.ts'
 
 function sampleProject() {
   const project = emptyProject()
@@ -100,7 +101,7 @@ test('notes round trip, and a broken one is repaired rather than dropped', () =>
     version: 1,
     sheets: [{ id: 's', name: 'S', items: [{ kind: 'note', id: 'n', w: 2, x: 1, y: 1 }] }],
   })).sheets[0].items[0]
-  assert.equal(odd.kind === 'note' && odd.w >= 30, true, 'a silly width is clamped, not honoured')
+  assert.equal(odd.kind === 'note' && odd.w, NOTE_MIN_WIDTH, 'a silly width is clamped, not honoured')
   assert.equal(odd.kind === 'note' && odd.text, '', 'missing text becomes empty, not undefined')
 })
 

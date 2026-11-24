@@ -323,3 +323,23 @@ test('calibrate sets one sheet\'s scale, from a printed scale or from another sh
   assert.equal(warren(['calibrate', file, '--scale', '1:50'], dir).code, 2, 'two sheets: which one is required')
   assert.equal(warren(['calibrate', file, '--sheet', '1'], dir).code, 2, 'a scale is required')
 })
+
+test('a note can be made narrower with widthM, and is never narrower than one can be drawn', async () => {
+  const { dir, file } = await fixture()
+  writeFileSync(join(dir, 'ops.json'), JSON.stringify({ ops: [
+    { op: 'add', item: { kind: 'note', systemId: 'water.cold', level: 'wall', xM: 1, yM: 1, text: 'hier', widthM: 1.5 } },
+  ] }))
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 0)
+  const project = () => JSON.parse(readFileSync(join(dir, file), 'utf8'))
+  const sheet = project().sheets[0]
+  const note = sheet.items.find((i: { kind: string }) => i.kind === 'note')
+  assert.ok(Math.abs(note.w * sheet.mmPerPoint - 1500) < 1, 'as wide as asked')
+
+  writeFileSync(join(dir, 'ops.json'), JSON.stringify({ ops: [{ op: 'set', id: note.id, patch: { widthM: 0.001 } }] }))
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 0)
+  const again = project().sheets[0].items.find((i: { id: string }) => i.id === note.id)
+  assert.equal(again.w, 15, 'held at the narrowest a note is drawn')
+
+  writeFileSync(join(dir, 'ops.json'), JSON.stringify({ ops: [{ op: 'set', id: 'r1', patch: { widthM: 1 } }] }))
+  assert.equal(warren(['apply', file, 'ops.json'], dir).code, 1, 'and only notes have a width to set')
+})

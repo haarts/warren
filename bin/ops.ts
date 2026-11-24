@@ -16,6 +16,7 @@ import type { Store } from '../src/model/doc.ts'
 import { isPositioned, pointsOf, ROOM_USES, LEVELS, WALL_STATUSES, type Item, type WallItem, type WallStatus, type Level, type Project, type Sheet, type Suggestion } from '../src/model/types.ts'
 import { oneOf } from '../src/io/projectFile.ts'
 import { aimIfUnset } from '../src/coverage.ts'
+import { defaultNoteWidth, NOTE_MIN_WIDTH } from '../src/render/notes.ts'
 import type { MarkerItem } from '../src/model/types.ts'
 import { findSheets, pointsFromMetres } from './units.ts'
 
@@ -31,7 +32,7 @@ export const ADDABLE_KINDS: Item['kind'][] = ['run', 'room', 'door', 'wall', 'wi
 export const PATCHABLE = new Set([
   'systemId', 'level', 'label', 'size', 'flow', 'slope', 'note', 'text', 'extraM', 'colorOverride',
   'locked', 'symbol', 'name', 'use', 'ref', 'swing', 'status', 'thicknessM', 'depthM', 'pointsM', 'rotationDeg',
-  'aimDeg', 'fovDeg', 'rangeM',
+  'aimDeg', 'fovDeg', 'rangeM', 'widthM',
 ])
 
 export interface Plan {
@@ -89,7 +90,7 @@ function doSet(op: SetOp, ctx: Ctx): void {
   if (typeof op.patch.level === 'string' && !LEVELS.includes(op.patch.level as Level)) {
     return void problems.push(`${at}: level "${op.patch.level}" is not one of ${LEVELS.join(', ')}`)
   }
-  const { thicknessM, depthM, pointsM, aimDeg, fovDeg, rangeM, ...patch } = op.patch as Record<string, unknown>
+  const { thicknessM, depthM, pointsM, aimDeg, fovDeg, rangeM, widthM, ...patch } = op.patch as Record<string, unknown>
   let view: ReturnType<typeof readView> = {}
   if (aimDeg !== undefined || fovDeg !== undefined || rangeM !== undefined) {
     if (target!.item.kind !== 'marker') return void problems.push(`${at}: aimDeg, fovDeg and rangeM are for presence markers; ${op.id} is a ${target!.item.kind}`)
@@ -140,9 +141,16 @@ function doSet(op: SetOp, ctx: Ctx): void {
     thickness = pointsFromMetres(target!.sheet, thicknessM)
     if (thickness === null) return void problems.push(`${at}: sheet "${target!.sheet.name}" has no scale, so thicknessM means nothing here`)
   }
+  let width: number | null = null
+  if (widthM !== undefined) {
+    if (target!.item.kind !== 'note') return void problems.push(`${at}: widthM is for notes; ${op.id} is a ${target!.item.kind}`)
+    width = noteWidth(target!.sheet, widthM, at, problems)
+    if (width === null) return
+  }
   describe.push(`${at}: ${Object.keys(op.patch).join(', ')} on ${op.id}`)
   planned.push(() => {
     Object.assign(target!.item, patch)
+    if (width !== null && target!.item.kind === 'note') target!.item.w = width
     if (points) (target!.item as { points: Pt[] }).points = points
     if (thickness !== null && target!.item.kind === 'wall') target!.item.thickness = thickness
     if (depth !== null && target!.item.kind === 'window') target!.item.depth = depth
@@ -152,6 +160,14 @@ function doSet(op: SetOp, ctx: Ctx): void {
     }
     claim(target!.item, stamp)
   })
+}
+
+/** A note's width from metres, never narrower than a note can be drawn. */
+function noteWidth(sheet: Sheet, widthM: unknown, at: string, problems: string[]): number | null {
+  if (typeof widthM !== 'number' || !(widthM > 0)) { problems.push(`${at}: widthM must be a positive number of metres`); return null }
+  const w = pointsFromMetres(sheet, widthM)
+  if (w === null) { problems.push(`${at}: sheet "${sheet.name}" has no scale, so widthM means nothing here`); return null }
+  return Math.max(NOTE_MIN_WIDTH, w)
 }
 
 /**
@@ -340,10 +356,15 @@ function doAdd(op: AddOp, ctx: Ctx): void {
     if (x === null || y === null) return void problems.push(`${at}: needs x/y in points or xM/yM in metres on a calibrated sheet`)
     const view = raw.kind === 'marker' ? readView(raw, sheet, at, problems) : {}
     if (!view) return
+    // As wide as the app makes a new one, unless asked otherwise.
+    const w = raw.kind === 'note' && raw.widthM !== undefined
+      ? noteWidth(sheet, raw.widthM, at, problems)
+      : defaultNoteWidth(sheet.pdf?.widthPt ?? 595)
+    if (w === null) return
     describe.push(`${at}: add ${raw.kind} to ${sheet.name}`)
     planned.push(() => {
       if (raw.kind === 'note') {
-        sheet.items.push({ kind: 'note', id: newId('note'), systemId: raw.systemId as string, level, x, y, w: 90, text: String(raw.text ?? '') })
+        sheet.items.push({ kind: 'note', id: newId('note'), systemId: raw.systemId as string, level, x, y, w, text: String(raw.text ?? '') })
       } else {
         const marker: MarkerItem = {
           kind: 'marker', id: newId('mk'), systemId: raw.systemId as string, level, x, y,
