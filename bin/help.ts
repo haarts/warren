@@ -73,6 +73,7 @@ const MANUAL = {
     notes: [
       'Run this after every write. The file parser is forgiving on purpose — it repairs damage so a file written 18 months ago still opens — and that is right for a person and dangerous for a machine. `check` fails where the parser forgives: a run with one vertex, coordinates in millimetres where points belong, a system id that does not exist.',
       'One finding is an error rather than an opinion: non-potable water may never reach drinking water. It is derived from the geometry, so it holds whether or not anything is labelled.',
+      'The building pushes back too. Beams are boxes of struct.beam drawn where they are: a run in the ceiling may follow the bay between two but not cross one (crosses-beam), and a ceiling point under one cannot be fed from above (under-beam). A struct.nodrill box - a chimney - stops runs at every level (through-nodrill).',
     ],
   },
   graph: {

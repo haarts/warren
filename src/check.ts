@@ -2,7 +2,8 @@ import type { Store } from './model/doc.ts'
 import { coordsOf, LEVELS, type Item, type Project, type Sheet } from './model/types.ts'
 import { buildGraph, connectionsOf, type Graph } from './topology.ts'
 import { CALIBRATION_TOLERANCE, calibrationAgreement } from './align.ts'
-import type { Pt } from './geom.ts'
+import { pointInPolygon, segmentsIntersect, type Pt } from './geom.ts'
+import { boxCorners } from './render/bounds.ts'
 
 /**
  * A second pair of eyes, never a gate. Nothing here stops you drawing, and none of it runs
@@ -135,7 +136,48 @@ function checkSheet(
     }
   }
 
+  checkObstacles(store, sheet, flag)
   checkTopology(store, sheet, buildGraph(sheet, (id) => store.system(id).category), add)
+}
+
+/** Does any stretch of this polyline enter the outline? */
+function entersOutline(points: Pt[], outline: Pt[]): boolean {
+  if (points.some((p) => pointInPolygon(p, outline))) return true
+  for (let i = 0; i + 1 < points.length; i++) {
+    for (let j = 0; j < outline.length; j++) {
+      if (segmentsIntersect(points[i], points[i + 1], outline[j], outline[(j + 1) % outline.length])) return true
+    }
+  }
+  return false
+}
+
+/**
+ * What the building will not let through. A beam stops a run in the ceiling below it - the
+ * cable has to go over it, in the floor above - and a ceiling point fixed under one cannot be fed
+ * from above. A no-drill zone (a chimney, say) stops everything, at every level.
+ */
+function checkObstacles(store: Store, sheet: Sheet, flag: (item: Item, severity: Severity, rule: string, message: string) => void): void {
+  const outlines = (systemId: string): Pt[][] =>
+    sheet.items.filter((i) => i.kind === 'box' && i.systemId === systemId).map((b) => boxCorners(b as Extract<Item, { kind: 'box' }>))
+  const beams = outlines('struct.beam')
+  const nodrill = outlines('struct.nodrill')
+  if (!beams.length && !nodrill.length) return
+  for (const item of sheet.items) {
+    if (store.system(item.systemId).category === 'struct') continue
+    if (item.kind === 'run') {
+      if (nodrill.some((o) => entersOutline(item.points, o))) {
+        flag(item, 'error', 'through-nodrill', 'passes through a no-drill zone — route it around')
+      }
+      if (item.level === 'ceiling' && beams.some((o) => entersOutline(item.points, o))) {
+        flag(item, 'error', 'crosses-beam', 'crosses a beam in the ceiling — take it over the beam, in the floor above')
+      }
+    } else if ((item.kind === 'marker' || item.kind === 'box') && item.level === 'ceiling') {
+      const at = item.kind === 'box' ? { x: item.x + item.w / 2, y: item.y + item.h / 2 } : { x: item.x, y: item.y }
+      if (beams.some((o) => pointInPolygon(at, o))) {
+        flag(item, 'warning', 'under-beam', 'sits under a beam, so no cable can reach it from the floor above — move it between two beams')
+      }
+    }
+  }
 }
 
 function checkTopology(store: Store, sheet: Sheet, graph: Graph, add: Add): void {

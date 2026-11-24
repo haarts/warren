@@ -124,6 +124,9 @@ const SEEDS: Seed[] = [
   // --- Structure / coordination ---------------------------------------------------------
   { id: 'struct.penetration', category: 'struct', name: 'Penetration (sparing)', color: '#171717', dash: D.solid, width: 1.5, sizes: ['Ø110', 'Ø50', 'Ø75', 'Ø125', 'Ø160', '200×200'], symbols: STRUCT_SYMBOLS },
   { id: 'struct.shaft', category: 'struct', name: 'Shaft / chase', color: '#475569', dash: D.long, width: 1.8, symbols: STRUCT_SYMBOLS },
+  // Drawn as boxes where the beams are. A run in the ceiling cannot cross one, and nothing can be
+  // fed down through one, which `check` holds every ceiling run and point to.
+  { id: 'struct.beam', category: 'struct', name: 'Beam (balk)', color: '#92400e', dash: D.solid, width: 1.0, symbols: STRUCT_SYMBOLS },
   { id: 'struct.nodrill', category: 'struct', name: 'No-drill zone', color: '#dc2626', dash: D.dashdotdot, width: 1.4, symbols: STRUCT_SYMBOLS },
   { id: 'struct.airtight', category: 'struct', name: 'Airtightness penetration', color: '#db2777', dash: D.dot, width: 1.5, symbols: STRUCT_SYMBOLS },
   { id: 'struct.note', category: 'struct', name: 'General note', color: '#ca8a04', dash: D.solid, width: 1.2, symbols: ['note', 'penetration'] },
