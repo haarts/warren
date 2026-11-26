@@ -188,6 +188,38 @@ try {
   check('redo reapplies it',
     Math.hypot((await items())[0].points[1].x - afterV[1].x, (await items())[0].points[1].y - afterV[1].y) < 1e-6)
 
+  // --- Ctrl+drag copies, even grabbed by a corner of something already selected -------------
+  // Zoomed out, a short run is all corner: a Ctrl+drag there used to bend it instead of copying.
+  const corner = await page.evaluate(() => {
+    const app = window.warren
+    const p = app.store.items()[0].points[1]
+    const r = document.getElementById('canvas').getBoundingClientRect()
+    return { x: r.x + app.editor.cam.toScreenX(p.x), y: r.y + app.editor.cam.toScreenY(p.y) }
+  })
+  const beforeCopy = (await items())[0].points
+  await page.keyboard.down('Control')
+  await page.mouse.move(corner.x, corner.y)
+  await page.mouse.down()
+  await page.mouse.move(corner.x + 50, corner.y + 30, { steps: 6 })
+  await page.mouse.up()
+  await page.keyboard.up('Control')
+  const afterCopy = await items()
+  const stayed = afterCopy[0].points.every((p, i) => Math.hypot(p.x - beforeCopy[i].x, p.y - beforeCopy[i].y) < 1e-6)
+  const shifted = afterCopy[1]?.points.map((p, i) => ({ dx: p.x - beforeCopy[i].x, dy: p.y - beforeCopy[i].y }))
+  check('Ctrl+drag on a selected corner copies the whole run and leaves the original',
+    afterCopy.length === 2 && stayed && !!shifted &&
+      shifted.every((v) => Math.abs(v.dx - shifted[0].dx) < 1e-6 && Math.abs(v.dy - shifted[0].dy) < 1e-6) &&
+      Math.abs(shifted[0].dx) > 1,
+    `${afterCopy.length} item(s), original ${stayed ? 'kept' : 'moved'}`)
+  await page.evaluate(() => window.warren.store.undo())
+  check('and undo takes the copy away', (await items()).length === 1)
+  await page.evaluate(() => {
+    const app = window.warren
+    app.store.selection.clear()
+    app.store.selection.add(app.store.items()[0].id)
+    app.editor.requestRender()
+  })
+
   // --- a corner dropped on the one next to it becomes that corner ---------------------------------
   const ends = await page.evaluate(() => {
     const app = window.warren

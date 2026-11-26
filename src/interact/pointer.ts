@@ -103,7 +103,12 @@ function onPointerDown(ed: Editor, e: PointerEvent): void {
 
 function selectPointerDown(ed: Editor, e: PointerEvent, world: Pt): void {
   const store = ed.store
-  const vertex = hitVertex(store, world, ed.tol(HIT_TOL_PX))
+  // Ctrl (Cmd) means "copy what I grab", so on an item it beats that item's own corners and
+  // handles. Otherwise a Ctrl+drag on something already selected - which is everything you
+  // just copied - grabbed a vertex whenever it landed within reach of one, and on a short run
+  // or door zoomed out that is nearly everywhere: the copy only worked sometimes.
+  const copying = (e.ctrlKey || e.metaKey) && !!hitTest(store, world, ed.tol(HIT_TOL_PX))
+  const vertex = copying ? null : hitVertex(store, world, ed.tol(HIT_TOL_PX))
   if (vertex) {
     if (e.altKey) {
       deleteVertex(ed, vertex)
@@ -115,7 +120,7 @@ function selectPointerDown(ed: Editor, e: PointerEvent, world: Pt): void {
     return
   }
 
-  const handle = hitHandle(ed, world)
+  const handle = copying ? null : hitHandle(ed, world)
   if (handle) {
     store.begin()
     ed.drag = handle
